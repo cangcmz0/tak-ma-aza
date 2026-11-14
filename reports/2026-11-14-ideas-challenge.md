@@ -30,6 +30,23 @@ Zamanlama hepsinde 3: ortada bir trend yok, trendi biz başlatmaya çalışıyor
 - **MVP:** 1–2 hafta (**tahmin**).
 - **Risk:** Sahteler çok kolay ya da çok zor olabilir → zorluk tur tur ayarlanır, test ederek kalibre edilir. Sadece sesle anlaşılıyor, sessiz izlenince okunmuyor → büyük "DOĞRU/YANLIŞ" ekranı ve yüz kamerası tepkisiyle telafi edilir.
 
+#### Teknik: sahte sesler nasıl üretilir?
+
+- **Yaklaşım:** Sıfırdan ses üretmek ya da yapay zekâyla ses klonlamak yok. Partnerin kendi kaydı 3 farklı şekilde bükülür:
+  - **Perde** (incelik/kalınlık)
+  - **Tını / rezonans** (formant: "kimin sesi" hissini veren şey)
+  - **Tempo**
+- **Motor:** WORLD vocoder (açık kaynak, analiz-sentez; perde ve tınıyı ayrı ayrı değiştirebiliyor) WASM'a derlenir. Alternatif: PSOLA / SoundTouch tabanlı basit zincir.
+- **Asıl sorun:** İşlenmiş ses "robotik" duyulur ve gerçek olan tek doğal ses olarak kalırsa oyun çok kolaylaşır. Çözüm:
+  1. Gerçek ses de aynı motordan "sıfır ayarla" geçer, böylece dördünde de aynı hafif iz olur.
+  2. Dördüne de aynı "telefon hattı" filtresi uygulanır (bant geçiren filtre + hafif cızırtı + kompresör). Bu izleri örter. Tema: "Telefonda sevgilin arıyor… ama hangisi gerçek?"
+  3. Sabit, kısa cümle kartı (2–3 sn). Herkes aynı cümleyi söyler.
+- **Zorluk:** 1. turda büyük fark (örn. tını ±%12, perde ±2 yarım ton). 5. turda küçük fark (tını ±%3, perde ±0,5 yarım ton). Değerler prototipte kulakla kalibre edilecek (**tahmin**).
+- **v2, gerçek ses havuzu:** Aynı cümleleri okuyan 30–40 gerçek kişinin kayıtları (izinli) uygulamaya gömülür. Partnerin sesine en yakın 3 kayıt (perde ve tını eşleşmesiyle) sahte olarak seçilir. Yapay iz olmaz, sunucu gerekmez (birkaç MB).
+- **Grup modu:** Arkadaşların gerçek sesleri kullanılır, hiç işlem gerekmez.
+- **Gizlilik:** Kayıtlar telefondan çıkmaz.
+- **İlk adım:** 1–2 günlük "Ses Laboratuvarı" test sayfası (kaydet → 3 sahte + işlenmiş gerçek → karışık dinle → sürgülerle ayarla). Bu test çok kolay ya da çok zor çıkarsa v2'ye (ses havuzu) geçilir.
+
 ### 2. Sesle Çiz *(çalışma adı)*
 
 - **Akış:** Ekranda kesik çizgili bir hedef şekil var (yıldız, kalp, çiçek) → kalem merkez etrafında döner. Ses inceldikçe dışarı açılır, kalınlaştıkça içeri girer, susunca kalem kalkar → yıldız için 5 kere "iiii-uuuu" → skor ve sonuç görseli.
