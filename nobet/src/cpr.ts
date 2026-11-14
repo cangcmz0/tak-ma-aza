@@ -36,11 +36,22 @@ export function runCpr(sfx: Sfx, who: string): Promise<boolean> {
   sfx.vibrate([200, 80, 200]);
 
   return new Promise((resolve) => {
-    const start = performance.now() / 1000 + LEAD;
-    const times = Array.from({ length: BEATS }, (_, i) => start + i * INTERVAL);
-    const judged: (boolean | null)[] = Array(BEATS).fill(null);
+    let start = performance.now() / 1000 + LEAD;
+    let times = Array.from({ length: BEATS }, (_, i) => start + i * INTERVAL);
+    let judged: (boolean | null)[] = Array(BEATS).fill(null);
     let stray = 0;
     let tapped = false;
+    let lastNow = performance.now() / 1000;
+    // Uygulamadan çıkılıp dönülürse (kare arası uzun) masaj baştan başlar.
+    const restart = (now: number) => {
+      start = now + LEAD;
+      times = Array.from({ length: BEATS }, (_, i) => start + i * INTERVAL);
+      judged = Array(BEATS).fill(null);
+      stray = 0;
+      tapped = false;
+      dotEls.forEach((d) => (d.className = ''));
+      ringEls.forEach((r) => (r.style.opacity = '0'));
+    };
     let ticked = -1;
     let finished = false;
     let raf = 0;
@@ -97,6 +108,8 @@ export function runCpr(sfx: Sfx, who: string): Promise<boolean> {
 
     const loop = () => {
       const now = performance.now() / 1000;
+      if (now - lastNow > 0.4) restart(now);
+      lastNow = now;
       if (now < start - APPROACH) msg.textContent = `Hazırlan… ${Math.ceil(start - APPROACH - now)}`;
       else if (!tapped) msg.textContent = 'Halka kalbe değince bas!';
       times.forEach((t, i) => {

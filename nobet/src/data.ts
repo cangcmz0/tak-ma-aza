@@ -180,7 +180,12 @@ export function severitiesOf(c: Complaint): Zone[] {
 }
 
 export interface NightCfg {
+  /** Hikâye gecesi numarası; Günün Nöbeti için 0. */
   n: number;
+  /** Hangi gecenin şikâyet ve tedavileri geçerli. */
+  pool: number;
+  /** Günün Nöbeti ise tarih anahtarı (YYYY-AA-GG). */
+  daily: string | null;
   title: string;
   blurb: string;
   /** Gerçek saniye cinsinden nöbet süresi (23:00 → 08:00). */
@@ -192,54 +197,62 @@ export interface NightCfg {
   hints: 0 | 1 | 2;
   /** Ambulans aralığı (sn) ya da yok. */
   ambulance: [number, number] | null;
+  /** Bağıran hasta yakını aralığı (sn) ya da yok. */
+  relatives: [number, number] | null;
   /** Bu gece daha sık gelen şikâyetler. */
   theme: Record<string, number>;
   beds: Record<Zone, number>;
   tutorial: boolean;
 }
 
-const NIGHTS: Omit<NightCfg, 'n'>[] = [
+type StoryNight = Omit<NightCfg, 'n' | 'pool' | 'daily'>;
+
+const NIGHTS: StoryNight[] = [
   {
     title: 'İlk Nöbet',
     blurb: 'Stajyerliğinin ilk gecesi. Sakin başlıyor… şimdilik.',
     duration: 150, spawn: [7, 10], weights: { red: 0.15, yellow: 0.35, green: 0.5 },
-    hints: 2, ambulance: null, theme: {}, beds: { red: 2, yellow: 3, green: 3 }, tutorial: true,
+    hints: 2, ambulance: null, relatives: null, theme: {}, beds: { red: 2, yellow: 3, green: 3 }, tutorial: true,
   },
   {
     title: 'Cuma Gecesi',
     blurb: 'Hafta sonu başladı. 112 artık seni de arıyor.',
     duration: 165, spawn: [6, 8.5], weights: { red: 0.2, yellow: 0.4, green: 0.4 },
-    hints: 1, ambulance: [45, 60], theme: { kesik: 1.5, dusme: 1.3 }, beds: { red: 2, yellow: 3, green: 3 }, tutorial: false,
+    hints: 1, ambulance: [45, 60], relatives: null, theme: { kesik: 1.5, dusme: 1.3 }, beds: { red: 2, yellow: 3, green: 3 }, tutorial: false,
   },
   {
     title: 'Derbi Gecesi',
-    blurb: 'Maç uzatmaya gitti. Kalpler de, tribünler de yorgun.',
+    blurb: 'Maç uzatmaya gitti. Taraftar yakınlar da acile doluştu.',
     duration: 175, spawn: [5.2, 7.8], weights: { red: 0.22, yellow: 0.4, green: 0.38 },
-    hints: 1, ambulance: [40, 55], theme: { gogus: 2, dusme: 1.5 }, beds: { red: 2, yellow: 3, green: 3 }, tutorial: false,
+    hints: 1, ambulance: [40, 55], relatives: [32, 46], theme: { gogus: 2, dusme: 1.5 }, beds: { red: 2, yellow: 3, green: 3 }, tutorial: false,
   },
   {
     title: 'Bayram Arifesi',
     blurb: 'Sofralar kuruldu, mideler pes etti. Renk ipuçları artık yok.',
     duration: 180, spawn: [4.8, 7.2], weights: { red: 0.25, yellow: 0.4, green: 0.35 },
-    hints: 0, ambulance: [38, 50], theme: { kusma: 2.5, tansiyon: 1.5 }, beds: { red: 3, yellow: 3, green: 3 }, tutorial: false,
+    hints: 0, ambulance: [38, 50], relatives: [30, 42], theme: { kusma: 2.5, tansiyon: 1.5 }, beds: { red: 3, yellow: 3, green: 3 }, tutorial: false,
   },
   {
     title: 'Kar Fırtınası',
     blurb: 'Yollar buz tuttu. Herkes kayıyor, herkes sana geliyor.',
     duration: 190, spawn: [4.2, 6.2], weights: { red: 0.28, yellow: 0.4, green: 0.32 },
-    hints: 0, ambulance: [35, 48], theme: { dusme: 2.5, nefes: 1.5 }, beds: { red: 3, yellow: 3, green: 3 }, tutorial: false,
+    hints: 0, ambulance: [35, 48], relatives: [28, 40], theme: { dusme: 2.5, nefes: 1.5 }, beds: { red: 3, yellow: 3, green: 3 }, tutorial: false,
   },
 ];
 
 export const STORY_NIGHTS = NIGHTS.length;
+/** Bütün şikâyetlerin açıldığı gece. */
+export const FULL_POOL = Math.max(...COMPLAINTS.map((c) => c.night));
 
 export function nightConfig(n: number): NightCfg {
-  if (n <= NIGHTS.length) return { n, ...NIGHTS[n - 1] };
+  if (n <= NIGHTS.length) return { n, pool: n, daily: null, ...NIGHTS[n - 1] };
   // Hikâye geceleri bitince her gece biraz daha zorlaşır.
   const k = n - NIGHTS.length;
   const shrink = Math.max(0.68, 1 - k * 0.06);
   return {
     n,
+    pool: n,
+    daily: null,
     title: `${n}. Gece`,
     blurb: 'Uzman oldun. Nöbetler bitmiyor.',
     duration: 190,
@@ -247,11 +260,55 @@ export function nightConfig(n: number): NightCfg {
     weights: { red: Math.min(0.34, 0.28 + k * 0.01), yellow: 0.4, green: Math.max(0.26, 0.32 - k * 0.01) },
     hints: 0,
     ambulance: [Math.max(26, 35 - k * 2), Math.max(36, 48 - k * 2)],
+    relatives: [Math.max(22, 28 - k), Math.max(32, 40 - k)],
     theme: {},
     beds: { red: 3, yellow: 3, green: 3 },
     tutorial: false,
   };
 }
+
+/** Günün Nöbeti'nin teması tarihe göre döner. */
+export const DAILY_THEMES: { title: string; blurb: string; theme: Record<string, number> }[] = [
+  { title: 'Polen Mevsimi', blurb: 'Ağaçlar çiçek açtı, burunlar ve bronşlar isyanda.', theme: { alerji: 2.5, nefes: 1.6 } },
+  { title: 'Düğün Sezonu', blurb: 'Pilav, midye, halay. Sabaha karşı hepsi acilde.', theme: { kusma: 2.2, kesik: 1.5 } },
+  { title: 'Derbi Akşamı', blurb: 'Son dakika golü kalpleri hızlandırdı.', theme: { gogus: 2, dusme: 1.6 } },
+  { title: 'İlk Kar', blurb: 'Kaldırımlar buz, kalçalar risk altında.', theme: { dusme: 2.5, nefes: 1.4 } },
+  { title: 'Sınav Haftası', blurb: 'Herkes bir rapor peşinde, tansiyonlar tavanda.', theme: { rapor: 2.2, tansiyon: 1.6, igne: 1.4 } },
+  { title: 'Grip Salgını', blurb: 'Bütün şehir hapşırıyor, ateşler düşmüyor.', theme: { grip: 2.5, ates: 2 } },
+  { title: 'Bayram Sofrası', blurb: 'Baklava üstüne sarma, sarma üstüne tatlı.', theme: { kusma: 2.5, tansiyon: 1.6 } },
+  { title: 'Dolunay', blurb: 'Eski nöbetçiler bilir: dolunayda acil hiç susmaz.', theme: { kesik: 1.4, gogus: 1.4, alerji: 1.3 } },
+];
+
+export function dailyConfig(key: string, seed: number): NightCfg {
+  const t = DAILY_THEMES[seed % DAILY_THEMES.length];
+  return {
+    n: 0,
+    pool: FULL_POOL,
+    daily: key,
+    title: t.title,
+    blurb: t.blurb,
+    duration: 180,
+    spawn: [5, 7.5],
+    weights: { red: 0.24, yellow: 0.4, green: 0.36 },
+    hints: 1,
+    ambulance: [40, 55],
+    relatives: [32, 46],
+    theme: t.theme,
+    beds: { red: 2, yellow: 3, green: 3 },
+    tutorial: false,
+  };
+}
+
+export const RELATIVE_LINES = [
+  'Hocam önce bize bakın!',
+  'İki saattir bekliyoruz!',
+  'Benim dayım burada müdür!',
+  'Sosyal medyaya yazacağım!',
+  'Bizim hasta ölüyor, siz çay içiyorsunuz!',
+  'Bu nasıl hastane ya!',
+  'Hemşire hanım bakmadı bile!',
+  'Torpilim var, haberin olsun!',
+];
 
 export function complaintsFor(n: number): Complaint[] {
   return COMPLAINTS.filter((c) => c.night <= n);

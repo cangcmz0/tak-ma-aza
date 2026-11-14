@@ -61,7 +61,7 @@ export class Play {
     this.tokens.clear();
     $('floats').innerHTML = '';
     this.buildSlots();
-    $('hud-night').textContent = `Gece ${game.s.night}`;
+    $('hud-night').textContent = game.s.daily ? 'Günün Nöbeti' : `Gece ${game.s.night}`;
     $('banner').hidden = true;
     this.ecg.resize();
     this.last = performance.now();
@@ -123,7 +123,7 @@ export class Play {
         const slot = p ? this.slotFor(p) : null;
         if (!slot) break;
         if (e.result === 'correct') {
-          this.floatAt(slot, 'Doğru triaj +5', 'good');
+          this.floatAt(slot, `Doğru triaj +${e.points}${e.combo >= 2 ? ` · Seri ×${e.combo}` : ''}`, 'good');
           this.sfx.good();
         } else if (e.result === 'over') {
           this.floatAt(slot, `Gereksiz ${ZONE_INFO[e.zone].name.toLocaleLowerCase('tr')} yatak`, 'warn');
@@ -172,6 +172,21 @@ export class Play {
           this.floatAtPid(e.pid, 'Yoğun bakıma sevk edildi', 'bad');
           if (this.selected === e.pid) this.closeSheet();
         }
+        break;
+      case 'relative':
+        this.flashBanner('📢 Hasta yakını bağırıyor: dokun, sakinleştir', 'alert', 2600);
+        this.floatAtPid(e.pid, `“${e.line}”`, 'warn');
+        this.sfx.shout();
+        this.sfx.vibrate([60, 40, 60]);
+        break;
+      case 'relCalm':
+        this.floatAtPid(e.pid, `Sırayla bakıyoruz 🙏 +${e.points}`, 'good');
+        this.sfx.good();
+        break;
+      case 'relFight':
+        this.floatAtPid(e.pid, 'Kavga çıktı, güvenlik çağrıldı!', 'bad');
+        this.sfx.wrong();
+        this.sfx.vibrate(160);
         break;
       case 'end':
         this.ending = true;
@@ -249,6 +264,9 @@ export class Play {
     rep.dataset.l = s.rep >= 60 ? 'ok' : s.rep >= 30 ? 'warn' : 'crit';
     $('hud-face').textContent = s.rep >= 85 ? '😄' : s.rep >= 65 ? '🙂' : s.rep >= 45 ? '😐' : s.rep >= 25 ? '😟' : '😡';
     $('wait-count').textContent = `${s.waiting.length}/${BAL.waitSlots}`;
+    const combo = $('hud-combo');
+    combo.hidden = s.combo < 2;
+    if (s.combo >= 2) combo.textContent = `Seri ×${s.combo}`;
 
     const alive = new Set<number>();
     for (const p of s.patients) {
@@ -304,7 +322,8 @@ export class Play {
       (p.amb ? '<span class="pt-amb">112</span>' : '') +
       `<span class="pt-name">${esc(p.name)}</span>` +
       `<span class="pt-bar"><i></i></span>` +
-      `<span class="pt-st"></span>`;
+      `<span class="pt-st"></span>` +
+      `<span class="pt-rel" aria-hidden="true">📢</span>`;
     this.refs.set(el, { bar: el.querySelector('.pt-bar i') as HTMLElement, st: el.querySelector('.pt-st') as HTMLElement });
     return el;
   }
@@ -317,6 +336,8 @@ export class Play {
     el.classList.toggle('crit', p.critical && p.severity !== 'green');
     el.classList.toggle('angry', p.critical && p.severity === 'green');
     el.classList.toggle('sel', this.selected === p.id);
+    el.classList.toggle('rel', p.rel > 0);
+    if (p.rel > 0) el.style.setProperty('--r', (p.rel / BAL.relTime).toFixed(3));
     if (el.dataset.st !== p.status) {
       el.dataset.st = p.status;
       r.st.innerHTML =
@@ -331,10 +352,13 @@ export class Play {
     const f = document.createElement('div');
     f.className = `float ${kind}`;
     f.textContent = text;
-    const x = Math.max(70, Math.min(box.width - 70, r.left + r.width / 2 - box.left));
-    f.style.left = `${x}px`;
     f.style.top = `${Math.max(56, r.top - box.top + 6)}px`;
     $('floats').appendChild(f);
+    // Yazı ekrandan taşmasın: genişliğe göre ortala ve kenarlarda dur.
+    const half = Math.min(f.offsetWidth, box.width - 8) / 2;
+    const x = Math.max(half + 4, Math.min(box.width - half - 4, r.left + r.width / 2 - box.left));
+    f.style.left = `${x}px`;
+    f.style.maxWidth = `${box.width - 8}px`;
     window.setTimeout(() => f.remove(), 1500);
   }
 
@@ -427,7 +451,7 @@ export class Play {
       return;
     }
     const free = ZONES.map((z) => g.freeBeds(z)).join(',');
-    const key = `${p.id}|${p.status}|${p.zone}|${p.bed}|${free}`;
+    const key = `${p.id}|${p.status}|${p.zone}|${p.bed}|${free}|${p.rel > 0}`;
     if (key !== this.sheetKey) {
       this.sheetKey = key;
       this.buildSheet(p);
@@ -475,6 +499,11 @@ export class Play {
 
     const actions = $('sh-actions');
     const prompt = $('sh-prompt');
+    if (p.rel > 0) {
+      prompt.textContent = `Yakını bağırıyor: “${p.relLine}”`;
+      actions.innerHTML = '<button type="button" class="btn calm wide" data-calm="1">📢 Yakını sakinleştir</button>';
+      return;
+    }
     if (p.status === 'waiting') {
       prompt.textContent = 'Hangi alana yatıralım?';
       const suggest = hints >= 2 ? triageOf(p.vitals) : null;
@@ -491,7 +520,7 @@ export class Play {
       const moves = ZONES.filter((z) => z !== p.zone && g.freeBeds(z) > 0);
       actions.innerHTML =
         '<div class="tools">' +
-        toolsFor(g.s.night)
+        toolsFor(g.cfg.pool)
           .map(
             (t: ToolId) =>
               `<button type="button" class="tool${suggest === t ? ' suggest' : ''}" data-tool="${t}"><span>${TOOLS[t].emoji}</span><small>${TOOLS[t].name}</small></button>`,
@@ -524,6 +553,10 @@ export class Play {
       const pid = Number(tok.dataset.id);
       const p = g.get(pid);
       if (!p) return;
+      if (p.rel > 0) {
+        g.calm(pid);
+        return;
+      }
       if (p.status === 'done') {
         g.discharge(pid);
         return;
@@ -548,7 +581,8 @@ export class Play {
     const b = (e.target as HTMLElement).closest('button') as HTMLButtonElement | null;
     if (!g || !b || b.disabled || this.selected === null || this.paused || this.inCode) return;
     this.sfx.unlock();
-    if (b.dataset.zone) g.assign(this.selected, b.dataset.zone as Zone);
+    if (b.dataset.calm) g.calm(this.selected);
+    else if (b.dataset.zone) g.assign(this.selected, b.dataset.zone as Zone);
     else if (b.dataset.tool) g.treat(this.selected, b.dataset.tool as ToolId);
     else if (b.dataset.discharge) g.discharge(this.selected);
   }

@@ -62,7 +62,7 @@ export function pickSeverity(rng: Rng, cfg: NightCfg): Zone {
 }
 
 export function pickComplaint(rng: Rng, cfg: NightCfg, severity: Zone, avoid: readonly string[] = []): Complaint {
-  const pool = complaintsFor(cfg.n).filter((c) => severitiesOf(c).includes(severity));
+  const pool = complaintsFor(cfg.pool).filter((c) => severitiesOf(c).includes(severity));
   return rng.weighted(pool, (c) => (cfg.theme[c.id] ?? 1) * (avoid.includes(c.id) ? 0.35 : 1));
 }
 

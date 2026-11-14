@@ -118,6 +118,70 @@ button:focus-visible {
   text-wrap: pretty;
 }
 
+.rank {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.rank b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Günün Nöbeti: hikâye gecelerinden ayrı duran, nöbet çizelgesi gibi bir kart. */
+.daily {
+  width: 100%;
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1.5px solid var(--scrub);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--scrub) 16%, var(--wall)) 0%, var(--wall) 70%);
+  text-align: left;
+}
+
+.daily:disabled {
+  border-color: var(--line);
+  background: var(--wall);
+  opacity: 0.55;
+  cursor: default;
+}
+
+.daily.played {
+  border-style: dashed;
+}
+
+.daily-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-streak {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--m-temp);
+}
+
+.daily-title {
+  font: 700 22px/1.1 var(--f-display);
+}
+
+.daily-sub {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.list-head {
+  margin: 4px 0 -8px;
+  font: 600 11px/1.2 var(--f-display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+
 .night-list {
   list-style: none;
   margin: 0;
@@ -209,6 +273,13 @@ button:focus-visible {
   width: 100%;
 }
 
+.btn.calm {
+  background: var(--m-temp);
+  border-color: var(--m-temp);
+  color: #2e1a00;
+  font-weight: 700;
+}
+
 .btn:active {
   transform: translateY(1px);
 }
@@ -252,7 +323,23 @@ button:focus-visible {
 }
 
 .hud-score {
+  position: relative;
   text-align: right;
+}
+
+.hud-combo {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--m-temp);
+  color: #2e1a00;
+  font: 700 10px/1.4 var(--f-display);
+  white-space: nowrap;
+  z-index: 6;
+  animation: pop 0.2s ease-out;
 }
 
 .hud-chief {
@@ -657,6 +744,30 @@ button:focus-visible {
     conic-gradient(var(--scrub) calc(var(--p) * 1turn), var(--wall-3) 0);
 }
 
+.pt-rel {
+  display: none;
+}
+
+/* Bağıran hasta yakını: jetonun üstünde megafon ve azalan sabır halkası. */
+.pt.rel {
+  border-color: var(--m-temp);
+  box-shadow: 0 0 0 2px var(--m-temp);
+}
+
+.pt.rel .pt-rel {
+  --r: 1;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--tile-h) * 0.36);
+  background:
+    radial-gradient(circle at center, rgba(16, 40, 46, 0.86) 0 calc(var(--tile-h) * 0.3), transparent calc(var(--tile-h) * 0.3 + 1px)),
+    conic-gradient(color-mix(in srgb, var(--m-temp) 55%, transparent) calc(var(--r) * 1turn), rgba(10, 29, 34, 0.55) 0);
+  animation: nudge 0.5s ease-in-out infinite;
+}
+
 .pt.angry::after {
   content: "😤";
   position: absolute;
@@ -976,12 +1087,15 @@ button:focus-visible {
 
 .float {
   position: absolute;
+  left: 0;
   transform: translateX(-50%);
   padding: 3px 8px;
   border-radius: 8px;
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   animation: floatUp 1.5s ease-out forwards;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
@@ -1207,6 +1321,37 @@ button:focus-visible {
   font: 700 30px/1 var(--f-display);
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+.rs-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--wall-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.rs-grid-box {
+  display: grid;
+  gap: 4px;
+}
+
+.rs-grid {
+  margin: 0;
+  font: 18px/1.25 system-ui, sans-serif;
+  letter-spacing: 1px;
+  white-space: pre-wrap;
+}
+
+.rs-grid:empty {
+  display: none;
+}
+
+.rs-legend {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-dim);
 }
 
 .rs-stats {
@@ -1485,7 +1630,8 @@ button:focus-visible {
   .banner[data-kind="alert"],
   .vt[data-l="2"],
   .overlay.code,
-  .pt.angry::after {
+  .pt.angry::after,
+  .pt.rel .pt-rel {
     animation: none;
   }
 }

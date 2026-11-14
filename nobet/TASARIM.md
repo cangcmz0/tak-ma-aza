@@ -1,4 +1,4 @@
-# Nöbet: tasarım notu (v0.1)
+# Nöbet: tasarım notu (v0.2)
 
 ## Fikir
 
@@ -15,6 +15,36 @@ Tür: zaman yönetimi + çıkarım. Mobil, dikey, tek elle, 2,5–3 dakikalık g
 5. Tedavi süresi dolunca hasta ✓ olur; dokununca taburcu (kırmızı hasta servise yatırılır), yatak boşalır.
 
 Bekleyen hasta kötüleşir: kırmızı ~30 sn, sarı ~70 sn içinde. Durumu sıfırlanan hasta **Kod Mavi**: dünya durur, halka kalbe değdiği an basarak 10 vuruşluk kalp masajı (7 doğru = kurtuldu). Yeşil hastanın sabrı biter: "CİMER'e yazacağım!" deyip gider.
+
+## Günün Nöbeti
+
+Menünün en üstünde. Tarihten tohum alır: o gün herkese aynı hastalar aynı sırayla gelir. Gelişler gece başında önceden hesaplanır, oyuncunun hamleleri sırayı değiştirmez. Tema tarihe göre döner (Polen Mevsimi, Düğün Sezonu, İlk Kar, Sınav Haftası…). Bütün şikâyetler açık, bulgular renkli ama öneri yok.
+
+- İlk nöbeti bitirince açılır.
+- Günün **ilk denemesi** kayda geçer; sonrakiler antrenman.
+- Art arda günler 🔥 seri yapar.
+- Sonuç Wordle gibi paylaşılır: her gelen hasta bir kare (🟥🟨🟩 doğru alanla taburcu, 🟧 yanlış alan, ⬛ kaybedildi, ⬜ sabaha devredildi).
+
+```
+🏥 NÖBET · Günün Nöbeti 14 Kasım ★★☆
+🟩🟨🟩🟥🟩⬛🟨🟩
+🟨🟩🟧🟩🟥🟨🟩🟩
+1240 puan · 🎯 %88 · 🔥 3 gün
+```
+
+## Hasta yakını (3. geceden itibaren)
+
+Ara sıra en uzun bekleyen hastanın yakını bağırmaya başlar ("Hocam önce bize bakın!", "Benim dayım burada müdür!"). Jetonda 📢 ve azalan bir halka çıkar. 9 saniye içinde:
+
+- jetona dokunursan sakinleşir (+5 puan), ya da
+- hastayı yatağa alır veya tedaviye başlarsan kendiliğinden susar.
+
+Bekletirsen kavga çıkar: Başhekim −8.
+
+## Seri ve unvan
+
+- Art arda her doğru triaj seriyi büyütür: triaj puanı 5, 8, 11… en fazla 20. Yanlış alan ya da yanlış tedavi seriyi sıfırlar.
+- Toplam yıldız unvanı belirler: Stajyer (0), Asistan (3), Uzman (7), Doçent (12), Profesör (16).
 
 ## Kurallar (oyun eşikleri, tıbbi bilgi değil)
 
@@ -37,6 +67,7 @@ Aynı şikâyet farklı aciliyetle gelebilir (göğüs ağrısı: kriz de olabil
 | CİMER şikâyeti | Başhekim −12 |
 | Salon dolu, hasta geri çevrildi | Başhekim −6 |
 | Kod Mavi başarısız, yoğun bakıma sevk | Başhekim −25 |
+| Hasta yakını kavga çıkardı | Başhekim −8 |
 
 Başhekim memnuniyeti 80'den başlar, her taburcu +2. Sıfırlanırsa "Başhekim seni odasına çağırdı": gece biter.
 
@@ -48,7 +79,7 @@ Başhekim memnuniyeti 80'den başlar, her taburcu +2. Sıfırlanırsa "Başhekim
 |---|---|---|
 | 1 | İlk Nöbet | Eğitim: ilk 3 hasta elle seçilmiş (yeşil, sarı, kırmızı), adım adım ipucu, doğru alan ve alet gösterilir |
 | 2 | Cuma Gecesi | Oksijen ve serum, nefes darlığı, kusma, ateş. 112 ambulansları. Öneri yok, bulgular hâlâ renkli |
-| 3 | Derbi Gecesi | İğne: alerji, tansiyon, "iğne isteyen" hasta. Göğüs ağrısı çok |
+| 3 | Derbi Gecesi | İğne: alerji, tansiyon, "iğne isteyen" hasta. Bağıran hasta yakınları. Göğüs ağrısı çok |
 | 4 | Bayram Arifesi | Renk ipuçları kapanır. 3. kırmızı yatak açılır. Kusma çok |
 | 5 | Kar Fırtınası | En hızlı akış. Düşme ve nefes darlığı çok |
 | 6+ | Sonsuz | Her gece biraz daha hızlı ve ağır |
@@ -57,10 +88,8 @@ Başhekim memnuniyeti 80'den başlar, her taburcu +2. Sıfırlanırsa "Başhekim
 
 `test/game.test.ts` içindeki bot doktor her geceyi oynar. Hamle başına ~1,1 sn düşünen, %95 doğru oyuncu her geceyi en az 2 yıldızla bitirmeli; ~3 sn düşünen, %70 doğru oyuncu 5. gecede kovulmalı. Bütün sayılar `src/game.ts` içindeki `BAL` nesnesinde.
 
-## v0.1'de olmayanlar (sıradaki adaylar)
+## Sıradaki adaylar
 
-- **Günün Nöbeti:** tarihten tohum, herkese aynı gece, Wordle gibi paylaşım kartı (kod hazır: üretici tohumlu).
-- **Hasta yakını olayları:** "Hocam önce bize bakın!" diye bağıran refakatçi, dokunup sakinleştirme.
 - **Kırmızı hastada iki adımlı tedavi** (EKG → ilaç gibi).
 - **Yorgunluk ve çay molası:** sabaha doğru dokunuşlar yavaşlar.
 - Emoji yerine tek tip çizim karakterler, müzik.
@@ -68,5 +97,10 @@ Başhekim memnuniyeti 80'den başlar, her taburcu +2. Sıfırlanırsa "Başhekim
 
 ## Bilinen eksikler
 
-- Kod Mavi sırasında uygulamadan çıkılırsa masaj başarısız sayılır.
+- Günün Nöbeti telefonun yerel tarihine bakar; saat dilimi farklı iki oyuncu gece yarısı civarında farklı günü görebilir.
 - Yazı tipleri Google Fonts'tan gelir; Android paketinde dosyaya gömülmeli.
+
+## Sürüm notları
+
+- **v0.2:** Günün Nöbeti, günlük seri, emoji sonuç kareleri, hasta yakınları, triaj serisi, unvanlar. Gelişler önceden hesaplanıyor. Kod Mavi sırasında uygulamadan çıkıp dönünce masaj baştan başlıyor.
+- **v0.1:** İlk oynanabilir sürüm: 5 gece, triaj, tedavi, Kod Mavi.

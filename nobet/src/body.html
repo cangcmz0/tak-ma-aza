@@ -6,6 +6,13 @@
       <canvas id="menu-ecg" class="menu-ecg" aria-hidden="true"></canvas>
       <p class="brand-lede">Gelen hastanın bulgularına bak, doğru alana yatır, doğru tedaviyi seç. Kimseyi kaybetmeden sabahı et.</p>
     </header>
+    <p id="rank" class="rank"></p>
+    <button type="button" id="daily-card" class="daily">
+      <span class="daily-top"><span class="kicker">Günün Nöbeti · <span id="daily-date"></span></span><span id="daily-streak" class="daily-streak"></span></span>
+      <b id="daily-title" class="daily-title"></b>
+      <small id="daily-sub" class="daily-sub"></small>
+    </button>
+    <h2 class="list-head">Geceler</h2>
     <ol id="night-list" class="night-list" aria-label="Geceler"></ol>
     <div class="menu-foot">
       <button type="button" id="btn-help" class="btn ghost">Triaj kartı</button>
@@ -23,7 +30,7 @@
           <div class="meter"><i id="hud-rep"></i></div>
         </div>
       </div>
-      <div class="hud-score"><b id="hud-score">0</b><small>puan</small></div>
+      <div class="hud-score"><b id="hud-score">0</b><small>puan</small><span id="hud-combo" class="hud-combo" hidden></span></div>
       <button type="button" id="btn-pause" class="hud-btn" aria-label="Duraklat"><span></span><span></span></button>
     </header>
     <canvas id="ecg" class="ecg" aria-hidden="true"></canvas>
@@ -111,6 +118,11 @@
       <h2 id="rs-title" class="card-title"></h2>
       <div id="rs-stars" class="stars" aria-hidden="true"></div>
       <p class="rs-score"><b id="rs-score">0</b> puan</p>
+      <p id="rs-note" class="rs-note" hidden></p>
+      <div class="rs-grid-box">
+        <pre id="rs-grid" class="rs-grid" aria-label="Hasta sonuçları"></pre>
+        <p class="rs-legend">🟥🟨🟩 doğru triajla taburcu · 🟧 yanlış alan · ⬛ kaybedildi · ⬜ sabaha devredildi</p>
+      </div>
       <dl id="rs-stats" class="rs-stats"></dl>
       <ul id="rs-criteria" class="rs-criteria"></ul>
       <textarea id="rs-share" class="rs-share" readonly hidden aria-label="Paylaşılacak sonuç"></textarea>

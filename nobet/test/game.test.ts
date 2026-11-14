@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COMPLAINT_BY_ID, Zone } from '../src/data';
-import { BAL, Game, clockText, summarize } from '../src/game';
+import { BAL, Game, clockText, outcomeGrid, summarize } from '../src/game';
 import { triageOf } from '../src/triage';
 
 function run(g: Game, seconds: number, step = 0.1, each?: () => void) {
@@ -27,6 +27,13 @@ function botPlay(night: number, seed: number, opts: { think: number; accuracy: n
     cooldown -= 0.1;
     if (cooldown > 0) continue;
     const s = g.s;
+    // 0) Bağıran yakını sakinleştir.
+    const loud = s.patients.find((p) => p.rel > 0);
+    if (loud) {
+      g.calm(loud.id);
+      cooldown = opts.think * 0.3;
+      continue;
+    }
     // 1) Biten hastayı taburcu et.
     const done = s.patients.find((p) => p.status === 'done');
     if (done) {
@@ -140,5 +147,72 @@ describe('denge', () => {
     const results = [1, 2, 3].map((seed) => botPlay(5, seed, { think: 3.2, accuracy: 0.7 }));
     console.log('Yavaş oyuncu, gece 5:', results.map((r) => `${r.sum.stars}★ ${r.sum.result} başhekim ${Math.round(r.g.s.rep)}`).join(' | '));
     expect(Math.max(...results.map((r) => r.sum.stars))).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('v0.2', () => {
+  it('Günün Nöbeti: aynı gün herkese aynı hastalar, oyuncu ne yaparsa yapsın', () => {
+    const a = new Game({ daily: '2026-11-15' });
+    const b = new Game({ daily: '2026-11-15' });
+    expect(a.s.queue.map((q) => q.p.name)).toEqual(b.s.queue.map((q) => q.p.name));
+    expect(a.cfg.title).toBe(b.cfg.title);
+    // Biri oynar, öteki bekler: gelen hastalar yine aynı kalır.
+    run(a, 60, 0.1, () => {
+      const w = a.s.waiting[0];
+      if (w !== undefined) a.assign(w, 'red');
+      if (a.s.activeCode !== null) a.resolveCode(true);
+    });
+    run(b, 60, 0.1, () => {
+      if (b.s.activeCode !== null) b.resolveCode(false);
+    });
+    const firstA = a.s.queue.slice(0, 8).map((q) => q.p.complaintId);
+    const firstB = b.s.queue.slice(0, 8).map((q) => q.p.complaintId);
+    expect(firstA).toEqual(firstB);
+    const other = new Game({ daily: '2026-11-16' });
+    expect(other.s.queue.map((q) => q.p.name)).not.toEqual(a.s.queue.map((q) => q.p.name));
+  });
+
+  it('hasta yakını: sakinleştirince puan, bekletince kavga', () => {
+    const g = new Game(3, 21);
+    const firstRel = g.s.rels[0];
+    expect(firstRel).toBeTruthy();
+    run(g, firstRel.at + 0.05, 0.05, () => {
+      if (g.s.activeCode !== null) g.resolveCode(true);
+    });
+    const loud = g.s.patients.find((p) => p.rel > 0);
+    expect(loud).toBeTruthy();
+    const score = g.s.score;
+    expect(g.calm(loud!.id)).toBe(true);
+    expect(g.s.score).toBe(score + BAL.score.calm);
+
+    const h = new Game(3, 21);
+    run(h, firstRel.at + BAL.relTime + 0.3, 0.05, () => {
+      if (h.s.activeCode !== null) h.resolveCode(true);
+    });
+    expect(h.s.stats.relFights).toBeGreaterThanOrEqual(1);
+  });
+
+  it('seri: art arda doğru triaj puanı artırır, hata sıfırlar', () => {
+    const g = new Game(1, 3);
+    run(g, 28);
+    const ids = g.s.waiting.slice();
+    const pts: number[] = [];
+    for (const id of ids) {
+      const p = g.get(id)!;
+      const before = g.s.score;
+      g.assign(id, p.severity);
+      pts.push(g.s.score - before);
+    }
+    expect(g.s.combo).toBe(ids.length);
+    expect(pts[pts.length - 1]).toBeGreaterThan(pts[0]);
+    const inBed = g.s.patients.find((p) => p.status === 'bed')!;
+    g.treat(inBed.id, 'dikis' === COMPLAINT_BY_ID[inBed.complaintId].tool ? 'ilac' : 'dikis');
+    expect(g.s.combo).toBe(0);
+  });
+
+  it('sonuç kareleri her gelen hasta için bir kare verir', () => {
+    const { g } = botPlay(2, 5, { think: 1.1, accuracy: 0.95 });
+    const cells = [...outcomeGrid(g.s).replace(/\n/g, '')].filter((ch) => ch.trim());
+    expect(cells.length).toBe(g.s.qi);
   });
 });

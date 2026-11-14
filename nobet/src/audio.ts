@@ -59,6 +59,7 @@ export class Sfx {
   wrong() { this.tone(170, 0.22, { type: 'square', vol: 0.05 }); }
   ready() { this.tone(988, 0.12, { vol: 0.08 }); this.tone(1319, 0.2, { vol: 0.07, at: 0.1 }); }
   discharge() { [784, 988, 1175, 1568].forEach((f, i) => this.tone(f, 0.14, { type: 'triangle', vol: 0.06, at: i * 0.05 })); }
+  shout() { this.tone(520, 0.12, { type: 'sawtooth', vol: 0.04, slide: 700 }); this.tone(520, 0.16, { type: 'sawtooth', vol: 0.04, at: 0.14, slide: 760 }); }
   complaint() { this.tone(330, 0.3, { type: 'sawtooth', vol: 0.04, slide: 180 }); }
   alarm() { this.tone(960, 0.1, { type: 'square', vol: 0.035 }); this.tone(960, 0.1, { type: 'square', vol: 0.035, at: 0.16 }); }
   tick() { this.tone(1046, 0.05, { type: 'square', vol: 0.04 }); }
