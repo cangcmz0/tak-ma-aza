@@ -1,0 +1,139 @@
+<div id="app">
+  <section id="menu" class="screen menu">
+    <header class="brand">
+      <p class="kicker">Acil servis · 23:00 – 08:00</p>
+      <h1 class="brand-title">NÖBET</h1>
+      <canvas id="menu-ecg" class="menu-ecg" aria-hidden="true"></canvas>
+      <p class="brand-lede">Gelen hastanın bulgularına bak, doğru alana yatır, doğru tedaviyi seç. Kimseyi kaybetmeden sabahı et.</p>
+    </header>
+    <ol id="night-list" class="night-list" aria-label="Geceler"></ol>
+    <div class="menu-foot">
+      <button type="button" id="btn-help" class="btn ghost">Triaj kartı</button>
+      <button type="button" id="btn-sound" class="btn ghost" aria-pressed="true">Ses açık</button>
+    </div>
+  </section>
+
+  <section id="play" class="screen play" hidden>
+    <header class="hud">
+      <div class="hud-clock"><b id="hud-clock">23:00</b><small id="hud-night">Gece 1</small></div>
+      <div class="hud-chief" aria-label="Başhekim memnuniyeti">
+        <span id="hud-face" class="hud-face">🙂</span>
+        <div class="hud-chief-body">
+          <small>Başhekim</small>
+          <div class="meter"><i id="hud-rep"></i></div>
+        </div>
+      </div>
+      <div class="hud-score"><b id="hud-score">0</b><small>puan</small></div>
+      <button type="button" id="btn-pause" class="hud-btn" aria-label="Duraklat"><span></span><span></span></button>
+    </header>
+    <canvas id="ecg" class="ecg" aria-hidden="true"></canvas>
+    <div id="banner" class="banner" role="status" hidden></div>
+    <main id="board" class="board">
+      <section class="zone" data-zone="red">
+        <h2 class="zone-head"><span class="tag">Kırmızı alan</span><small>Resüsitasyon</small></h2>
+        <div id="slots-red" class="slots"></div>
+      </section>
+      <section class="zone" data-zone="yellow">
+        <h2 class="zone-head"><span class="tag">Sarı alan</span><small>Müşahede</small></h2>
+        <div id="slots-yellow" class="slots"></div>
+      </section>
+      <section class="zone" data-zone="green">
+        <h2 class="zone-head"><span class="tag">Yeşil alan</span><small>Poliklinik</small></h2>
+        <div id="slots-green" class="slots"></div>
+      </section>
+      <section class="zone waiting">
+        <h2 class="zone-head"><span class="tag">Bekleme salonu</span><small id="wait-count">0/6</small></h2>
+        <div id="slots-wait" class="slots"></div>
+      </section>
+    </main>
+
+    <div id="sheet" class="sheet" role="dialog" aria-label="Hasta kartı" hidden>
+      <div class="sh-top">
+        <span id="sh-av" class="sh-av"></span>
+        <div class="sh-id"><b id="sh-name"></b><small id="sh-meta"></small></div>
+        <span id="sh-wait" class="sh-wait" hidden></span>
+        <span id="sh-tag" class="sh-tag" hidden></span>
+        <button type="button" id="sh-close" class="sh-close" aria-label="Kartı kapat">✕</button>
+      </div>
+      <p id="sh-quote" class="sh-quote"></p>
+      <div id="sh-vitals" class="vitals"></div>
+      <div class="sh-cond"><small>Durum</small><div class="meter"><i id="sh-bar"></i></div></div>
+      <p id="sh-prompt" class="sh-prompt"></p>
+      <div id="sh-actions" class="sh-actions"></div>
+    </div>
+    <div id="floats" class="floats" aria-live="polite"></div>
+  </section>
+
+  <div id="ov-intro" class="overlay" hidden>
+    <div class="card">
+      <p id="in-kicker" class="kicker"></p>
+      <h2 id="in-title" class="card-title"></h2>
+      <p id="in-blurb" class="card-lede"></p>
+      <div id="in-new" class="in-new"></div>
+      <ul id="in-facts" class="facts"></ul>
+      <div class="card-actions">
+        <button type="button" id="in-back" class="btn ghost">Geri</button>
+        <button type="button" id="in-go" class="btn primary">Nöbete başla</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ov-pause" class="overlay" hidden>
+    <div class="card">
+      <p class="kicker">Mola</p>
+      <h2 class="card-title">Bir çay koy, acil bekliyor</h2>
+      <div class="card-actions col">
+        <button type="button" id="pa-resume" class="btn primary">Devam et</button>
+        <button type="button" id="pa-help" class="btn ghost">Triaj kartı</button>
+        <button type="button" id="pa-quit" class="btn ghost">Nöbeti bırak</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ov-help" class="overlay" hidden>
+    <div class="card wide">
+      <p class="kicker">Cep kartı</p>
+      <h2 class="card-title">Triaj kartı</h2>
+      <p class="card-lede">En kötü bulgu alanı belirler. Bir bulgu kırmızıysa hasta kırmızı alana.</p>
+      <div class="rules-wrap"><table id="help-rules" class="rules"></table></div>
+      <h3 class="card-sub">Şikâyet ve tedavi</h3>
+      <div id="help-tx" class="txmap"></div>
+      <p class="fine">Oyunun kurallarıdır, gerçek tıbbi bilginin yerini tutmaz.</p>
+      <div class="card-actions">
+        <button type="button" id="help-close" class="btn primary">Tamam</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ov-result" class="overlay" hidden>
+    <div class="card">
+      <p id="rs-kicker" class="kicker"></p>
+      <h2 id="rs-title" class="card-title"></h2>
+      <div id="rs-stars" class="stars" aria-hidden="true"></div>
+      <p class="rs-score"><b id="rs-score">0</b> puan</p>
+      <dl id="rs-stats" class="rs-stats"></dl>
+      <ul id="rs-criteria" class="rs-criteria"></ul>
+      <textarea id="rs-share" class="rs-share" readonly hidden aria-label="Paylaşılacak sonuç"></textarea>
+      <div class="card-actions col">
+        <button type="button" id="rs-next" class="btn primary">Sonraki gece</button>
+        <button type="button" id="rs-retry" class="btn ghost">Tekrar dene</button>
+        <button type="button" id="rs-copy" class="btn ghost">Sonucu kopyala</button>
+        <button type="button" id="rs-menu" class="btn ghost">Menü</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ov-code" class="overlay code" hidden>
+    <div class="code-box">
+      <p class="kicker">Anons · tüm ekip</p>
+      <h2 class="code-title">KOD MAVİ</h2>
+      <p id="code-who" class="code-who"></p>
+      <div class="code-pad">
+        <div id="code-rings" class="code-rings"></div>
+        <div id="code-heart" class="code-heart">❤️</div>
+      </div>
+      <p id="code-msg" class="code-msg"></p>
+      <div id="code-dots" class="code-dots"></div>
+    </div>
+  </div>
+</div>

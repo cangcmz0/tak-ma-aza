@@ -1,0 +1,18 @@
+{
+  "name": "nobet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nöbet: acil serviste bir gece geçiren doktorun triaj ve tedavi oyunu",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit && vitest run && node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.10",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
+  }
+}
