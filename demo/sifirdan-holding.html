@@ -202,7 +202,7 @@ input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px}
 .seri{display:flex;gap:4px;margin-top:6px}
 .seri i{width:16px;height:6px;border-radius:3px;background:var(--card-3)}
 .seri i.on{background:var(--gold)}
-.harita{width:100%;height:auto;display:block}
+.harita{width:100%;max-width:760px;height:auto;display:block;margin:0 auto}
 .il{cursor:pointer}
 .il circle.hit{fill:transparent}
 .il circle.nokta{fill:rgba(255,255,255,.2);pointer-events:none}
@@ -303,6 +303,53 @@ input[type=checkbox]{accent-color:var(--accent);width:18px;height:18px}
 .arac-svg{width:100%;height:auto;display:block}
 .ofis-svg{width:100%;height:auto;display:block}
 @media (max-width:400px){.firma{font-size:18px}.kasa{font-size:26px}}
+/* Tasarım sistemi: tek kart, tek düğme, tek başlık dili */
+:root{--r-lg:20px;--r-md:16px;--r-sm:12px;--golge:0 10px 28px rgba(3,5,20,.35);--kenar-vurgu:rgba(255,107,74,.55)}
+.gorunum{animation:gir .22s ease-out}
+@keyframes gir{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sayfa-bas{display:flex;align-items:center;gap:12px;padding:4px 0 2px}
+.sayfa-ikon{flex:0 0 auto;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,rgba(255,107,74,.22),rgba(255,194,75,.14));border:1px solid rgba(255,194,75,.25);color:var(--gold)}
+.sayfa-ikon svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sayfa-bas h2{margin:0;font-family:var(--f-display);font-weight:800;font-size:25px;line-height:1.05}
+.sayfa-bas p{margin:2px 0 0;font-size:13px;color:var(--muted);font-weight:700}
+.blok,.sehir-kart,.finans-kart,.ih-kart,.pk,.gorev,.gunluk-odul,.galeri-vitrin{border-radius:var(--r-lg);box-shadow:var(--golge)}
+.blok,.sehir-kart,.ih-kart,.pk,.gunluk-odul{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0)) ,var(--card);border:1px solid var(--line)}
+.kart,.proje,.secenek,.bk,.isl,.secim button,.rota{border-radius:var(--r-md);background:var(--bg-2);border:1px solid var(--line)}
+.sheet .kart,.sheet .secenek,.sheet .secim button{background:var(--card)}
+.blok-bas h2,.blok > h2{font-size:18px}
+.pk,.bk,.secenek,.secim button,.ih-kart,.isl{transition:transform .14s,border-color .14s,background .14s}
+.pk:hover,.bk:hover,.secenek:hover:not(:disabled),.secim button:hover,.ih-kart:hover{transform:translateY(-2px);border-color:var(--kenar-vurgu)}
+.secenek.on,.kart.secili{border-color:var(--accent);background:linear-gradient(180deg,rgba(255,107,74,.16),rgba(255,107,74,.04))}
+.btn,.oyun-btn{border-radius:var(--r-sm);font-family:var(--f-body);font-weight:800;letter-spacing:.01em}
+.oyun-btn{border-radius:var(--r-md)}
+.btn{background:var(--card-2);box-shadow:0 3px 0 var(--press),inset 0 1px 0 rgba(255,255,255,.07)}
+.btn.ana{background:linear-gradient(180deg,#ff8463,#ff5a3c);box-shadow:0 3px 0 var(--accent-d),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn.cizgi{box-shadow:inset 0 0 0 1.5px var(--line)}
+.sheet .kutu{background:linear-gradient(180deg,#151a45,#10143a);box-shadow:0 -20px 60px rgba(0,0,0,.45)}
+.sheet .bas{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.sheet h3{font-size:24px}
+.sekme{border-radius:999px;background:var(--bg-2)}
+.sekme.on{background:linear-gradient(180deg,#ff8463,#ff5a3c);border-color:transparent;box-shadow:0 2px 0 var(--accent-d)}
+.sekme:disabled{opacity:.45}
+.etiket{color:#8f97c9}
+.rozet{border-radius:999px;background:var(--card-3);color:#c3c8ea}
+input[type=range]{-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;background:linear-gradient(90deg,var(--accent) var(--p,50%),var(--card-3) var(--p,50%));outline-offset:6px;margin:8px 0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:5px solid var(--accent);box-shadow:0 3px 10px rgba(0,0,0,.4);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:5px solid var(--accent);box-shadow:0 3px 10px rgba(0,0,0,.4);cursor:pointer}
+input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:0 0 auto;width:44px;height:24px;border-radius:999px;background:var(--card-3);position:relative;cursor:pointer;transition:background .15s;margin:0}
+input[type=checkbox]::before{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+input[type=checkbox]:checked{background:var(--good)}
+input[type=checkbox]:checked::before{transform:translateX(20px)}
+.kv{padding:4px 0}
+.ayrac{border-top-color:rgba(255,255,255,.07)}
+.rail{background:linear-gradient(180deg,#121640,#0d1032)}
+.rail button.on{color:#fff;background:linear-gradient(180deg,rgba(255,107,74,.28),rgba(255,107,74,.12));box-shadow:inset 3px 0 0 var(--accent)}
+.rail button.on svg{color:var(--gold)}
+.altnav button.on{color:#fff;background:linear-gradient(180deg,rgba(255,107,74,.3),rgba(255,107,74,.12))}
+.kasa-bar{background:linear-gradient(135deg,#2a3278,#1a1f4e)}
+.finans-kart{background:radial-gradient(500px 200px at 85% 0%,rgba(63,224,160,.12),transparent),linear-gradient(135deg,#252e70,#171c48)}
+.pk.yeni{background:none;box-shadow:none;border:2px dashed var(--card-3)}
+@media (prefers-reduced-motion:reduce){.gorunum{animation:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -781,6 +828,7 @@ function sheetAc(baslik, html, bagla, zorunlu = false){
   sheetAcik = true; clearInterval(timer); timer = null;
   $('#sh-baslik').textContent = baslik; $('#sh-govde').innerHTML = html; $('#sh-kapat').hidden = zorunlu; $('#sheet').hidden = false;
   if (bagla) bagla($('#sh-govde'));
+  $('#sh-govde').querySelectorAll('input[type=range]').forEach(boya);
   renderUst();
 }
 function sheetKapat(){ $('#sheet').hidden = true; sheetAcik = false; hizAyarla(S.hiz); render(); }
@@ -1342,7 +1390,7 @@ function tasarimSheet(aid, d0){
       const guncelle = () => {
         const h = tasarimHesap(a, d), kar = h.degerReal * S.sehirler[a.sehir].endeks * S.I - h.yapimReal * S.I - a.alisNom, yap = h.yapimReal * S.I, dolu = aktifSantiye() >= B().santiye;
         const set = (id, v) => { const el = g.querySelector('#' + id); if (el) el.textContent = v; }, rng = (id, max, val) => { const el = g.querySelector('#' + id); if (el){ el.max = max; el.value = val; } };
-        rng('r-villa', Math.max(1, h.maxVilla), d.villa); rng('r-blok', h.maxBlok, d.blok); rng('r-kat', h.maxKat, d.kat); rng('r-plan', 3, d.plan); rng('r-kalite', 2, KAL.indexOf(d.kalite));
+        rng('r-villa', Math.max(1, h.maxVilla), d.villa); rng('r-blok', h.maxBlok, d.blok); rng('r-kat', h.maxKat, d.kat); rng('r-plan', 3, d.plan); rng('r-kalite', 2, KAL.indexOf(d.kalite)); g.querySelectorAll('input[type=range]').forEach(boya);
         set('v-villa', `${d.villa} / ${Math.max(1, h.maxVilla)}`); set('v-blok', `${d.blok} / ${h.maxBlok}`); set('v-kat', `${d.kat} / ${h.maxKat}`); set('v-plan', `${PLAN[d.plan].ad} · ${PLAN[d.plan].m2} m²`); set('v-kalite', KALITE[d.kalite].ad);
         set('t-ad', projeAdi(d, h)); set('t-alt', `${h.kt.kiralik ? fmtInt(h.alan) + ' m² kiralık alan' : h.birim + (d.tur === 'villa' ? ' villa' : ` daire · katta ${h.blok > 1 ? h.blok + '×' : ''}${h.dpk}`)} · ${h.gun} gün`);
         g.querySelector('#t-gorsel').innerHTML = binaSVG(binaSpec({kat:h.kat, blok:h.blok, kiralikTip:!!h.kt.kiralik, tip:d.tur}), 'satis', 1, 0.75, d.kalite);
@@ -1369,10 +1417,10 @@ function tasarimSheet(aid, d0){
 }
 
 function renderIhale(){
-  if (S.st < 2){ $('#v-ihale').innerHTML = `<h2 class="baslik">İhaleler</h2><section class="blok"><div class="metin">Kamu ihalelerine girmek için şirketin Limited Şirket olarak tescil edilmeli. Reel net değer 15 Mn ₺ olunca Ana ekrandan tescil edebilirsin.</div><button class="oyun-btn kucuk" data-bas="2">Limited demo kaydını dene</button></section>`; return; }
+  if (S.st < 2){ $('#v-ihale').innerHTML = `${sayfaBas('ihale', 'Kamu İhale Bülteni')}<section class="blok"><div class="metin">Kamu ihalelerine girmek için şirketin Limited Şirket olarak tescil edilmeli. Reel net değer 15 Mn ₺ olunca Ana ekrandan tescil edebilirsin.</div><button class="oyun-btn kucuk" data-bas="2">Limited demo kaydını dene</button></section>`; return; }
   if (!S.ihaleler.length){ S.ihaleler = ihaleUret(); S.ihaleCd = 15; }
   const sozlesme = S.isler.filter(j => j.tur === 'ihale');
-  $('#v-ihale').innerHTML = `<div class="blok-bas"><h2 class="baslik">İhaleler</h2><span class="ipucu">Yeni ilanlar ${S.ihaleCd} gün sonra · itibar avantajı %${dec(S.itibar / 10, 1)}</span></div>
+  $('#v-ihale').innerHTML = `${sayfaBas('ihale', `Yeni ilanlar ${S.ihaleCd} gün sonra · itibar avantajı %${dec(S.itibar / 10, 1)}`)}
     <div class="ih-izgara">${S.ihaleler.map((x, i) => `<section class="ih-kart ${x.sonuc ? 'bitti' : ''}"><div class="ih-gorsel">${binaSVG(['apt4', 'site', 'rezidans'][i] || 'apt4', 'insaat', 0.5, 0, 'standart')}<span class="pk-etiket">${x.boy} · ${x.sure} gün</span></div>
       <div class="pk-ad">${x.ad}</div><div class="pk-yer">${x.rakipler.length} firma yarışıyor · yaklaşık maliyet</div><div class="fk-deger" style="font-size:20px;color:var(--gold)">${tlk(x.M)}</div>
       ${x.sonuc ? `<div class="${x.sonuc.k}" style="font-weight:800">${x.sonuc.t}</div>` : `<button class="oyun-btn mercan kucuk" data-ihaleac="${i}">Teklif ver</button>`}</section>`).join('')}</div>
@@ -1381,7 +1429,7 @@ function renderIhale(){
 }
 function renderBorsa(){
   const pf = portfoy(), mal = Object.values(S.hisse).reduce((a, v) => a + v.maliyet, 0);
-  $('#v-borsa').innerHTML = `<div class="blok-bas"><h2 class="baslik">Borsa</h2><span class="ipucu">6 şirket · komisyon binde 2</span></div>
+  $('#v-borsa').innerHTML = `${sayfaBas('borsa', `6 şirket · komisyon binde 2`)}
     <section class="finans-kart"><div class="fk-alt" style="border:0;padding:0"><div><span>Portföy</span><b>${tlk(pf)}</b></div><div><span>Maliyet</span><b>${tlk(mal)}</b></div><div><span>Kâr / zarar</span><b class="${pf - mal >= 0 ? 'iyi' : 'kotu'}">${isaret(pf - mal)}</b></div><div><span>Kasa</span><b>${tlk(S.nakit)}</b></div></div></section>
     <div class="hs-izgara">${BORSA.map(h => { const b = S.borsa[h.kod], g = b.gecmis, d = g.length > 1 ? b.fiyat / g[g.length - 2] - 1 : 0, sh = S.hisse[h.kod], kz = sh ? sh.adet * b.fiyat - sh.maliyet : 0;
       return `<section class="blok"><div class="satir">${ikon(h.sektor)}<div class="ana-metin"><div class="b">${h.ad}</div><div class="s"><span class="rozet">${h.kod}</span> ${dec(b.fiyat, 2)} ₺ <span class="${d >= 0 ? 'iyi' : 'kotu'}">${d >= 0 ? '▲' : '▼'} ${pct(Math.abs(d))}</span></div></div>${spark(g)}</div>
@@ -1390,7 +1438,7 @@ function renderBorsa(){
 }
 function renderYatirim(){
   const tarlalar = S.isler.filter(j => j.tur === 'tarla');
-  $('#v-yatirim').innerHTML = `<div class="blok-bas"><h2 class="baslik">Yatırımlar</h2><span class="ipucu">Kasadaki parayı enflasyondan koru</span></div>
+  $('#v-yatirim').innerHTML = `${sayfaBas('yatirim', `Kasadaki parayı enflasyondan koru`)}
     <div class="hs-izgara">
       <section class="blok"><div class="satir">${ikon('finans', true)}<div class="ana-metin"><div class="b">Gram altın</div><div class="s">${tl(S.altinFiyat)} · makas %1,5</div></div></div><div class="kv"><span>Elindeki</span><b>${fmtInt(S.altin)} gr · ${tlk(S.altin * S.altinFiyat)}</b></div><button class="oyun-btn altin kucuk" data-git="yatirim">Al · sat</button></section>
       <section class="blok"><div class="satir">${ikon('lojistik', true)}<div class="ana-metin"><div class="b">Dolar</div><div class="s">1 $ = ${dec(S.usdKur, 2)} ₺ · makas %1</div></div></div><div class="kv"><span>Elindeki</span><b>${fmtInt(S.usd)} $ · ${tlk(S.usd * S.usdKur)}</b></div><button class="oyun-btn kucuk" data-git="yatirim">Al · sat</button></section>
@@ -1412,7 +1460,7 @@ function aracSVG(a){
 }
 function renderGaleri(){
   const ak = ARAC.find(x => x.id === S.aktifArac);
-  $('#v-galeri').innerHTML = `<div class="blok-bas"><h2 class="baslik">Galeri</h2><span class="ipucu">Şirket araçları itibar kazandırır · bakım gideri ${tlk(aracBakim())}/gün</span></div>
+  $('#v-galeri').innerHTML = `${sayfaBas('galeri', `Şirket araçları itibar kazandırır · bakım gideri ${tlk(aracBakim())}/gün`)}
     <section class="galeri-vitrin">${ak ? `<div class="vitrin-arac">${aracSVG(ak)}</div><div><div class="etiket">Şirket aracın</div><div class="buyuk">${ak.ad}</div><div class="metin">Toplantılara bununla gidiyorsun. İtibar +${ak.itibar}</div></div>` : '<div class="metin">Henüz şirket aracın yok. Aşağıdan bir araç seç.</div>'}</section>
     <div class="hs-izgara">${ARAC.map(a => { const var_ = S.araclar[a.id], f = a.fiyat * S.I, kilit = a.st > S.st; return `<section class="blok arac-kart ${S.aktifArac === a.id ? 'aktif' : ''}"><div class="arac-kutu">${aracSVG(a)}</div><div class="pk-ad">${a.ad}</div><div class="pk-yer">İtibar +${a.itibar} · bakım ${tlk(a.bakim * S.I)}/gün${a.ac ? ' · ' + a.ac : ''}</div>
       ${var_ ? (S.aktifArac === a.id ? '<span class="rozet uzman" style="justify-self:start">Kullanılıyor</span>' : `<button class="btn kucuk" data-arac-sec="${a.id}">Şirket aracı yap</button>`) : kilit ? `<span class="kilit-rozet" style="justify-self:start">${BASAMAK[a.st - 1].ad}</span>` : `<button class="btn ana kucuk" data-arac-al="${a.id}" ${S.nakit < f ? 'disabled' : ''}>Satın al · ${tlk(f)}</button>`}</section>`; }).join('')}</div>`;
@@ -1459,6 +1507,9 @@ function renderUst(){
   $('#unvan').innerHTML = `${B().unvan}${S.yildiz ? ` · <span class="yildiz">★ ${S.yildiz} yıldız</span>` : ''}`;
   document.querySelectorAll('#hiz button').forEach(b => { b.classList.toggle('on', +b.dataset.hiz === S.hiz && !(sheetAcik && S.hiz > 0)); b.disabled = S.iflas; });
 }
+const sayfaBas = (id, alt) => { const v = NAV.find(x => x.id === id); return `<header class="sayfa-bas"><span class="sayfa-ikon"><svg viewBox="0 0 24 24" aria-hidden="true">${v.svg}</svg></span><div><h2>${v.ad}</h2><p>${alt}</p></div></header>`; };
+const boya = el => { const mn = +el.min || 0, mx = +el.max || 100; el.style.setProperty('--p', ((+el.value - mn) / ((mx - mn) || 1) * 100) + '%'); };
+document.addEventListener('input', e => { if (e.target.matches && e.target.matches('input[type=range]')) boya(e.target); });
 const statKart = (k, v, s, cls = '') => `<div class="stat">${ikon(s)}<div><div class="k">${k}</div><div class="v ${cls}">${v}</div></div></div>`;
 const GUNLER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 const tarihYaz = () => { const gun = (S.gun - 1) % 30 + 1, ay = Math.floor((S.gun - 1) / 30) % 12, yil = Math.floor((S.gun - 1) / 360) + 1; return `Gün ${S.gun} · ${GUNLER[(S.gun - 1) % 7]} · ${gun} ${AYLAR[ay]} ${yil}. yıl`; };
@@ -1528,7 +1579,7 @@ function ilSatir(c){
 function renderSehir(){
   const limit = B().sehir, acik = acikSehirler().length, olurlar = SEHIR.filter(c => !S.sehirler[c.id] && c.st <= S.st);
   const liste = sehirFiltre === 'sube' ? acikSehirler().map(sehirKart).join('') : `<section class="blok">${(sehirFiltre === 'olur' ? olurlar : [...SEHIR].sort((a, b) => a.no - b.no)).map(ilSatir).join('') || '<div class="bos">Bu basamakta açılabilecek yeni şehir yok. Bir üst basamağa geçince yeni şehirler açılır.</div>'}</section>`;
-  $('#v-sehir').innerHTML = `<div class="blok-bas"><h2 class="baslik">Arsalar · Türkiye</h2><span class="ipucu">${acik}/${limit} şube · 81 il</span></div>
+  $('#v-sehir').innerHTML = `${sayfaBas('sehir', `${acik}/${limit} şube · 81 il`)}
     <div class="ikili"><button class="oyun-btn altin" data-git="insaat">${ikon('insaat')}<span><b>Arsa bul</b><small>İlçe seç, arsa kap</small></span></button><button class="oyun-btn" data-git="arsalarim">${ikon('finans')}<span><b>Arsalarım</b><small>${S.arsalar.length} arsa · proje tasarla</small></span></button></div>
     <section class="blok">${haritaSVG()}<div class="lejant"><span><i style="background:var(--accent)"></i>Şuben var</span><span><i style="background:var(--gold)"></i>Açılabilir</span><span><i style="background:rgba(255,255,255,.3)"></i>Kilitli</span><span>Bir ile dokun</span></div></section>
     <div class="sekmeler">${[['sube', `Şubelerim (${acik})`], ['olur', `Açılabilir (${olurlar.length})`], ['tum', '81 il']].map(([k, a]) => `<button class="sekme ${k === sehirFiltre ? 'on' : ''}" data-filtre="${k}">${a}</button>`).join('')}</div>
@@ -1538,7 +1589,7 @@ function renderSehir(){
 function renderInsaat(){
   const sant = S.projeler.filter(p => p.durum === 'insaat'), sat = S.projeler.filter(p => p.durum === 'satis'), kira = S.projeler.filter(p => p.kiralik > 0);
   const kart = (p, ic) => { const t = pTip(p), c = sehirBul(p.sehir); return `<div class="proje"><div class="proje-ust"><div class="bina-kutu">${binaSVG(binaSpec(p), p.durum, p.durum === 'insaat' ? 1 - p.kalan / p.toplam : 1, p.durum === 'satis' ? p.satilan / p.birim : p.durum === 'kira' ? 1 : 0, p.kalite)}</div><div class="ana-metin"><div class="b">${t.ad}</div><div class="s">${yerAd(p)} · ${KALITE[p.kalite].ad}${p.etud ? ' · zemin etüdlü' : ' · etüdsüz'}</div>${ic.sag || ''}</div></div>${ic.alt}</div>`; };
-  $('#v-insaat').innerHTML = `<div class="blok-bas"><h2 class="baslik">İnşaat</h2><span class="ipucu">${aktifSantiye()}/${B().santiye} şantiye</span></div>
+  $('#v-insaat').innerHTML = `${sayfaBas('insaat', `${aktifSantiye()}/${B().santiye} şantiye`)}
     <div class="ikili"><button class="oyun-btn altin" data-git="insaat">${ikon('insaat')}<span><b>Arsa bul</b><small>İlçe seç, arsa kap</small></span></button><button class="oyun-btn" data-git="arsalarim">${ikon('finans')}<span><b>Arsalarım</b><small>${S.arsalar.length} arsa · proje tasarla</small></span></button></div><div class="ikili"><button class="oyun-btn mercan" data-git="tarla">${ikon('enerji')}<span><b>Tarla avı</b><small>${S.isler.filter(j => j.tur === 'tarla').length} tarla imar bekliyor</small></span></button></div>
     <section class="blok"><div class="blok-bas"><h2>Şantiyeler</h2></div>${sant.length ? sant.map(p => kart(p, {sag:!p.hizli && p.kalan > 2 ? `<button class="btn kucuk" data-hizlandir="${p.id}"><span class="rozet reklam">Reklam</span> Hızlandır</button>` : '', alt:`<div class="kv"><span>İlerleme</span><b>${p.kalan} gün kaldı</b></div><div class="bar ince"><i style="width:${(1 - p.kalan / p.toplam) * 100}%"></i></div>`})).join('') : '<div class="bos">Şantiye yok.</div>'}</section>
     <section class="blok"><div class="blok-bas"><h2>Satıştakiler</h2>${sat.length ? '<button class="link" data-git="satis">Fiyatları ayarla</button>' : ''}</div>${sat.length ? sat.map(p => kart(p, {alt:`<div class="kv"><span>${p.satilan}/${p.birim} satıldı · birim fiyat</span><b>${tlk(birimFiyat(p) * p.fiyatOran)}</b></div><div class="bar ince yesil"><i style="width:${p.satilan / p.birim * 100}%"></i></div><div class="kv"><span>Tahmini satış hızı</span><b>${dec(satisHizi(p) * p.satilacak, 2)} / gün</b></div>`})).join('') : '<div class="bos">Satışta proje yok.</div>'}</section>
@@ -1547,7 +1598,7 @@ function renderInsaat(){
 
 function renderSirket(){
   const sektorler = Object.keys(SEKTOR).filter(s => s !== 'insaat' && S.isletmeler.some(b => tipBul(b.tip).sektor === s));
-  $('#v-sirket').innerHTML = `<h2 class="baslik">Şirketler</h2>
+  $('#v-sirket').innerHTML = `${sayfaBas('sirket', `${Object.keys(S.sirketler).length}/${B().sirket} sektör şirketi · itibar ${Math.round(S.itibar)}/100`)}
     <section class="blok"><div class="grup-kart"><div class="logo">${S.ad.slice(0, 2).toLocaleUpperCase('tr')}</div><div class="ana-metin" style="min-width:0"><div class="buyuk">${firmaAdi()}</div><div class="ipucu">${B().unvan} · ${Object.keys(S.sirketler).length}/${B().sirket} şirket · itibar ${Math.round(S.itibar)}/100</div>${S.yildiz ? `<div class="yildizlar">★ ${S.yildiz} hisse yıldızı · gelir +%${S.yildiz * 5}</div>` : ''}</div></div>
       <div class="ikili"><button class="oyun-btn kucuk" data-git="ofis">Ofisim · ${ofis().ad}</button><button class="oyun-btn kucuk" data-git="personel">Personel · ${kadroToplam()}/${ofis().kadro}</button></div>
       <div class="ucuz"><button class="oyun-btn mercan kucuk" data-git="sirketler">Şirket kur</button><button class="oyun-btn kucuk" data-git="statu" ${S.st < 2 ? 'disabled' : ''}>Statü</button><button class="oyun-btn altin kucuk" data-git="halkaarz" ${S.st < 5 ? 'disabled' : ''}>Halka arz</button></div></section>
@@ -1559,7 +1610,7 @@ function renderSirket(){
 
 function renderFinans(){
   const n = net();
-  $('#v-finans').innerHTML = `<h2 class="baslik">Finans</h2>
+  $('#v-finans').innerHTML = `${sayfaBas('finans', `Günlük net ${isaret(net())} · borç ${tlk(S.borc)}`)}
     <section class="blok"><div class="blok-bas"><h2>Günlük döküm</h2></div>
       <div class="kv"><span>İşletme cirosu</span><b class="iyi">${isaret(toplamGelir())}</b></div>
       <div class="kv"><span>Kira geliri</span><b class="iyi">${isaret(kiraGelir())}</b></div>
