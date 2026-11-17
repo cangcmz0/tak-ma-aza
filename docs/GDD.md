@@ -1,5 +1,7 @@
 # NAKLİYE BARONU — Oyun Tasarım Dokümanı (GDD) v0.1
 
+> **Yön değişikliği (v0.2 taslağı):** Oyun sadece nakliye olmaktan çıkıp **"Sıfırdan Holding"** adıyla genişletildi: 11 şehir, küçük işletmeler (çay ocağı, büfe, döner salonu…), inşaat ve daire satışı, sektör şirketleri, şirketleşme basamakları (Şahıs → Ltd. → A.Ş. → Holding → Halka Açık Holding), ihaleler, altın ve döviz. Oynanabilir taslak: `demo/sifirdan-holding.html`. Aşağıdaki ekonomi, para kazanma ve teknik bölümler geçerliliğini korur; tema ve içerik bölümleri yeni kapsama göre güncellenecek. Nakliye artık holdingin sektörlerinden biridir.
+
 > Tür: 2D arayüz tabanlı, metin ve istatistik odaklı ticaret / yatırım / yönetim simülasyonu
 > Platform: iOS + Android (tek kod tabanı)
 > Hedef kitle: 18–45 yaş, Türkiye; "Müteahhit Simülasyonu", futbol menajerlik ve borsa uygulaması kullanıcıları
