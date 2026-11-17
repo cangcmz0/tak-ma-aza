@@ -1,0 +1,14 @@
+name: nakliye_baronu
+description: Türkiye temalı lojistik ticaret ve yönetim simülasyonu prototipi.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
