@@ -431,7 +431,7 @@ const BORSA = [
 const RAKIPLER = ['Demirtaş İnşaat','Kuzeyli Yapı','Yılmazlar Grup','Akdağ Holding','Ertunç Müteahhitlik','Sarıkaya Yapı'];
 
 const PRESET = {
-  1:{gun:1, I:1, nakit:3e6, itibar:30, sehir:['kayseri'], isl:[['cay','kayseri',1]], proje:[]},
+  1:{gun:1, I:1, nakit:3.6e6, itibar:30, sehir:['kayseri'], isl:[['cay','kayseri',1]], proje:[]},
   2:{gun:301, I:1.3, nakit:6e6, itibar:38, sehir:['kayseri','eskisehir'], isl:[['cay','kayseri',2],['bufe','kayseri',1],['berber','kayseri',1],['doner','kayseri',2],['firin','kayseri',1],['yikama','kayseri',1],['otopark','kayseri',1],['cay','eskisehir',1],['doner','eskisehir',1]], proje:[['mustakil','kayseri','standart',true,'satis',1],['mustakil','eskisehir','luks',true,'insaat',8]], tamam:1},
   3:{gun:721, I:1.9, nakit:40e6, itibar:46, sehir:['kayseri','eskisehir','konya'], sirket:{yeme:0}, isl:[['cay','kayseri',3],['doner','kayseri',3],['firin','kayseri',2],['otopark','kayseri',2],['market','kayseri',2],['akaryakit','kayseri',1],['kafe','eskisehir',2],['doner','eskisehir',2],['firin','eskisehir',1],['spor','eskisehir',1],['nakliye','konya',1],['market','konya',1],['berber','konya',2]], proje:[['apt4','kayseri','standart',true,'satis',5],['apt4','konya','ekonomik',false,'insaat',22]], tamam:3},
   4:{gun:1201, I:3.0, nakit:300e6, itibar:56, sehir:['kayseri','eskisehir','konya','gaziantep','bursa','trabzon'], sirket:{yeme:0, perakende:0, sanayi:0, insaat:0}, isl:[['market','kayseri',3],['akaryakit','kayseri',2],['otopark','kayseri',3],['doner','kayseri',4],['kafe','eskisehir',3],['firin','eskisehir',3],['nakliye','konya',2],['un','konya',1],['tekstil','bursa',2],['depo','bursa',1],['kafe','gaziantep',2],['doner','gaziantep',3],['un','gaziantep',1],['butik','trabzon',1],['okul','kayseri',1],['market','gaziantep',2]], proje:[['site','bursa','standart',true,'satis',38],['apt10','gaziantep','luks',true,'insaat',30],['apt10','kayseri','standart',false,'satis',6]], tamam:7},
@@ -466,7 +466,7 @@ function projeOlustur(tipId, sehirId, kalite, etud, I){
 
 function yeniOyun(n = 1, yildiz = 0, ad = 'Kocabaş'){
   const p = PRESET[n];
-  S = {ad, gun:p.gun, I:p.I, pi:0.025, nakit:p.nakit * p.I, borc:0, st:n, itibar:p.itibar, yildiz, ayKar:0, negGun:0, iflas:false, konk:false, sehirler:{}, isletmeler:[], projeler:[], sirketler:{}, statu:{...(p.statu || {})}, isler:[], ihaleler:[], ihaleCd:0, kampanya:0, altin:0, usd:0, altinFiyat:5000 * p.I, usdKur:42 * p.I, kartGun:p.gun + 12, log:[], hiz:1, nid:1, tamam:p.tamam || 0, teklifler:[], tarlaTeklif:[], tarlaCd:0, hisse:{}, borsa:borsaKur(p.I), sayac:{temel:0, satis:0, tarla:0, ihale:0}, gorev:GOREV_BAS[n], memleket:'kayseri'};
+  S = {ad, gun:p.gun, I:p.I, pi:0.025, nakit:p.nakit * p.I, borc:0, st:n, itibar:p.itibar, yildiz, ayKar:0, negGun:0, iflas:false, konk:false, sehirler:{}, isletmeler:[], projeler:[], sirketler:{}, statu:{...(p.statu || {})}, isler:[], ihaleler:[], ihaleCd:0, kampanya:0, altin:0, usd:0, altinFiyat:5000 * p.I, usdKur:42 * p.I, kartGun:p.gun + 12, log:[], hiz:1, nid:1, tamam:p.tamam || 0, teklifler:[], tarlaTeklif:[], tarlaCd:0, hisse:{}, borsa:borsaKur(p.I), sayac:{temel:0, satis:0, tarla:0, ihale:0, arsa:0}, gorev:GOREV_BAS[n], memleket:'kayseri', arsalar:[], pazar:{}};
   for (const id of p.sehir) S.sehirler[id] = {endeks:rnd(0.97, 1.08), degisim:0};
   for (const [tip, sehir, lv] of p.isl) S.isletmeler.push({id:S.nid++, tip, sehir, lv, kalan:0});
   for (const [k, ceo] of Object.entries(p.sirket || {})) S.sirketler[k] = {ceo:!!ceo};
@@ -496,7 +496,7 @@ const toplamGider = () => S.isletmeler.reduce((a, b) => a + isletmeGider(b), 0);
 function sektorGelir(s){ return S.isletmeler.filter(b => tipBul(b.tip).sektor === s).reduce((a, b) => a + isletmeGelir(b), 0); }
 const ceoMaas = () => Object.entries(S.sirketler).filter(([, v]) => v.ceo).reduce((a, [s]) => a + 0.04 * sektorGelir(s), 0);
 const birimFiyat = p => p.birimReal * S.sehirler[p.sehir].endeks * S.I;
-const kiraGelir = () => S.projeler.reduce((a, p) => a + p.kiralik * birimFiyat(p) * (projeBul(p.tip).kiralik ? 0.075 : 0.065) / 360, 0);
+const kiraGelir = () => S.projeler.reduce((a, p) => a + p.kiralik * birimFiyat(p) * (pTip(p).kiralik ? 0.075 : 0.065) / 360, 0);
 function agirlik(){ let w = 0; for (const b of S.isletmeler){ const t = tipBul(b.tip); w += Math.pow(t.fiyat / 1e6 * sehirBul(b.sehir).pahali, 0.6); } return w + S.projeler.filter(p => p.durum === 'insaat').length * 2; }
 const yonetim = () => (1200 + 900 * Math.pow(agirlik(), 1.12)) * S.I;
 const yillikEnf = () => Math.pow(1 + S.pi, 12) - 1;
@@ -510,9 +510,9 @@ const projeDeger = () => S.projeler.reduce((a, p) => a + (p.durum === 'insaat' ?
 function borsaKur(I){ const o = {}; for (const h of BORSA){ let f = h.f * I; const g = [f]; for (let i = 0; i < 29; i++){ f /= Math.exp(h.vol * randn()); g.unshift(f); } o[h.kod] = {fiyat:h.f * I, gecmis:g}; } return o; }
 const portfoy = () => Object.entries(S.hisse).reduce((a, [k, v]) => a + v.adet * S.borsa[k].fiyat, 0);
 const tarlaDeger = () => S.isler.filter(j => j.tur === 'tarla').reduce((a, j) => a + j.alis, 0);
-const netDeger = () => S.nakit + isletmeDeger() + projeDeger() + S.altin * S.altinFiyat + S.usd * S.usdKur + portfoy() + tarlaDeger() - S.borc;
+const netDeger = () => S.nakit + isletmeDeger() + projeDeger() + S.altin * S.altinFiyat + S.usd * S.usdKur + portfoy() + tarlaDeger() + arsaDeger() - S.borc;
 const reelND = () => netDeger() / S.I;
-const krediLimit = () => Math.max(0, (isletmeDeger() + projeDeger()) * 0.5 - S.borc);
+const krediLimit = () => Math.max(0, (isletmeDeger() + projeDeger() + arsaDeger()) * 0.5 - S.borc);
 const krediDilim = () => Math.min(krediLimit(), Math.max(1e6 * S.I, isletmeDeger() * 0.1));
 const acikSehirler = () => SEHIR.filter(c => S.sehirler[c.id]);
 const aktifSantiye = () => S.projeler.filter(p => p.durum === 'insaat').length;
@@ -535,8 +535,8 @@ function teklifKabul(t){
   if (ps.risk && Math.random() < ps.risk){ log(`${ps.ad}: banka konut kredisini onaylamadı, satış iptal.`, 'kotu'); toast('Kredi onaylanmadı'); return; }
   const k = Math.min(t.adet, pr.satilacak), f = birimFiyat(pr) * t.oran, ciro = k * f, kar = ciro - k * pr.maliyetNom / pr.birim;
   S.nakit += ciro; S.ayKar += kar; pr.satilacak -= k; pr.satilan += k; pr.ciro += ciro; S.sayac.satis++; ucan('+' + tlk(ciro), 'iyi');
-  log(`${ps.ad} ile anlaşıldı: ${k} birim ${projeBul(pr.tip).ad}, ${isaret(ciro)}.`, 'iyi'); toast(`Satıldı: ${isaret(ciro)}`);
-  if (pr.satilacak === 0 && pr.kiralik === 0){ pr.durum = 'bitti'; S.projeler = S.projeler.filter(x => x.durum !== 'bitti'); log(`${projeBul(pr.tip).ad} tamamen satıldı.`, 'iyi'); }
+  log(`${ps.ad} ile anlaşıldı: ${k} birim ${pTip(pr).ad}, ${isaret(ciro)}.`, 'iyi'); toast(`Satıldı: ${isaret(ciro)}`);
+  if (pr.satilacak === 0 && pr.kiralik === 0){ pr.durum = 'bitti'; S.projeler = S.projeler.filter(x => x.durum !== 'bitti'); log(`${pTip(pr).ad} tamamen satıldı.`, 'iyi'); }
 }
 function tarlaUret(){
   return [0, 1, 2].map(() => { const c = pick(acikSehirler()); return {id:S.nid++, sehir:c.id, ad:`${c.ad} ${pick(TARLA_YER)} tarlası`, fiyat:Math.max(gelir() * rnd(5, 10), 400e3 * S.I) * c.pahali, p:rnd(0.12, 0.45), carpan:rnd(2.5, 4.5), gun:Math.round(rnd(60, 120)), kulis:false}; });
@@ -576,7 +576,7 @@ function tick(){
   const n = net(); S.nakit += n; S.ayKar += n;
   for (const b of S.isletmeler) if (b.kalan > 0){ b.kalan--; if (b.kalan === 0) log(`${deEki(sehirBul(b.sehir).ad)} ${tipBul(b.tip).ad} açıldı.`, 'iyi'); }
   for (const p of S.projeler){
-    const t = projeBul(p.tip), c = sehirBul(p.sehir);
+    const t = pTip(p), c = sehirBul(p.sehir);
     if (p.durum === 'insaat'){
       p.kalan--;
       if (!p.etud && !p.zemin && p.kalan <= p.toplam / 2){ p.zemin = true; if (Math.random() < 0.3){ const ek = p.maliyetReal * 0.12 * S.I; p.kalan += 8; para(-ek, `${c.ad} ${t.ad}: zemin etüdü yapılmadığı için temel güçlendirmesi gerekti, 8 gün gecikme`); } }
@@ -764,24 +764,24 @@ function satisSheet(){
   const L = S.projeler.filter(p => p.durum === 'satis');
   const kira = S.projeler.filter(p => p.kiralik > 0);
   const teklifHtml = S.teklifler.length ? `<div class="etiket">Alıcı teklifleri</div>${S.teklifler.map(t => { const pr = S.projeler.find(x => x.id === t.pid), ps = PERSONA[t.per]; if (!pr) return ''; const f = birimFiyat(pr) * t.oran, k = Math.min(t.adet, pr.satilacak);
-      return `<div class="kart"><div class="satir">${ikon(ps.sektor)}<div class="ana-metin"><div class="b">${ps.ad} · ${k} birim</div><div class="s">${ps.ac} · ${sehirBul(pr.sehir).ad} ${projeBul(pr.tip).ad} · ${t.kalan} gün içinde cevap bekliyor</div></div></div>
+      return `<div class="kart"><div class="satir">${ikon(ps.sektor)}<div class="ana-metin"><div class="b">${ps.ad} · ${k} birim</div><div class="s">${ps.ac} · ${sehirBul(pr.sehir).ad} ${pTip(pr).ad} · ${t.kalan} gün içinde cevap bekliyor</div></div></div>
         <div class="kv"><span>Birim teklif (piyasaya göre <b class="${t.oran >= 1 ? 'iyi' : 'kotu'}">${t.oran >= 1 ? '+' : ''}${pct(t.oran - 1, 0)}</b>)</span><b>${tlk(f)}</b></div><div class="kv"><span>Toplam</span><b>${tlk(f * k)}</b></div>
         <div class="ucuz"><button class="btn ana kucuk" data-tkabul="${t.id}">Kabul et</button><button class="btn kucuk" data-tpaz="${t.id}" ${t.pazarlik ? 'disabled' : ''}>Pazarlık +%5<br><small>%${Math.round(ps.p * 100)} kabul</small></button><button class="btn cizgi kucuk" data-tred="${t.id}">Reddet</button></div></div>`; }).join('')}<hr class="ayrac">` : '';
   sheetAc('Satış ofisi', `${teklifHtml}<div class="metin">Fiyatı piyasanın altına çekersen hızlı satarsın, üstüne çıkarırsan daire başına daha çok kazanırsın ama satış yavaşlar. Faizler yükseldikçe alıcı azalır.${S.kampanya ? ` <b class="iyi">Kredi kampanyası: ${S.kampanya} gün.</b>` : ''}</div>
-    ${L.length ? L.map(p => { const t = projeBul(p.tip), c = sehirBul(p.sehir); return `<div class="kart" data-proje="${p.id}">
+    ${L.length ? L.map(p => { const t = pTip(p), c = sehirBul(p.sehir); return `<div class="kart" data-proje="${p.id}">
       <div class="satir"><div class="ana-metin"><div class="b">${c.ad} · ${t.ad} <span class="rozet">${KALITE[p.kalite].ad}</span>${p.etud ? '' : ' <span class="rozet">etüdsüz</span>'}</div><div class="s">${p.satilan} / ${p.birim} satıldı · ${p.satilacak} kaldı${p.one ? ` · <span class="iyi">ilan öne çıkarıldı (${p.one} gün)</span>` : ''}</div></div></div>
       <div class="kv"><span>Fiyat (piyasaya göre <b data-o>${p.fiyatOran >= 1 ? '+' : ''}${pct(p.fiyatOran - 1, 0)}</b>)</span><b class="num" data-f>${tlk(birimFiyat(p) * p.fiyatOran)}</b></div>
       <input type="range" min="0.85" max="1.25" step="0.01" value="${p.fiyatOran}" data-fiyat="${p.id}" aria-label="Satış fiyatı">
       <div class="kv"><span>Tahmini satış</span><b data-h>${dec(satisHizi(p) * p.satilacak, 2)} / gün</b></div>
       <div class="ikili"><button class="btn kucuk" data-one="${p.id}" ${p.one ? 'disabled' : ''}><span class="rozet reklam">Reklam</span> İlanı öne çıkar</button><button class="btn kucuk" data-kira="${p.id}">Kalanları kiraya ver</button></div></div>`; }).join('') : '<div class="bos">Satışta proje yok. Bir inşaat bitince burada görünür.</div>'}
-    ${kira.length ? `<hr class="ayrac"><div class="etiket">Kiradaki mülkler</div>${kira.map(p => `<div class="kv"><span>${sehirBul(p.sehir).ad} · ${projeBul(p.tip).ad} (${p.kiralik} birim)</span><b class="num iyi">${tlk(p.kiralik * birimFiyat(p) * (projeBul(p.tip).kiralik ? 0.075 : 0.065) / 360)} / gün</b></div>`).join('')}` : ''}`,
+    ${kira.length ? `<hr class="ayrac"><div class="etiket">Kiradaki mülkler</div>${kira.map(p => `<div class="kv"><span>${sehirBul(p.sehir).ad} · ${pTip(p).ad} (${p.kiralik} birim)</span><b class="num iyi">${tlk(p.kiralik * birimFiyat(p) * (pTip(p).kiralik ? 0.075 : 0.065) / 360)} / gün</b></div>`).join('')}` : ''}`,
     g => {
       g.querySelectorAll('[data-tkabul]').forEach(b => b.onclick = () => { const t = S.teklifler.find(x => x.id === +b.dataset.tkabul); if (t) teklifKabul(t); satisSheet(); render(); });
       g.querySelectorAll('[data-tpaz]').forEach(b => b.onclick = () => { const t = S.teklifler.find(x => x.id === +b.dataset.tpaz); if (!t) return; const ps = PERSONA[t.per]; if (Math.random() < ps.p){ t.oran = Math.min(1.15, t.oran + 0.05); t.pazarlik = true; log(`${ps.ad} pazarlığı kabul etti, teklif yükseldi.`, 'iyi'); toast('Teklif yükseldi'); } else { S.teklifler = S.teklifler.filter(x => x !== t); log(`${ps.ad} pazarlıktan sonra vazgeçti.`, 'kotu'); toast('Alıcı vazgeçti'); } satisSheet(); render(); });
       g.querySelectorAll('[data-tred]').forEach(b => b.onclick = () => { S.teklifler = S.teklifler.filter(x => x.id !== +b.dataset.tred); satisSheet(); render(); });
       g.querySelectorAll('[data-fiyat]').forEach(r => r.oninput = () => { const p = S.projeler.find(x => x.id === +r.dataset.fiyat); p.fiyatOran = +r.value; const kart = r.closest('.kart'); kart.querySelector('[data-o]').textContent = (p.fiyatOran >= 1 ? '+' : '') + pct(p.fiyatOran - 1, 0); kart.querySelector('[data-f]').textContent = tlk(birimFiyat(p) * p.fiyatOran); kart.querySelector('[data-h]').textContent = dec(satisHizi(p) * p.satilacak, 2) + ' / gün'; });
-      g.querySelectorAll('[data-one]').forEach(b => b.onclick = () => reklam(() => { const p = S.projeler.find(x => x.id === +b.dataset.one); p.one = 5; log(`${projeBul(p.tip).ad} ilanı 5 gün öne çıkarıldı.`, 'not'); satisSheet(); }));
-      g.querySelectorAll('[data-kira]').forEach(b => b.onclick = () => { const p = S.projeler.find(x => x.id === +b.dataset.kira); p.kiralik += p.satilacak; p.satilacak = 0; p.durum = 'kira'; log(`${projeBul(p.tip).ad}: ${p.kiralik} birim kiraya verildi.`, 'not'); satisSheet(); render(); });
+      g.querySelectorAll('[data-one]').forEach(b => b.onclick = () => reklam(() => { const p = S.projeler.find(x => x.id === +b.dataset.one); p.one = 5; log(`${pTip(p).ad} ilanı 5 gün öne çıkarıldı.`, 'not'); satisSheet(); }));
+      g.querySelectorAll('[data-kira]').forEach(b => b.onclick = () => { const p = S.projeler.find(x => x.id === +b.dataset.kira); p.kiralik += p.satilacak; p.satilacak = 0; p.durum = 'kira'; log(`${pTip(p).ad}: ${p.kiralik} birim kiraya verildi.`, 'not'); satisSheet(); render(); });
     });
 }
 
@@ -904,7 +904,7 @@ function kartAc(){
     {st:2, f:() => { const X = Math.max(200e3 * S.I, g * 3); return {b:'Ünlü fenomenden reklam teklifi', m:'Milyonlarca takipçisi olan bir fenomen, projelerini ve işletmelerini tanıtmak istiyor.', s:[
       {e:'Anlaş', d:`-${tlk(X)} · 20 gün satışlar %50 hızlı · itibar +3`, fn:() => { para(-X, 'Fenomen reklamı'); S.kampanya = Math.max(S.kampanya, 20); S.itibar = clamp(S.itibar + 3, 0, 100); }},
       {e:'Geç', d:'Değişiklik yok', fn:() => log('Fenomen teklifi geri çevrildi.', 'not')}]}; }},
-    {st:2, f:() => S.projeler.some(p => p.durum === 'insaat') ? (() => { const p = S.projeler.find(x => x.durum === 'insaat'), X = Math.max(100e3 * S.I, p.maliyetReal * S.I * 0.03); return {b:'Komşular mahkemeye gitti', m:`${deEki(sehirBul(p.sehir).ad)}ki ${projeBul(p.tip).ad} şantiyesi için yürütmeyi durdurma davası açıldı.`, s:[
+    {st:2, f:() => S.projeler.some(p => p.durum === 'insaat') ? (() => { const p = S.projeler.find(x => x.durum === 'insaat'), X = Math.max(100e3 * S.I, p.maliyetReal * S.I * 0.03); return {b:'Komşular mahkemeye gitti', m:`${deEki(sehirBul(p.sehir).ad)}ki ${pTip(p).ad} şantiyesi için yürütmeyi durdurma davası açıldı.`, s:[
       {e:'Uzlaş, tazminat öde', d:`-${tlk(X)}`, fn:() => para(-X, 'Komşulara uzlaşma bedeli')},
       {e:'Dava sürsün', d:'Şantiye 15 gün durur', fn:() => { p.kalan += 15; log('Şantiye mahkeme kararıyla 15 gün durdu.', 'kotu'); }},
       {e:'İyi avukat tut', d:'Dava düşer, gecikme yok', reklam:true, fn:() => log('Avukat davayı ilk duruşmada düşürdü.', 'iyi')}]}; })() : null},
@@ -949,7 +949,7 @@ let sekme = 'merkez';
 try { sekme = localStorage.getItem('sh-sekme') || 'merkez'; } catch (e) {}
 const azHareket = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const GIT = {isletme:a => isletmeSheet(a), insaat:() => insaatSheet(), satis:satisSheet, ihale:() => S.st < 2 ? kilitli(2) : ihaleSheet(), yonet:a => yonetSheet(a), sirketler:sirketSheet, statu:statuSheet, halkaarz:halkaArzSheet, banka:bankaSheet, yatirim:yatirimSheet, sehirler:() => { sekme = 'sehir'; render(); }, sehirDetay:a => sehirDetay(a), memleket:() => memleketSheet(), tarla:tarlaSheet, borsa:borsaSheet};
+const GIT = {isletme:a => isletmeSheet(a), insaat:a => arsaSheet(a), arsalarim:() => arsalarimSheet(), eskiInsaat:() => insaatSheet(), satis:satisSheet, ihale:() => S.st < 2 ? kilitli(2) : ihaleSheet(), yonet:a => yonetSheet(a), sirketler:sirketSheet, statu:statuSheet, halkaarz:halkaArzSheet, banka:bankaSheet, yatirim:yatirimSheet, sehirler:() => { sekme = 'sehir'; render(); }, sehirDetay:a => sehirDetay(a), memleket:() => memleketSheet(), tarla:tarlaSheet, borsa:borsaSheet};
 
 function ucan(t, k){ const box = $('#ucanlar'); if (!box || box.childElementCount > 4 || azHareket) return; const el = document.createElement('div'); el.className = 'ucan ' + k; el.textContent = t; el.style.right = (4 + Math.random() * 22) + '%'; box.appendChild(el); setTimeout(() => el.remove(), 1400); }
 let gosterilen = null, tweenId = 0;
@@ -963,6 +963,46 @@ function kasaYaz(){
 }
 
 function seeded(seed){ let s = Math.abs(Math.floor(seed)) % 2147483647 || 1; return () => (s = s * 16807 % 2147483647) / 2147483647; }
+
+const ILCE_OZEL = {
+  istanbul:[['Beşiktaş',1.6,1],['Kadıköy',1.5,1],['Sarıyer',1.7,1],['Üsküdar',1.3,1],['Ataşehir',1.25,0],['Başakşehir',1.0,0],['Pendik',0.85,1],['Esenyurt',0.6,0]],
+  ankara:[['Çankaya',1.35,0],['Gölbaşı',1.05,0],['Yenimahalle',1.0,0],['Etimesgut',0.9,0],['Keçiören',0.75,0],['Mamak',0.65,0]],
+  izmir:[['Çeşme',1.7,1],['Urla',1.4,1],['Karşıyaka',1.25,1],['Konak',1.2,1],['Bornova',1.05,0],['Buca',0.8,0]],
+  antalya:[['Kaş',1.5,1],['Konyaaltı',1.35,1],['Muratpaşa',1.25,1],['Alanya',1.15,1],['Manavgat',0.95,1],['Kepez',0.75,0]],
+  bursa:[['Nilüfer',1.3,0],['Mudanya',1.2,1],['Osmangazi',1.0,0],['İnegöl',0.85,0],['Yıldırım',0.75,0]],
+  kocaeli:[['Başiskele',1.1,1],['İzmit',1.0,1],['Gebze',1.0,0],['Körfez',0.85,1]],
+  mugla:[['Bodrum',1.9,1],['Fethiye',1.4,1],['Marmaris',1.3,1],['Menteşe',0.9,0]],
+  kayseri:[['Talas',1.2,0],['Melikgazi',1.0,0],['Kocasinan',0.85,0],['Develi',0.6,0]],
+  konya:[['Selçuklu',1.15,0],['Meram',1.05,0],['Karatay',0.85,0],['Ereğli',0.7,0]],
+  gaziantep:[['Şehitkamil',1.15,0],['Şahinbey',0.95,0],['Nizip',0.7,0],['İslahiye',0.6,0]],
+  adana:[['Çukurova',1.2,0],['Seyhan',1.0,0],['Yüreğir',0.8,0],['Ceyhan',0.7,0]],
+  mersin:[['Yenişehir',1.2,1],['Mezitli',1.1,1],['Erdemli',1.0,1],['Tarsus',0.75,0]],
+  trabzon:[['Ortahisar',1.15,1],['Akçaabat',1.0,1],['Yomra',0.95,1],['Of',0.7,1]],
+  eskisehir:[['Tepebaşı',1.1,0],['Odunpazarı',1.05,0],['Sivrihisar',0.6,0]],
+  samsun:[['Atakum',1.2,1],['İlkadım',1.0,1],['Canik',0.85,1],['Bafra',0.7,0]],
+};
+const SAHIL = new Set(['hatay','aydin','balikesir','canakkale','tekirdag','sinop','ordu','giresun','rize','artvin','zonguldak','bartin','kastamonu','yalova','duzce','sakarya','edirne','kirklareli','mersin']);
+function ilceler(sid){
+  if (ILCE_OZEL[sid]) return ILCE_OZEL[sid].map(([ad, c, sh]) => ({ad, c, sahil:!!sh}));
+  return [{ad:'Merkez', c:1.0, sahil:false}, {ad:'Yenişehir', c:1.12, sahil:false}, {ad:'Üniversite', c:1.05, sahil:false}, {ad:'Sanayi', c:0.78, sahil:false}, SAHIL.has(sid) ? {ad:'Sahil', c:1.3, sahil:true} : {ad:'Bağlar', c:0.9, sahil:false}];
+}
+const satisM2 = (sid, il) => 30000 * Math.pow(sehirBul(sid).pahali, 1.3) * ilceler(sid)[il].c;
+const ARSA_BOY = {1:[150, 400, 0.5, 1.0], 2:[200, 500, 0.8, 1.6], 3:[600, 1600, 1.2, 2.0], 4:[3000, 7000, 1.8, 3.0], 5:[15000, 40000, 2.5, 4.0]};
+const KATEGORI = [
+  {id:'villa', ad:'Villa', st:1, ac:'Bahçeli müstakil evler'},
+  {id:'konut', ad:'Konut', st:1, ac:'Bloklu apartman'},
+  {id:'rezidans', ad:'Rezidans', st:4, ac:'Yüksek katlı lüks daireler'},
+  {id:'avm', ad:'AVM', st:4, ac:'Mağazalar kiraya verilir', kiralik:true},
+  {id:'otel', ad:'Otel', st:4, ac:'Odalar işletilir, kira gibi gelir', kiralik:true},
+];
+const PLAN = [{ad:'1+1', m2:60}, {ad:'2+1', m2:95}, {ad:'3+1', m2:130}, {ad:'4+1', m2:180}];
+const DONATI = [{id:'havuz', ad:'Havuz', m:0.04, d:0.06}, {id:'otopark', ad:'Kapalı otopark', m:0.06, d:0.05}, {id:'spor', ad:'Spor salonu', m:0.02, d:0.03}, {id:'guvenlik', ad:'7/24 güvenlik', m:0.015, d:0.03}];
+const MAXKAT = {1:2, 2:5, 3:12, 4:25, 5:45}, MAXBLOK = {1:1, 2:2, 3:4, 4:6, 5:10}, MAXVILLA = {1:2, 2:6, 3:15, 4:30, 5:50};
+const BIRIM_MALIYET = {ekonomik:9000, standart:11000, luks:16000};
+const pTip = p => { const t = PROJE.find(x => x.id === p.tip) || {}; return {ad:p.ad || t.ad, kiralik:p.kiralikTip ?? !!t.kiralik}; };
+const yerAd = p => sehirBul(p.sehir).ad + (p.ilce != null ? ' · ' + ilceler(p.sehir)[p.ilce].ad : '');
+const projeBoy = p => p.kat ? Math.min(150, 16 + p.kat * 3.6) : PROJE_BOY[p.tip];
+function binaSpec(p){ if (!p.kat) return BINA[p.tip]; const bl = Math.min(p.blok, 5); return {kat:Math.min(p.kat, 40), blok:bl, gen:p.kiralikTip ? 86 : bl > 1 ? Math.max(12, Math.floor((100 - (bl - 1) * 6) / bl)) : 34}; }
 const PROJE_BOY = {mustakil:24, apt4:46, apt10:70, site:58, rezidans:112, avm:44, gokdelen:150, kentsel:78};
 let sky = {imza:''};
 function skyHazirla(W, H){
@@ -973,7 +1013,7 @@ function skyHazirla(W, H){
   const arka = Array.from({length:12 + S.st * 6}, () => { const w = 12 + r() * 26; return {x:r() * (W + 20) - 20, w, h:18 + r() * (22 + S.st * 15)}; }).sort((a, b) => b.h - a.h);
   const ogeler = [
     ...S.isletmeler.map(b => { const t = tipBul(b.tip); return {id:b.id, h:(16 + 8 * Math.log2(t.fiyat / 1e5 + 1) + b.lv * 3) * (1 + S.st * 0.08), renk:RENK[t.sektor], insaat:b.kalan > 0, ilerleme:b.kalan > 0 ? 1 - b.kalan / t.kur : 1, genis:false}; }),
-    ...S.projeler.map(p => ({id:p.id + 100000, h:PROJE_BOY[p.tip], renk:RENK.insaat, insaat:p.durum === 'insaat', ilerleme:p.durum === 'insaat' ? 1 - p.kalan / p.toplam : 1, genis:['avm', 'site', 'kentsel'].includes(p.tip), proje:true})),
+    ...S.projeler.map(p => ({id:p.id + 100000, h:projeBoy(p), renk:RENK.insaat, insaat:p.durum === 'insaat', ilerleme:p.durum === 'insaat' ? 1 - p.kalan / p.toplam : 1, genis:['avm', 'site', 'kentsel', 'otel'].includes(p.tip) || p.blok > 1, proje:true})),
   ].slice(-36);
   const adim = W / (ogeler.length + 1);
   ogeler.forEach((o, i) => {
@@ -1037,7 +1077,7 @@ function dongu(t){ if (sekme === 'merkez' && !azHareket && document.visibilitySt
 function konfeti(){ if (azHareket) return; const k = document.createElement('div'); k.className = 'konfeti'; const renk = ['#ff6b4a', '#ffc24b', '#3fe0a0', '#6a95ff', '#ff73c6', '#b5ec4a']; for (let i = 0; i < 46; i++){ const e = document.createElement('i'); e.style.left = Math.random() * 100 + '%'; e.style.background = renk[i % renk.length]; e.style.animationDelay = (Math.random() * 0.4) + 's'; e.style.setProperty('--dx', (Math.random() * 160 - 80) + 'px'); e.style.setProperty('--r', (Math.random() * 720 - 360) + 'deg'); k.appendChild(e); } document.body.appendChild(k); setTimeout(() => k.remove(), 2800); }
 const plakaNo = c => String(c.no).padStart(2, '0');
 function binaSVG(tip, durum, ilerleme, dolu, kalite){
-  const b = BINA[tip], W = 120, H = 92, zem = 88, fh = Math.min(9, 74 / b.kat), bw = b.gen, gap = 6, gen = b.blok * bw + (b.blok - 1) * gap, x0 = (W - gen) / 2;
+  const b = typeof tip === 'string' ? BINA[tip] : tip, W = 120, H = 92, zem = 88, fh = Math.min(9, 74 / b.kat), bw = b.gen, gap = 6, gen = b.blok * bw + (b.blok - 1) * gap, x0 = (W - gen) / 2;
   const insa = durum === 'insaat', biten = insa ? Math.floor(ilerleme * b.kat + 1e-4) : b.kat, cols = Math.max(2, Math.floor((bw - 6) / 6)), yanik = Math.round(b.blok * b.kat * cols * dolu);
   const trim = kalite === 'luks' ? '#ffc24b' : kalite === 'ekonomik' ? '#8a93c4' : '#ff8a4c';
   let o = `<svg viewBox="0 0 ${W} ${H}" class="bina-svg" aria-hidden="true"><rect x="0" y="${zem}" width="${W}" height="${H - zem}" fill="rgba(255,255,255,.1)"/>`, say = 0;
@@ -1068,7 +1108,7 @@ function sehirDetay(id){
   sheetAc(c.ad, `<div class="satir"><span class="plaka">${plakaNo(c)}</span><div class="ana-metin"><div class="b">${KADEME[c.kd].etiket}</div><div class="s">${SEKTOR[c.uzman]} uzmanı: bu sektördeki işletmeler %25 fazla kazanır</div></div>${ikon(c.uzman, true)}</div>
     <div class="kart"><div class="kv"><span>Fiyat seviyesi</span><b>×${dec(c.pahali, 2)}</b></div><div class="kv"><span>Talep</span><b>×${dec(c.talep, 2)}</b></div>${s ? `<div class="kv"><span>Konut endeksi</span><b>${dec(s.endeks, 2)} <span class="${s.degisim >= 0 ? 'iyi' : 'kotu'}">${s.degisim >= 0 ? '▲' : '▼'} ${pct(Math.abs(s.degisim))}</span></b></div><div class="kv"><span>İşletmeler · günlük net</span><b>${L.length} · ${isaret(L.reduce((a, b) => a + isletmeGelir(b) - isletmeGider(b), 0))}</b></div>` : `<div class="kv"><span>Şube açılış bedeli</span><b>${tlk(f)}</b></div>`}</div>
     ${s ? `<div class="ucuz"><button class="btn ana kucuk" data-d="isletme">İşletme aç</button><button class="btn kucuk" data-d="insaat">İnşaat</button><button class="btn kucuk" data-d="yonet" ${L.length ? '' : 'disabled'}>Yükselt</button></div>` : olur ? `<button class="btn ana" id="d-sube" ${S.nakit < f || dolu ? 'disabled' : ''}>${dolu ? 'Şube sınırı dolu: üst basamağa geç' : 'Şube aç · ' + tlk(f)}</button>` : `<div class="metin">Bu şehir ${BASAMAK[c.st - 1].ad} basamağında açılır.</div>`}`,
-    g => { g.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const d = b.dataset.d; if (d === 'isletme') isletmeSheet(id); else if (d === 'yonet') yonetSheet(id); else insaatSheet({sehir:id, tip:PROJE.filter(x => x.st <= S.st).slice(-1)[0].id, kalite:'standart', etud:true}); }); const sb = g.querySelector('#d-sube'); if (sb) sb.onclick = () => { if (subeAc(id)){ konfeti(); sehirDetay(id); render(); } }; });
+    g => { g.querySelectorAll('[data-d]').forEach(b => b.onclick = () => { const d = b.dataset.d; if (d === 'isletme') isletmeSheet(id); else if (d === 'yonet') yonetSheet(id); else arsaSheet(id, 0); }); const sb = g.querySelector('#d-sube'); if (sb) sb.onclick = () => { if (subeAc(id)){ konfeti(); sehirDetay(id); render(); } }; });
 }
 function memleketSheet(){
   sheetAc('Memleketini seç', `<div class="metin">Baban sana bir çay ocağı ve biraz birikim bıraktı. İşe nereden başlayacaksın? Memleketinin uzman olduğu sektördeki işletmeler %25 fazla kazanır.</div>
@@ -1085,6 +1125,114 @@ function cevrimdisi(){
   if (gun < 2 || k <= 0) return;
   sheetAc('Sen yokken', `<div class="metin">${gun} gün boyunca işletmelerin çalışmaya devam etti, müdürlerin kasaya para koydu.</div><div class="buyuk iyi">+${tlk(k)}</div><div class="ikili"><button class="btn" id="cd-al">Al</button><button class="btn ana" id="cd-2x"><span class="rozet reklam">Reklam</span> 2 katını al</button></div>`,
     g => { const al = m => { S.nakit += k * m; S.ayKar += k * m; log(`Sen yokken kazanılan: +${tlk(k * m)}`, 'iyi'); sheetKapat(); ucan('+' + tlk(k * m), 'iyi'); kaydet(); }; g.querySelector('#cd-al').onclick = () => al(1); g.querySelector('#cd-2x').onclick = () => reklam(() => al(2)); }, true);
+}
+
+function arsaUret(sid, il, n){
+  const [m0, m1, e0, e1] = ARSA_BOY[S.st], ic = ilceler(sid)[il];
+  return Array.from({length:n}, () => { const m2 = Math.round(rnd(m0, m1) / 10) * 10, emsal = Math.round(rnd(e0, e1) * 20) / 20, kose = Math.random() < 0.25, manzara = ic.sahil && Math.random() < 0.45, carpan = (kose ? 1.08 : 1) * (manzara ? 1.25 : 1);
+    return {id:S.nid++, sehir:sid, ilce:il, m2, emsal, kose, manzara, carpan, fiyatReal:m2 * satisM2(sid, il) * 0.22 * emsal * carpan}; });
+}
+const arsaFiyat = a => a.fiyatReal * S.sehirler[a.sehir].endeks * S.I;
+const arsaDeger = () => S.arsalar.reduce((t, a) => t + (S.sehirler[a.sehir] ? arsaFiyat(a) : 0), 0);
+const arsaEtiket = a => `${a.firsat ? '<span class="rozet reklam">Günün fırsatı -%20</span> ' : ''}${a.kose ? '<span class="rozet uzman">Köşe</span> ' : ''}${a.manzara ? '<span class="rozet uzman">Deniz manzaralı</span>' : ''}`;
+let arsaSec = {sehir:null, ilce:0};
+function arsaSheet(sid, il){
+  sid = sid && S.sehirler[sid] ? sid : (arsaSec.sehir && S.sehirler[arsaSec.sehir] ? arsaSec.sehir : acikSehirler()[0].id);
+  il = il ?? (sid === arsaSec.sehir ? arsaSec.ilce : 0); arsaSec = {sehir:sid, ilce:il};
+  const ils = ilceler(sid), ic = ils[il], key = sid + ':' + il;
+  let pz = S.pazar[key];
+  if (!pz || S.gun - pz.gun >= 20){ const list = arsaUret(sid, il, 4), f = pick(list); f.firsat = true; f.fiyatReal *= 0.8; pz = S.pazar[key] = {gun:S.gun, list}; }
+  const e = S.sehirler[sid].endeks;
+  sheetAc('Arsa bul', `<div class="kv"><span>Kasa</span><b>${tl(S.nakit)}</b></div>
+    <div><div class="etiket">Şehir</div>${sehirSekme(sid, 'as')}</div>
+    <div><div class="etiket">İlçe</div><div class="sekmeler">${ils.map((x, i) => `<button class="sekme ${i === il ? 'on' : ''}" data-ilce="${i}">${x.ad} · ×${dec(x.c, 2)}</button>`).join('')}</div></div>
+    <div class="metin">${ic.ad}${ic.sahil ? ' sahil ilçesi' : ''}: daire satış fiyatı yaklaşık ${tlk(satisM2(sid, il) * e * S.I)}/m². İlanlar ${Math.max(0, 20 - (S.gun - pz.gun))} gün sonra yenilenir.</div>
+    <div class="secenekler">${pz.list.length ? pz.list.map((a, i) => { const f = arsaFiyat(a); return `<div class="secenek"><span class="etiket">Arsa ${i + 1}</span><span class="ad">${fmtInt(a.m2)} m²</span><span class="ac">Emsal ${dec(a.emsal, 2)} · inşaat hakkı ${fmtInt(a.m2 * a.emsal)} m²</span><span>${arsaEtiket(a)}</span><span class="ad" style="color:var(--gold)">${tlk(f)}</span><span class="ac">${tl(f / a.m2)}/m² · binayla birlikte ~${tlk(f + a.m2 * a.emsal * 11000 * S.I)}</span><button class="btn ana kucuk" data-arsa-al="${a.id}" ${S.nakit < f ? 'disabled' : ''}>Satın al</button></div>`; }).join('') : '<div class="bos">Bu ilçedeki ilanlar tükendi.</div>'}</div>
+    ${S.arsalar.length ? `<button class="btn" id="arsalarim">Arsalarım (${S.arsalar.length}) · proje tasarla</button>` : ''}`,
+    g => {
+      g.querySelectorAll('[data-as]').forEach(b => b.onclick = () => arsaSheet(b.dataset.as, 0));
+      g.querySelectorAll('[data-ilce]').forEach(b => b.onclick = () => arsaSheet(sid, +b.dataset.ilce));
+      g.querySelectorAll('[data-arsa-al]').forEach(b => b.onclick = () => { const a = pz.list.find(x => x.id === +b.dataset.arsaAl), f = arsaFiyat(a); if (S.nakit < f) return; S.nakit -= f; ucan('-' + tlk(f), 'kotu'); pz.list = pz.list.filter(x => x !== a); S.arsalar.push({...a, alisNom:f}); S.sayac.arsa = (S.sayac.arsa || 0) + 1; log(`${deEki(sehirBul(sid).ad)} ${ic.ad} ilçesinde ${fmtInt(a.m2)} m² arsa alındı: -${tlk(f)}`, 'iyi'); toast('Arsa alındı · şimdi projeni tasarla'); tasarimSheet(S.arsalar[S.arsalar.length - 1].id); render(); });
+      const ar = g.querySelector('#arsalarim'); if (ar) ar.onclick = arsalarimSheet;
+    });
+}
+function arsalarimSheet(){
+  sheetAc('Arsalarım', `<div class="metin">Elindeki arsalar konut fiyat endeksiyle birlikte değerlenir. İstediğinde proje tasarla ya da satıp nakde çevir.</div>
+    <div class="liste">${S.arsalar.length ? S.arsalar.map(a => { const f = arsaFiyat(a), kz = f - a.alisNom; return `<div class="kart"><div class="satir">${ikon('insaat')}<div class="ana-metin"><div class="b">${yerAd(a)} · ${fmtInt(a.m2)} m²</div><div class="s">Emsal ${dec(a.emsal, 2)} · inşaat hakkı ${fmtInt(a.m2 * a.emsal)} m² · değer ${tlk(f)} <span class="${kz >= 0 ? 'iyi' : 'kotu'}">${isaret(kz)}</span></div><div>${arsaEtiket(a)}</div></div></div><div class="ikili"><button class="btn ana kucuk" data-tasarla="${a.id}">Proje tasarla</button><button class="btn kucuk" data-arsa-sat="${a.id}">Sat · ${tlk(f * 0.95)}</button></div></div>`; }).join('') : '<div class="bos">Arsan yok. "Arsa bul" ile ilçelerden arsa seç.</div>'}</div>
+    <button class="btn" id="arsa-bul">Yeni arsa bul</button>`,
+    g => {
+      g.querySelectorAll('[data-tasarla]').forEach(b => b.onclick = () => tasarimSheet(+b.dataset.tasarla));
+      g.querySelectorAll('[data-arsa-sat]').forEach(b => b.onclick = () => { const a = S.arsalar.find(x => x.id === +b.dataset.arsaSat), v = arsaFiyat(a) * 0.95; S.nakit += v; S.ayKar += v - a.alisNom; S.arsalar = S.arsalar.filter(x => x !== a); log(`${yerAd(a)} arsası satıldı: +${tlk(v)}`, 'not'); arsalarimSheet(); render(); });
+      g.querySelector('#arsa-bul').onclick = () => arsaSheet();
+    });
+}
+function tasarimHesap(a, d){
+  const kt = KATEGORI.find(k => k.id === d.tur), izin = a.m2 * a.emsal, kal = KALITE[d.kalite];
+  let birim, alan, kat, blok, birimM2, maxKat = MAXKAT[S.st], maxBlok = MAXBLOK[S.st], maxVilla = Math.min(MAXVILLA[S.st], Math.floor(izin / 120));
+  if (d.tur === 'villa'){ d.villa = clamp(d.villa, 1, Math.max(1, maxVilla)); birimM2 = 120; birim = d.villa; alan = birim * birimM2; kat = 2; blok = Math.min(birim, 5); }
+  else if (kt.kiralik){ maxKat = Math.min(maxKat, Math.max(1, Math.floor(izin / (a.m2 * 0.6)))); d.kat = clamp(d.kat, 1, maxKat); kat = d.kat; blok = 1; alan = Math.min(izin, a.m2 * 0.6 * kat); birim = 1; birimM2 = alan; }
+  else { const pl = PLAN[d.plan], taban = a.m2 * (d.tur === 'rezidans' ? 0.4 : 0.5); birimM2 = pl.m2; maxBlok = Math.max(1, Math.min(maxBlok, Math.floor(taban / (birimM2 * 1.25)))); d.blok = clamp(d.blok, 1, maxBlok); var dpk = Math.max(1, Math.floor(taban / d.blok / (birimM2 * 1.25))); maxKat = Math.min(maxKat, Math.max(1, Math.floor(izin / (d.blok * dpk * birimM2 * 1.25)))); d.kat = clamp(d.kat, 1, maxKat); blok = d.blok; kat = d.kat; birim = blok * kat * dpk; alan = birim * birimM2 * 1.25; }
+  const donM = DONATI.reduce((t, x) => t + (d.donati[x.id] ? x.m : 0), 0), donD = DONATI.reduce((t, x) => t + (d.donati[x.id] ? x.d : 0), 0);
+  const bm = BIRIM_MALIYET[d.kalite] * (d.tur === 'rezidans' ? 1.2 : d.tur === 'villa' ? 1.1 : kt.kiralik ? 1.15 : 1);
+  const yapimReal = alan * bm * (1 + donM) * (1 - insaatIndirim()) * (d.etud ? 1.02 : 1);
+  const m2s = satisM2(a.sehir, a.ilce) * a.carpan * (d.tur === 'otel' && sehirBul(a.sehir).uzman === 'turizm' ? 1.2 : 1);
+  const degerReal = (kt.kiralik ? alan * m2s * 1.1 : birim * birimM2 * m2s) * kal.d * (1 + donD) * (d.tur === 'rezidans' ? 1.12 : 1);
+  const gun = Math.round(d.tur === 'villa' ? 14 + birim * 3 : 15 + kat * 3 + blok * 5);
+  return {kt, izin, alan, birim, kat, blok, birimM2, yapimReal, degerReal, gun, maxKat, maxBlok, maxVilla, dpk:typeof dpk === 'number' ? dpk : 1, asim:alan > izin + 1};
+}
+function projeAdi(d, h){ return d.tur === 'villa' ? `${h.birim} villalı site` : d.tur === 'konut' ? `${h.blok > 1 ? h.blok + ' bloklu ' : ''}${h.kat} katlı konut` : d.tur === 'rezidans' ? `${h.kat} katlı rezidans` : d.tur === 'avm' ? `${h.kat} katlı AVM` : `${h.kat} katlı otel`; }
+function tasarimSheet(aid, d0){
+  const a = S.arsalar.find(x => x.id === aid); if (!a) return arsalarimSheet();
+  const d = d0 || {tur:a.m2 * a.emsal < 600 ? 'villa' : 'konut', blok:1, kat:2, plan:1, villa:1, kalite:'standart', donati:{}, etud:true};
+  if (!d0 || d.doldur){
+    const taban = a.m2 * (d.tur === 'rezidans' ? 0.4 : 0.5); d.blok = clamp(Math.ceil(Math.floor(taban / (PLAN[d.plan].m2 * 1.25)) / 6), 1, MAXBLOK[S.st]); d.kat = 99; d.villa = 99; d.doldur = false;
+    let h = tasarimHesap(a, d);
+    while (h.yapimReal * S.I > S.nakit && (d.tur === 'villa' ? d.villa > 1 : d.kat > 1)){ if (d.tur === 'villa') d.villa--; else d.kat--; h = tasarimHesap(a, d); }
+  }
+  const kt = KATEGORI.find(k => k.id === d.tur);
+  sheetAc('Proje tasarla', `<div class="satir">${ikon('insaat')}<div class="ana-metin"><div class="b">${yerAd(a)} · ${fmtInt(a.m2)} m²</div><div class="s">Emsal ${dec(a.emsal, 2)} · inşaat hakkı ${fmtInt(a.m2 * a.emsal)} m²</div><div>${arsaEtiket(a)}</div></div></div>
+    <div class="sekmeler">${KATEGORI.map(k => `<button class="sekme ${k.id === d.tur ? 'on' : ''}" data-tur="${k.id}" ${k.st > S.st ? 'disabled' : ''}>${k.ad}${k.st > S.st ? ' · ' + BASAMAK[k.st - 1].ek : ''}</button>`).join('')}</div>
+    <div class="onizleme"><div class="bina-kutu" id="t-gorsel"></div><div class="ana-metin"><div class="etiket">${kt.ac}</div><div class="buyuk" style="font-size:19px" id="t-ad"></div><div class="metin" id="t-alt"></div></div></div>
+    <div class="kart" id="t-kontrol">
+      ${d.tur === 'villa' ? `<div class="kv"><span>Villa sayısı</span><b id="v-villa"></b></div><input type="range" id="r-villa" min="1" step="1" aria-label="Villa sayısı">` : ''}
+      ${d.tur === 'konut' || d.tur === 'rezidans' ? `<div class="kv"><span>Blok sayısı</span><b id="v-blok"></b></div><input type="range" id="r-blok" min="1" step="1" aria-label="Blok sayısı">` : ''}
+      ${d.tur !== 'villa' ? `<div class="kv"><span>Kat sayısı</span><b id="v-kat"></b></div><input type="range" id="r-kat" min="1" step="1" aria-label="Kat sayısı">` : ''}
+      ${d.tur === 'konut' || d.tur === 'rezidans' ? `<div class="kv"><span>Daire planı</span><b id="v-plan"></b></div><input type="range" id="r-plan" min="0" max="3" step="1" aria-label="Daire planı">` : ''}
+      <div class="kv"><span>Malzeme kalitesi</span><b id="v-kalite"></b></div><input type="range" id="r-kalite" min="0" max="2" step="1" aria-label="Malzeme kalitesi">
+    </div>
+    <div><div class="etiket">Sosyal donatılar</div><div class="sekmeler">${DONATI.map(x => `<button class="sekme ${d.donati[x.id] ? 'on' : ''}" data-donati="${x.id}">${x.ad} · +%${Math.round(x.d * 100)} değer</button>`).join('')}</div></div>
+    <label class="satir"><input type="checkbox" id="etud" ${d.etud ? 'checked' : ''}><span class="ana-metin"><span class="b">Zemin etüdü (+%2)</span><div class="s">Yaptırmazsan inşaat ortasında temel sorunu çıkabilir, depremde bina hasar görür.</div></span></label>
+    <div class="kart" id="t-ozet"></div>
+    <button class="btn ana" id="t-temel">Temel at</button>`,
+    g => {
+      const KAL = ['ekonomik', 'standart', 'luks'];
+      const guncelle = () => {
+        const h = tasarimHesap(a, d), kar = h.degerReal * S.sehirler[a.sehir].endeks * S.I - h.yapimReal * S.I - a.alisNom, yap = h.yapimReal * S.I, dolu = aktifSantiye() >= B().santiye;
+        const set = (id, v) => { const el = g.querySelector('#' + id); if (el) el.textContent = v; }, rng = (id, max, val) => { const el = g.querySelector('#' + id); if (el){ el.max = max; el.value = val; } };
+        rng('r-villa', Math.max(1, h.maxVilla), d.villa); rng('r-blok', h.maxBlok, d.blok); rng('r-kat', h.maxKat, d.kat); rng('r-plan', 3, d.plan); rng('r-kalite', 2, KAL.indexOf(d.kalite));
+        set('v-villa', `${d.villa} / ${Math.max(1, h.maxVilla)}`); set('v-blok', `${d.blok} / ${h.maxBlok}`); set('v-kat', `${d.kat} / ${h.maxKat}`); set('v-plan', `${PLAN[d.plan].ad} · ${PLAN[d.plan].m2} m²`); set('v-kalite', KALITE[d.kalite].ad);
+        set('t-ad', projeAdi(d, h)); set('t-alt', `${h.kt.kiralik ? fmtInt(h.alan) + ' m² kiralık alan' : h.birim + (d.tur === 'villa' ? ' villa' : ` daire · katta ${h.blok > 1 ? h.blok + '×' : ''}${h.dpk}`)} · ${h.gun} gün`);
+        g.querySelector('#t-gorsel').innerHTML = binaSVG(binaSpec({kat:h.kat, blok:h.blok, kiralikTip:!!h.kt.kiralik, tip:d.tur}), 'satis', 1, 0.75, d.kalite);
+        g.querySelector('#t-ozet').innerHTML = `<div class="kv"><span>İnşaat alanı / imar hakkı</span><b class="${h.asim ? 'kotu' : ''}">${fmtInt(h.alan)} / ${fmtInt(h.izin)} m²</b></div><div class="bar ince"><i style="width:${Math.min(100, h.alan / h.izin * 100)}%"></i></div>
+          <div class="kv"><span>Yapım maliyeti${insaatIndirim() ? ` (indirim -%${Math.round(insaatIndirim() * 100)})` : ''}</span><b>${tlk(yap)}</b></div><div class="kv"><span>Arsa (ödendi)</span><b>${tlk(a.alisNom)}</b></div>
+          ${h.kt.kiralik ? `<div class="kv"><span>Tahmini kira geliri</span><b class="iyi">${tlk(h.degerReal * S.sehirler[a.sehir].endeks * S.I * 0.075 / 360)} / gün</b></div>` : `<div class="kv"><span>Tahmini toplam satış</span><b>${tlk(h.degerReal * S.sehirler[a.sehir].endeks * S.I)}</b></div><div class="kv"><span>Tahmini kâr (vergi öncesi)</span><b class="${kar >= 0 ? 'iyi' : 'kotu'}">${isaret(kar)}</b></div>`}
+          <div class="kv"><span>Şantiyeler</span><b class="${dolu ? 'kotu' : ''}">${aktifSantiye()} / ${B().santiye}</b></div>`;
+        const btn = g.querySelector('#t-temel'); btn.disabled = h.asim || dolu || S.nakit < yap; btn.textContent = dolu ? 'Bütün şantiyeler dolu' : S.nakit < yap ? 'Kasa yetersiz · ' + tlk(yap) : 'Temel at · ' + tlk(yap);
+        return h;
+      };
+      guncelle();
+      g.querySelectorAll('[data-tur]').forEach(b => b.onclick = () => { d.tur = b.dataset.tur; d.doldur = true; tasarimSheet(aid, d); });
+      g.querySelectorAll('[data-donati]').forEach(b => b.onclick = () => { d.donati[b.dataset.donati] = !d.donati[b.dataset.donati]; b.classList.toggle('on'); guncelle(); });
+      [['r-villa', 'villa'], ['r-blok', 'blok'], ['r-kat', 'kat'], ['r-plan', 'plan']].forEach(([id, k]) => { const el = g.querySelector('#' + id); if (el) el.oninput = () => { d[k] = +el.value; guncelle(); }; });
+      g.querySelector('#r-kalite').oninput = e => { d.kalite = KAL[+e.target.value]; guncelle(); };
+      g.querySelector('#etud').onchange = e => { d.etud = e.target.checked; guncelle(); };
+      g.querySelector('#t-temel').onclick = () => {
+        const h = guncelle(), yap = h.yapimReal * S.I; if (h.asim || S.nakit < yap || aktifSantiye() >= B().santiye) return;
+        const p = {id:S.nid++, tip:d.tur, ad:projeAdi(d, h), sehir:a.sehir, ilce:a.ilce, kalite:d.kalite, etud:d.etud, durum:'insaat', kalan:h.gun, toplam:h.gun, birim:h.birim, satilacak:h.birim, kiralik:0, kiralikTip:!!h.kt.kiralik, maliyetNom:a.alisNom + yap, maliyetReal:(a.alisNom + yap) / S.I, birimReal:h.degerReal / h.birim, fiyatOran:1, one:0, zemin:false, satilan:0, ciro:0, kat:h.kat, blok:h.blok};
+        S.nakit -= yap; ucan('-' + tlk(yap), 'kotu'); S.arsalar = S.arsalar.filter(x => x !== a); S.projeler.push(p); S.sayac.temel++;
+        log(`${yerAd(a)}: ${p.ad} için temel atıldı (${KALITE[d.kalite].ad}${d.etud ? ', zemin etüdlü' : ''}): -${tlk(yap)}`, 'iyi'); toast('Temel atıldı'); konfeti(); sheetKapat();
+      };
+    });
 }
 
 function renderUst(){
@@ -1119,7 +1267,7 @@ function renderMerkez(){
     </div>
     <div class="hizli">
       <button class="oyun-btn mercan" data-git="isletme">${ikon('yeme')}<span><b>İşletme aç</b><small>${TIP.filter(t => t.st <= S.st).length} iş kolu</small></span></button>
-      <button class="oyun-btn altin" data-git="insaat">${ikon('insaat')}<span><b>İnşaat başlat</b><small>${aktifSantiye()}/${B().santiye} şantiye</small></span></button>
+      <button class="oyun-btn altin" data-git="insaat">${ikon('insaat')}<span><b>Arsa bul</b><small>${S.arsalar.length ? S.arsalar.length + ' arsan var · ' : ''}${aktifSantiye()}/${B().santiye} şantiye</small></span></button>
       <button class="oyun-btn" data-git="satis">${ikon('perakende')}<span><b>Satış ofisi</b><small>${S.teklifler.length ? S.teklifler.length + ' alıcı teklifi bekliyor' : satista ? satista + ' birim satışta' : 'Satışta mülk yok'}</small></span></button>
       <button class="oyun-btn" data-git="ihale">${ikon('finans')}<span><b>İhaleler</b><small>${S.st < 2 ? 'Limited ile açılır' : S.ihaleler.filter(x => !x.sonuc).length + ' açık ilan'}</small></span></button>
     </div>
@@ -1151,12 +1299,12 @@ function renderSehir(){
 
 function renderInsaat(){
   const sant = S.projeler.filter(p => p.durum === 'insaat'), sat = S.projeler.filter(p => p.durum === 'satis'), kira = S.projeler.filter(p => p.kiralik > 0);
-  const kart = (p, ic) => { const t = projeBul(p.tip), c = sehirBul(p.sehir); return `<div class="proje"><div class="proje-ust"><div class="bina-kutu">${binaSVG(p.tip, p.durum, p.durum === 'insaat' ? 1 - p.kalan / p.toplam : 1, p.durum === 'satis' ? p.satilan / p.birim : p.durum === 'kira' ? 1 : 0, p.kalite)}</div><div class="ana-metin"><div class="b">${t.ad}</div><div class="s">${c.ad} · ${KALITE[p.kalite].ad}${p.etud ? ' · zemin etüdlü' : ' · etüdsüz'}</div>${ic.sag || ''}</div></div>${ic.alt}</div>`; };
+  const kart = (p, ic) => { const t = pTip(p), c = sehirBul(p.sehir); return `<div class="proje"><div class="proje-ust"><div class="bina-kutu">${binaSVG(binaSpec(p), p.durum, p.durum === 'insaat' ? 1 - p.kalan / p.toplam : 1, p.durum === 'satis' ? p.satilan / p.birim : p.durum === 'kira' ? 1 : 0, p.kalite)}</div><div class="ana-metin"><div class="b">${t.ad}</div><div class="s">${yerAd(p)} · ${KALITE[p.kalite].ad}${p.etud ? ' · zemin etüdlü' : ' · etüdsüz'}</div>${ic.sag || ''}</div></div>${ic.alt}</div>`; };
   $('#v-insaat').innerHTML = `<div class="blok-bas"><h2 class="baslik">İnşaat</h2><span class="ipucu">${aktifSantiye()}/${B().santiye} şantiye</span></div>
-    <div class="ikili"><button class="oyun-btn altin" data-git="insaat">${ikon('insaat')}<span><b>Yeni proje</b><small>Temeli at</small></span></button><button class="oyun-btn mercan" data-git="tarla">${ikon('enerji')}<span><b>Tarla avı</b><small>${S.isler.filter(j => j.tur === 'tarla').length} tarla imar bekliyor</small></span></button></div>
+    <div class="ikili"><button class="oyun-btn altin" data-git="insaat">${ikon('insaat')}<span><b>Arsa bul</b><small>İlçe seç, arsa kap</small></span></button><button class="oyun-btn" data-git="arsalarim">${ikon('finans')}<span><b>Arsalarım</b><small>${S.arsalar.length} arsa · proje tasarla</small></span></button></div><div class="ikili"><button class="oyun-btn mercan" data-git="tarla">${ikon('enerji')}<span><b>Tarla avı</b><small>${S.isler.filter(j => j.tur === 'tarla').length} tarla imar bekliyor</small></span></button></div>
     <section class="blok"><div class="blok-bas"><h2>Şantiyeler</h2></div>${sant.length ? sant.map(p => kart(p, {sag:!p.hizli && p.kalan > 2 ? `<button class="btn kucuk" data-hizlandir="${p.id}"><span class="rozet reklam">Reklam</span> Hızlandır</button>` : '', alt:`<div class="kv"><span>İlerleme</span><b>${p.kalan} gün kaldı</b></div><div class="bar ince"><i style="width:${(1 - p.kalan / p.toplam) * 100}%"></i></div>`})).join('') : '<div class="bos">Şantiye yok.</div>'}</section>
     <section class="blok"><div class="blok-bas"><h2>Satıştakiler</h2>${sat.length ? '<button class="link" data-git="satis">Fiyatları ayarla</button>' : ''}</div>${sat.length ? sat.map(p => kart(p, {alt:`<div class="kv"><span>${p.satilan}/${p.birim} satıldı · birim fiyat</span><b>${tlk(birimFiyat(p) * p.fiyatOran)}</b></div><div class="bar ince yesil"><i style="width:${p.satilan / p.birim * 100}%"></i></div><div class="kv"><span>Tahmini satış hızı</span><b>${dec(satisHizi(p) * p.satilacak, 2)} / gün</b></div>`})).join('') : '<div class="bos">Satışta proje yok.</div>'}</section>
-    ${kira.length ? `<section class="blok"><div class="blok-bas"><h2>Kiradakiler</h2></div>${kira.map(p => kart(p, {alt:`<div class="kv"><span>${p.kiralik} birim kirada</span><b class="iyi">${isaret(p.kiralik * birimFiyat(p) * (projeBul(p.tip).kiralik ? 0.075 : 0.065) / 360)} / gün</b></div>`})).join('')}</section>` : ''}`;
+    ${kira.length ? `<section class="blok"><div class="blok-bas"><h2>Kiradakiler</h2></div>${kira.map(p => kart(p, {alt:`<div class="kv"><span>${p.kiralik} birim kirada</span><b class="iyi">${isaret(p.kiralik * birimFiyat(p) * (pTip(p).kiralik ? 0.075 : 0.065) / 360)} / gün</b></div>`})).join('')}</section>` : ''}`;
 }
 
 function renderSirket(){
@@ -1217,7 +1365,7 @@ document.addEventListener('click', e => {
   if (e.target.closest('#gunluk-al')){ const d = gunlukDurum(); if (d){ S.nakit += d.odul; const v = {son:bugun(), seri:d.seri}; gunlukBellek = v; try { localStorage.setItem('sh-gunluk', JSON.stringify(v)); } catch (er) {} log(`Günlük ödül (${d.seri}. gün): +${tlk(d.odul)}`, 'iyi'); ucan('+' + tlk(d.odul), 'iyi'); konfeti(); render(); } return; }
   const gt = e.target.closest('[data-git]'); if (gt){ GIT[gt.dataset.git](gt.dataset.arg); return; }
   const sa = e.target.closest('[data-subeac]'); if (sa){ if (subeAc(sa.dataset.subeac)){ konfeti(); render(); } return; }
-  const z = e.target.closest('[data-hizlandir]'); if (z){ const p = S.projeler.find(x => x.id === +z.dataset.hizlandir); if (p) reklam(() => { p.kalan = Math.max(1, Math.ceil(p.kalan / 2)); p.hizli = true; log(`${projeBul(p.tip).ad}: ek vardiya ile hızlandırıldı.`, 'not'); render(); }); return; }
+  const z = e.target.closest('[data-hizlandir]'); if (z){ const p = S.projeler.find(x => x.id === +z.dataset.hizlandir); if (p) reklam(() => { p.kalan = Math.max(1, Math.ceil(p.kalan / 2)); p.hizli = true; log(`${pTip(p).ad}: ek vardiya ile hızlandırıldı.`, 'not'); render(); }); return; }
   if (e.target.closest('#gec')){ const sb = BASAMAK[S.st], u = sb.esik * 0.06 * S.I; if (S.nakit < u) return; S.nakit -= u; S.st = sb.n; log(`Ticaret sicil: ${firmaAdi()} tescil edildi. -${tlk(u)}`, 'iyi'); konfeti(); kaydet(); render(); basamakSheet(sb.n); }
 });
 
@@ -1232,7 +1380,7 @@ function start(veri){
   for (const id of Object.keys(S.sehirler)) if (!sehirBul(id)) delete S.sehirler[id];
   if (!Object.keys(S.sehirler).length) S.sehirler.kayseri = {endeks:1, degisim:0};
   S.isletmeler = S.isletmeler.filter(b => S.sehirler[b.sehir]); S.projeler = S.projeler.filter(p => S.sehirler[p.sehir]);
-  S.sayac = S.sayac || {temel:0, satis:0, tarla:0, ihale:0}; S.gorev = S.gorev ?? GOREV_BAS[S.st]; S.memleket = S.memleket || Object.keys(S.sehirler)[0];
+  S.sayac = S.sayac || {temel:0, satis:0, tarla:0, ihale:0}; S.arsalar = (S.arsalar || []).filter(a => S.sehirler[a.sehir]); S.pazar = S.pazar || {}; S.gorev = S.gorev ?? GOREV_BAS[S.st]; S.memleket = S.memleket || Object.keys(S.sehirler)[0];
   S.teklifler = S.teklifler || []; S.tarlaTeklif = S.tarlaTeklif || []; S.tarlaCd = S.tarlaCd || 0; S.hisse = S.hisse || {}; S.borsa = S.borsa || borsaKur(S.I);
   window.claude?.hot?.snapshot?.(() => ({S}));
   render();
