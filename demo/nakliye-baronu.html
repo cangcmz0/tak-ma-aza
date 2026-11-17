@@ -212,7 +212,7 @@ const AYLAR = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağus
 const HALKA_ARZ = 40e9;
 
 const CAGLAR = [
-  {n:1, ad:'Esnaf', yer:'İstanbul içi dağıtım', unvan:'Esnaf', esik:0, acar:['Araç alımı','İnşaat: kapalı garaj ve atölye','Yan işler: çay ocağı, oto yıkama, lastikçi','Arsa ve Euro yatırımı','GPS filo takibi','Riskli sefer ve rota seçimi','Karar kartları','Banka kredisi']},
+  {n:1, ad:'Esnaf', yer:'İstanbul içi dağıtım', unvan:'Esnaf', esik:0, acar:['Araç alımı','İnşaat: kapalı garaj ve atölye','Yan işler: çay ocağı, oto yıkama, lastikçi','Hat ruhsatı ve Euro yatırımı','Şoför kadrosu: memleketli, huylu şoförler','GPS filo takibi','Riskli sefer ve rota seçimi','Karar kartları','Banka kredisi']},
   {n:2, ad:'Şehirlerarası', yer:'Ankara · İzmir · Bursa hatları', unvan:'Nakliyeci', esik:8e6, acar:['Kapalı zarf ihale','Akaryakıt fiyat kilidi kartı']},
   {n:3, ad:'Filo', yer:'Gebze ve Hadımköy depoları', unvan:'Patron', esik:35e6, acar:['Filo müdürü','Statü harcamaları','Deprem ve grev olayları']},
   {n:4, ad:'Uluslararası', yer:'Kapıkule · Habur · Sarp', unvan:'Ağa', esik:150e6, acar:['Avrupa ve Irak seferleri','Gümrükte rüşvet ikilemi','Kur ve sınır kuyruğu krizleri']},
@@ -270,23 +270,41 @@ const TEKNO = [
   {id:'drone', ad:'Otonom depo ve drone teslimat', cag:7, fiyat:5e9, bonus:0.08, ac:'Gelir +%8.'},
 ];
 
-const ARSA = [
-  {id:'hadimkoy', ad:"Hadımköy'de 2 dönüm arsa", cag:1, fiyat:1.2e6},
-  {id:'gebze', ad:'Gebze OSB parseli', cag:2, fiyat:9e6},
-  {id:'bodrum', ad:'Bodrum yazlık arsa', cag:3, fiyat:30e6},
-  {id:'mersin', ad:'Mersin liman arkası arazi', cag:4, fiyat:80e6},
-  {id:'kars', ad:'Kars lojistik köyü yanı arazi', cag:6, fiyat:6e8},
-  {id:'kanal', ad:'Kanal güzergâhında arazi', cag:7, fiyat:3e9},
+const HATLAR = [
+  {id:'marmara', ad:'Marmara dağıtım hattı', cag:1, fiyat:1e6, bonus:0.03},
+  {id:'ankara', ad:'İstanbul–Ankara ekspres hattı', cag:2, fiyat:6e6, bonus:0.04},
+  {id:'ege', ad:'Ege–Akdeniz sahil hattı', cag:3, fiyat:25e6, bonus:0.04},
+  {id:'cemt', ad:'CEMT geçiş belgesi kotası (Avrupa)', cag:4, fiyat:90e6, bonus:0.05},
+  {id:'habur', ad:'Habur–Irak transit hattı', cag:4, fiyat:60e6, bonus:0.04},
+  {id:'mersin', ad:'Mersin liman bağlantı hattı', cag:5, fiyat:4e8, bonus:0.05},
+  {id:'koridor', ad:'Orta Koridor demiryolu slotu', cag:6, fiyat:2.5e9, bonus:0.06},
+  {id:'hava', ad:'İstanbul–Frankfurt hava kargo slotu', cag:7, fiyat:8e9, bonus:0.06},
 ];
+
+const OZELLIK = {
+  hizli:{ad:'Hızlı', ac:'Sefer 1 gün kısa, risk +%10', sure:-1, risk:1.1, kar:1},
+  dikkatli:{ad:'Dikkatli', ac:'Risk -%30, kâr -%5', sure:0, risk:0.7, kar:0.95},
+  pazarlikci:{ad:'Pazarlıkçı', ac:'Kâr +%12', sure:0, risk:1, kar:1.12},
+  kis:{ad:'Kış kurdu', ac:'Riskli rotada risk -%40', sure:0, risk:1, kar:1, riskli:0.6},
+};
+const SOFOR_HAVUZ = [
+  {ad:'Temel', yer:'Rize', oz:'hizli'}, {ad:'Hüsniye', yer:'Sivas', oz:'dikkatli'}, {ad:'Mahmut', yer:'Gaziantep', oz:'pazarlikci'},
+  {ad:'Cemal', yer:'Kars', oz:'kis'}, {ad:'Dilek', yer:'Eskişehir', oz:'dikkatli'}, {ad:'Zeynep', yer:'Mersin', oz:'pazarlikci'},
+  {ad:'İsmail', yer:'Çorum', oz:'hizli'}, {ad:'Ayten', yer:'Kayseri', oz:'pazarlikci'}, {ad:'Recep', yer:'Erzurum', oz:'kis'},
+  {ad:'Gülsüm', yer:'Denizli', oz:'dikkatli'}, {ad:'Yusuf', yer:'Ordu', oz:'hizli'}, {ad:'Necla', yer:'Edirne', oz:'pazarlikci'},
+  {ad:'Ferhat', yer:'Van', oz:'kis'}, {ad:'Selma', yer:'Bursa', oz:'dikkatli'},
+];
+const memleketli = y => { const v = [...y.toLocaleLowerCase('tr')].reverse().find(c => 'aıeioöuü'.includes(c)); return y + ({a:'lı', 'ı':'lı', e:'li', i:'li', o:'lu', u:'lu', 'ö':'lü', 'ü':'lü'}[v] || 'li'); };
+const soforSeviye = s => Math.min(5, 1 + Math.floor(s.xp / 3));
 
 const PRESET = {
   1:{gun:1, I:1, nakit:1.5e6, itibar:30, mudur:0, varlik:{kamyonet:1}},
-  2:{gun:211, I:1.2, nakit:3.5e6, itibar:38, mudur:0, tekno:{gps:1}, arsa:['hadimkoy'], varlik:{kamyonet:3, panelvan:2, kamyon:1, garaj:1, cay:1, yikama:1}},
-  3:{gun:541, I:1.6, nakit:14e6, itibar:45, mudur:0, tekno:{gps:1, takograf:1}, arsa:['hadimkoy', 'gebze'], varlik:{kamyonet:4, panelvan:3, kamyon:4, kirkayak:2, tir:1, garaj:1, cay:1, yikama:2, lastik:1, yedek:1}},
-  4:{gun:931, I:2.3, nakit:55e6, itibar:52, mudur:1, statu:{makam:1}, tekno:{gps:1, takograf:1, soguk:1}, arsa:['gebze', 'bodrum'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:5, tir:8, depo:1, garaj:1, cay:1, yikama:2, lastik:2, yedek:2, akaryakit:1, mola:1}},
-  5:{gun:1421, I:3.5, nakit:300e6, itibar:60, mudur:2, eur:2e6, statu:{makam:1, ofis:1}, tekno:{gps:1, takograf:1, soguk:1, erp:1}, arsa:['gebze', 'bodrum', 'mersin'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:6, tir:14, depo:3, frigo:10, antrepo:2, merkez:1, garaj:1, lastik:2, yedek:2, akaryakit:2, mola:2, bayi:1}},
-  6:{gun:2011, I:5.6, nakit:1.6e9, itibar:68, mudur:3, eur:8e6, statu:{makam:1, ofis:1, okul:1}, tekno:{gps:1, takograf:1, soguk:1, erp:1, elektrik:1}, arsa:['bodrum', 'mersin'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:6, tir:18, depo:5, frigo:16, antrepo:4, vinc:6, terminal:1, merkez:1, garaj:1, lastik:2, yedek:2, akaryakit:3, mola:3, bayi:2, otel:1}},
-  7:{gun:2731, I:9.4, nakit:7e9, itibar:76, mudur:4, eur:30e6, statu:{makam:1, ofis:1, okul:1, kulup:1}, tekno:{gps:1, takograf:1, soguk:1, erp:1, elektrik:1, yz:1}, arsa:['mersin', 'kars'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:6, tir:18, depo:6, frigo:20, antrepo:5, vinc:10, terminal:3, bloktren:3, vagon:1, lojkoy:1, merkez:1, garaj:1, lastik:2, yedek:2, akaryakit:4, mola:4, bayi:3, otel:2}},
+  2:{gun:211, I:1.2, nakit:3.5e6, itibar:38, mudur:0, tekno:{gps:1}, hat:['marmara'], varlik:{kamyonet:3, panelvan:2, kamyon:1, garaj:1, cay:1, yikama:1}},
+  3:{gun:541, I:1.6, nakit:14e6, itibar:45, mudur:0, tekno:{gps:1, takograf:1}, hat:['marmara', 'ankara'], varlik:{kamyonet:4, panelvan:3, kamyon:4, kirkayak:2, tir:1, garaj:1, cay:1, yikama:2, lastik:1, yedek:1}},
+  4:{gun:931, I:2.3, nakit:55e6, itibar:52, mudur:1, statu:{makam:1}, tekno:{gps:1, takograf:1, soguk:1}, hat:['marmara', 'ankara', 'ege'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:5, tir:8, depo:1, garaj:1, cay:1, yikama:2, lastik:2, yedek:2, akaryakit:1, mola:1}},
+  5:{gun:1421, I:3.5, nakit:300e6, itibar:60, mudur:2, eur:2e6, statu:{makam:1, ofis:1}, tekno:{gps:1, takograf:1, soguk:1, erp:1}, hat:['marmara', 'ankara', 'ege', 'cemt'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:6, tir:14, depo:3, frigo:10, antrepo:2, merkez:1, garaj:1, lastik:2, yedek:2, akaryakit:2, mola:2, bayi:1}},
+  6:{gun:2011, I:5.6, nakit:1.6e9, itibar:68, mudur:3, eur:8e6, statu:{makam:1, ofis:1, okul:1}, tekno:{gps:1, takograf:1, soguk:1, erp:1, elektrik:1}, hat:['marmara', 'ankara', 'ege', 'cemt', 'habur', 'mersin'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:6, tir:18, depo:5, frigo:16, antrepo:4, vinc:6, terminal:1, merkez:1, garaj:1, lastik:2, yedek:2, akaryakit:3, mola:3, bayi:2, otel:1}},
+  7:{gun:2731, I:9.4, nakit:7e9, itibar:76, mudur:4, eur:30e6, statu:{makam:1, ofis:1, okul:1, kulup:1}, tekno:{gps:1, takograf:1, soguk:1, erp:1, elektrik:1, yz:1}, hat:['marmara', 'ankara', 'ege', 'cemt', 'habur', 'mersin', 'koridor'], varlik:{kamyonet:4, panelvan:4, kamyon:6, kirkayak:6, tir:18, depo:6, frigo:20, antrepo:5, vinc:10, terminal:3, bloktren:3, vagon:1, lojkoy:1, merkez:1, garaj:1, lastik:2, yedek:2, akaryakit:4, mola:4, bayi:3, otel:2}},
 };
 
 const SEFER_ISLERI = {
@@ -338,13 +356,14 @@ let S, timer = null, sheetAcik = false, sheetYenile = null;
 function yeniOyun(n = 1, yildiz = 0){
   const p = PRESET[n];
   S = {gun:p.gun, I:p.I, pi:0.025, nakit:p.nakit * p.I, borc:0, varlik:{...p.varlik}, cag:n, itibar:p.itibar, mudur:p.mudur, statu:{...(p.statu || {})}, tekno:{...(p.tekno || {})}, yildiz, ayKar:0, negGun:0, iflas:false, konk:false, fail:0, isler:[], ihaleCd:0, ihaleler:[], muzCd:0, muz:null, kartGun:p.gun + 10, log:[], hiz:1, kur:38 * p.I, eur:p.eur || 0,
-    arsalar:(p.arsa || []).map(id => { const a = ARSA.find(x => x.id === id); return {id, ad:a.ad, alis:a.fiyat * p.I * 0.75, deger:a.fiyat * p.I}; })};
+    hatlar:Object.fromEntries((p.hat || []).map(id => { const h = HATLAR.find(x => x.id === id); return [id, {alis:h.fiyat * p.I * 0.75, deger:h.fiyat * p.I}]; })),
+    soforler:SOFOR_HAVUZ.slice(0, n).map((x, i) => ({...x, id:'s' + i, xp:Math.min(12, (n - i) * 3)})), sid:n};
   log(n === 1 ? "Rahmi Usta'dan kalan kamyonetle yola çıktın. Hedef: Nakliye Baronu olmak." : `Demo kaydı yüklendi: Çağ ${n} · ${CAGLAR[n - 1].ad}.`, 'not');
 }
 
 function log(t, k = 'not'){ S.log.unshift({g:S.gun, t, k}); if (S.log.length > 80) S.log.pop(); }
 const adet = id => S.varlik[id] || 0;
-function etki(k){ let t = 0; for (const v of VARLIK) if (v[k] && adet(v.id) > 0) t += v[k]; for (const x of TEKNO) if (x[k] && S.tekno[x.id]) t += x[k]; for (const x of STATU) if (x[k] && S.statu[x.id]) t += x[k]; return t; }
+function etki(k){ let t = 0; if (k === 'bonus') for (const h of HATLAR) if (S.hatlar[h.id]) t += h.bonus; for (const v of VARLIK) if (v[k] && adet(v.id) > 0) t += v[k]; for (const x of TEKNO) if (x[k] && S.tekno[x.id]) t += x[k]; for (const x of STATU) if (x[k] && S.statu[x.id]) t += x[k]; return t; }
 const indirim = () => Math.min(0.25, etki('indirim'));
 const riskAzalt = () => 1 - Math.min(0.4, etki('risk'));
 function carpan(){ return (1 + S.itibar / 200) * (1 + 0.05 * S.yildiz) * (1 + etki('bonus')); }
@@ -353,7 +372,7 @@ function varlikGider(){ let t = 0; for (const v of VARLIK) t += adet(v.id) * v.g
 function agirlik(){ let w = 0; for (const v of VARLIK) w += adet(v.id) * Math.pow(v.fiyat / 9e5, 0.7); return w; }
 const us = (m = S.mudur) => 1.15 - 0.015 * m;
 const yonetim = (m = S.mudur) => (4000 + 800 * Math.pow(agirlik(), us(m))) * S.I * (1 - Math.min(0.4, etki('yonetim')));
-const arsaDeger = () => S.arsalar.reduce((t, a) => t + a.deger, 0);
+const hatDeger = () => Object.values(S.hatlar).reduce((t, h) => t + h.deger, 0);
 const yapimDeger = () => S.isler.filter(j => j.tur === 'insaat').reduce((t, j) => t + j.deger * S.I * 0.7, 0);
 const aktifInsaat = () => S.isler.filter(j => j.tur === 'insaat').length;
 const maxInsaat = () => 1 + Math.floor(S.cag / 2);
@@ -364,12 +383,12 @@ const faiz = () => S.borc * faizOrani() / 360;
 const gider = () => varlikGider() + yonetim() + mudurGider() + faiz();
 const net = () => gelir() - gider();
 function filoDeger(){ let t = 0; for (const v of VARLIK) t += adet(v.id) * v.fiyat; return t * S.I * 0.7; }
-const netDeger = () => S.nakit + filoDeger() + yapimDeger() + arsaDeger() + S.eur * S.kur - S.borc;
+const netDeger = () => S.nakit + filoDeger() + yapimDeger() + hatDeger() + S.eur * S.kur - S.borc;
 const reelND = () => netDeger() / S.I;
-const krediLimit = () => Math.max(0, (filoDeger() + arsaDeger()) * 0.5 - S.borc);
+const krediLimit = () => Math.max(0, (filoDeger() + hatDeger()) * 0.5 - S.borc);
 const krediDilim = () => Math.min(krediLimit(), Math.max(1e6 * S.I, filoDeger() * 0.1));
 const aktifSefer = () => S.isler.filter(j => j.tur === 'sefer').length;
-const maxSefer = () => 1 + S.cag;
+const maxSefer = () => S.soforler.length;
 const sonraki = () => CAGLAR[S.cag];
 const varlikVar = () => VARLIK.some(v => adet(v.id) > 0);
 function para(m, t){ S.nakit += m; S.ayKar += m; log(`${t}: ${isaret(m)}`, m >= 0 ? 'iyi' : 'kotu'); }
@@ -404,10 +423,12 @@ function isiCoz(j){
     if (Math.random() >= j.risk){
       const k = j.kar * j.base;
       S.nakit += j.avans + k; S.ayKar += k - (j.sigorta ? j.prim : 0); S.fail = 0;
-      log(`${j.ad} teslim edildi (${j.rota}): +${tlk(k)}`, 'iyi'); toast(`Teslim edildi: +${tlk(k)}`);
+      const d = S.soforler.find(x => x.id === j.sofor); let sv = '';
+      if (d){ const once = soforSeviye(d); d.xp++; if (soforSeviye(d) > once) sv = ` ${d.ad} seviye ${soforSeviye(d)} oldu!`; }
+      log(`${j.soforAd || 'Şoför'} teslim etti: ${j.ad} (${j.rota}) +${tlk(k)}.${sv}`, 'iyi'); toast(`Teslim edildi: +${tlk(k)}${sv}`);
     } else {
       S.fail++;
-      const olay = pick(KAZA);
+      const olay = (j.soforAd ? j.soforAd + ' ' : '') + pick(KAZA);
       if (j.sigorta){ S.nakit += j.avans; S.ayKar -= j.prim; log(`${j.ad}: ${olay}. Sigorta avansı karşıladı, kayıp sadece prim.`, 'kotu'); }
       else { const h = 0.5 * j.base; S.nakit -= h; S.ayKar -= j.avans + h; log(`${j.ad}: ${olay}. Kayıp: -${tlk(j.avans + h)}`, 'kotu'); }
       toast(`Sefer yattı: ${olay}`);
@@ -456,7 +477,7 @@ function ayKapat(){
   if (S.ayKar > 0){ const v = S.ayKar * 0.25; S.nakit -= v; log(`${biten} kapandı. Kâr ${tlk(S.ayKar)} · Kurumlar vergisi (%25) -${tlk(v)}`, 'not'); }
   else log(`${biten} zararla kapandı: ${tlk(S.ayKar)}. Vergi çıkmadı.`, 'kotu');
   S.ayKar = 0;
-  for (const a of S.arsalar) a.deger *= (1 + S.pi) * (1 + rnd(-0.015, 0.03));
+  for (const h of Object.values(S.hatlar)) h.deger *= (1 + S.pi) * (1 + rnd(-0.04, 0.05));
   S.kur *= (1 + S.pi) * (1 + rnd(-0.025, 0.03));
   S.I *= 1 + S.pi;
   S.pi = clamp(S.pi + 0.3 * (0.025 - S.pi) + rnd(-0.006, 0.006), 0.008, 0.06);
@@ -495,7 +516,7 @@ $('#sh-kapat').onclick = sheetKapat;
 $('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet' && !$('#sh-kapat').hidden) sheetKapat(); });
 const yenile = () => { if (sheetYenile) sheetYenile(); render(); };
 
-const SEKME = {arac:'Araç ve ekipman', bina:'İnşaat', yan:'Yan işler', tekno:'Teknoloji', gayri:'Arsa ve döviz'};
+const SEKME = {arac:'Araç ve ekipman', bina:'İnşaat', yan:'Yan işler', tekno:'Teknoloji', gayri:'Hatlar ve döviz'};
 function yatirimSheet(sekme = 'arac'){
   const sekmeler = `<div class="sekmeler" role="tablist">${Object.entries(SEKME).map(([k, a]) => `<button class="sekme ${k === sekme ? 'on' : ''}" role="tab" aria-selected="${k === sekme}" data-sek="${k}">${a}</button>`).join('')}</div>`;
   let govde = '';
@@ -526,8 +547,9 @@ function yatirimSheet(sekme = 'arac'){
         <div class="kv"><span>Euro bakiyen</span><b class="num">${fmtInt(S.eur)} € (${tlk(eurTl)})</b></div>
         <div class="metin">Kur her ay enflasyon kadar ve biraz fazlası artma eğiliminde ama dalgalı. Alış-satış makası %1.</div>
         <div class="ikili"><button class="btn ana" id="eur-al" ${S.nakit <= 0 ? 'disabled' : ''}>Kasanın %25'i ile € al</button><button class="btn" id="eur-sat" ${S.eur <= 0 ? 'disabled' : ''}>Euroların hepsini sat</button></div></div>
-      <div class="kart"><div class="etiket">Arsaların</div>${S.arsalar.length ? S.arsalar.map((a, i) => `<div class="satir"><div class="ana-metin"><div class="b">${a.ad}</div><div class="s">Alış ${tlk(a.alis)} · Değer ${tlk(a.deger)} · <span class="${a.deger >= a.alis ? 'iyi' : 'kotu'}">${a.deger >= a.alis ? '+' : ''}${pct(a.deger / a.alis - 1, 0)}</span></div></div><button class="btn kucuk" data-sat="${i}">Sat</button></div>`).join('') : '<div class="bos">Henüz arsan yok.</div>'}</div>
-      <div class="kart"><div class="etiket">Satılık arsalar</div>${ARSA.map(a => { const f = a.fiyat * S.I; return `<div class="satir"><div class="ana-metin"><div class="b">${a.ad}</div><div class="s">Enflasyonla değerlenir · satışta %3 tapu ve komisyon</div></div>${a.cag > S.cag ? `<span class="rozet">Çağ ${a.cag}</span>` : `<button class="btn ana kucuk" data-arsa="${a.id}" ${S.nakit < f ? 'disabled' : ''}>${tlk(f)}</button>`}</div>`; }).join('')}</div>`;
+      <div class="kart"><div class="etiket">Hat ruhsatları ve geçiş belgeleri</div>
+        <div class="metin">Her hat bütün gelirine kalıcı bonus verir. Belgeler kotalı olduğu için piyasa değeri dalgalanır; istediğinde başka bir firmaya devredebilirsin (%5 devir harcı).</div>
+        ${HATLAR.map(h => { const f = h.fiyat * S.I, v = S.hatlar[h.id]; return `<div class="satir"><div class="ana-metin"><div class="b">${h.ad}</div><div class="s">Gelir +%${Math.round(h.bonus * 100)}${v ? ` · Alış ${tlk(v.alis)} · Değer ${tlk(v.deger)} <span class="${v.deger >= v.alis ? 'iyi' : 'kotu'}">${v.deger >= v.alis ? '+' : ''}${pct(v.deger / v.alis - 1, 0)}</span>` : ''}</div></div>${v ? `<button class="btn kucuk" data-devret="${h.id}">Devret</button>` : h.cag > S.cag ? `<span class="rozet">Çağ ${h.cag}</span>` : `<button class="btn ana kucuk" data-hat="${h.id}" ${S.nakit < f ? 'disabled' : ''}>${tlk(f)}</button>`}</div>`; }).join('')}</div>`;
   }
   sheetAc('Yatırım yap', `<div class="kv"><span>Kasa</span><b class="num">${tl(S.nakit)}</b></div>${sekmeler}${govde}`,
     g => {
@@ -547,48 +569,77 @@ function yatirimSheet(sekme = 'arac'){
         yatirimSheet(sekme); render();
       });
       g.querySelectorAll('[data-tek]').forEach(b => b.onclick = () => { const x = TEKNO.find(t => t.id === b.dataset.tek), f = x.fiyat * S.I; if (S.nakit < f) return; S.nakit -= f; S.tekno[x.id] = 1; log(`Teknoloji kuruldu: ${x.ad} -${tlk(f)}`, 'not'); toast(x.ad); yatirimSheet(sekme); render(); });
-      g.querySelectorAll('[data-arsa]').forEach(b => b.onclick = () => { const a = ARSA.find(x => x.id === b.dataset.arsa), f = a.fiyat * S.I; if (S.nakit < f) return; S.nakit -= f; S.arsalar.push({id:a.id, ad:a.ad, alis:f, deger:f}); log(`Arsa alındı: ${a.ad} -${tlk(f)}`, 'not'); yatirimSheet(sekme); render(); });
-      g.querySelectorAll('[data-sat]').forEach(b => b.onclick = () => { const a = S.arsalar.splice(+b.dataset.sat, 1)[0]; const gelen = a.deger * 0.97, kar = gelen - a.alis; S.nakit += gelen; log(`Arsa satıldı: ${a.ad} +${tlk(gelen)} (${kar >= 0 ? 'kâr' : 'zarar'} ${tlk(kar)})`, kar >= 0 ? 'iyi' : 'kotu'); yatirimSheet(sekme); render(); });
+      g.querySelectorAll('[data-hat]').forEach(b => b.onclick = () => { const h = HATLAR.find(x => x.id === b.dataset.hat), f = h.fiyat * S.I; if (S.nakit < f) return; S.nakit -= f; S.hatlar[h.id] = {alis:f, deger:f}; log(`Hat ruhsatı alındı: ${h.ad} -${tlk(f)} · gelir +%${Math.round(h.bonus * 100)}`, 'not'); toast(h.ad); yatirimSheet(sekme); render(); });
+      g.querySelectorAll('[data-devret]').forEach(b => b.onclick = () => { const h = HATLAR.find(x => x.id === b.dataset.devret), v = S.hatlar[h.id]; const gelen = v.deger * 0.95, kar = gelen - v.alis; S.nakit += gelen; delete S.hatlar[h.id]; log(`${h.ad} devredildi: +${tlk(gelen)} (${kar >= 0 ? 'kâr' : 'zarar'} ${tlk(kar)})`, kar >= 0 ? 'iyi' : 'kotu'); yatirimSheet(sekme); render(); });
       const ea = g.querySelector('#eur-al'); if (ea) ea.onclick = () => { const t = S.nakit * 0.25; S.nakit -= t; S.eur += t / (S.kur * 1.01); log(`Euro alındı: ${tlk(t)} → ${fmtInt(t / (S.kur * 1.01))} €`, 'not'); yatirimSheet(sekme); render(); };
       const es = g.querySelector('#eur-sat'); if (es) es.onclick = () => { const t = S.eur * S.kur * 0.99; log(`${fmtInt(S.eur)} € satıldı: +${tlk(t)}`, 'not'); S.nakit += t; S.eur = 0; yatirimSheet(sekme); render(); };
     }, false, () => yatirimSheet(sekme));
 }
 
+const musaitSofor = () => S.soforler.filter(d => !S.isler.some(j => j.sofor === d.id));
+function soforEtki(d, i, r){
+  const oz = OZELLIK[d.oz], lv = soforSeviye(d);
+  return {gun:Math.max(1, r.gun + oz.sure), risk:oz.risk * (i === 2 && oz.riskli ? oz.riskli : 1) * (1 - 0.06 * (lv - 1)), kar:oz.kar};
+}
 function seferSheet(teklif){
-  if (aktifSefer() >= maxSefer()){ sheetAc('Riskli sefer', `<div class="metin">Bütün ekipler yolda (${aktifSefer()}/${maxSefer()}). Bir sefer bitince yeni iş alabilirsin. Her yeni çağ bir ekip daha açar.</div>`); return; }
   if (!varlikVar()){ sheetAc('Riskli sefer', '<div class="metin">Önce en az bir araç al.</div>'); return; }
-  const o = teklif || {ad:pick(SEFER_ISLERI[S.cag]), base:Math.max(gelir() * rnd(2.5, 4.5), 60e3 * S.I), sigorta:false, sec:1};
+  const bos = musaitSofor();
+  if (!bos.length){ sheetAc('Riskli sefer', `<div class="metin">Bütün şoförler yolda (${aktifSefer()}/${maxSefer()}). Biri dönünce yeni iş alabilirsin ya da "Şoför kadrosu"ndan yeni şoför işe al.</div>`); return; }
+  const o = teklif || {ad:pick(SEFER_ISLERI[S.cag]), base:Math.max(gelir() * rnd(2.5, 4.5), 60e3 * S.I), sigorta:false, sec:1, sof:bos[0].id};
+  if (!bos.some(d => d.id === o.sof)) o.sof = bos[0].id;
+  const d = S.soforler.find(x => x.id === o.sof);
   const tip = S.cag === 4 ? 'sinir' : S.cag >= 5 ? 'deniz' : 'kara';
   const bonus = S.fail >= 2;
   const rc = (bonus ? 0.6 : 1) * riskAzalt();
   const avans = 0.4 * o.base;
+  const hesap = (r, i) => { const e = soforEtki(d, i, r); const risk = Math.min(0.9, r.risk * rc * e.risk), kar = r.kar * e.kar * o.base, prim = risk * 0.9 * o.base * 1.25; const ev = o.sigorta ? (1 - risk) * kar - prim : (1 - risk) * kar - risk * 0.9 * o.base; return {gun:e.gun, risk, kar, prim, ev}; };
   const kartlar = ROTALAR.map((r, i) => {
-    const risk = r.risk * rc, kar = r.kar * o.base, prim = risk * 0.9 * o.base * 1.25;
-    const ev = o.sigorta ? (1 - risk) * kar - prim : (1 - risk) * kar - risk * 0.9 * o.base;
+    const h = hesap(r, i);
     return `<button class="rota ${o.sec === i ? 'kart secili' : ''}" data-rota="${i}"><span class="ad">${r.ad}</span><span class="ac">${ROTA_ACIKLAMA[tip][i]}</span>
-      <span class="kv"><span>Süre</span><b>${r.gun} gün</b></span><span class="kv"><span>Başarı</span><b>${pct(1 - risk, 0)}</b></span>
-      <span class="olasilik"><i style="width:${(1 - risk) * 100}%"></i></span>
-      <span class="kv"><span>Kâr</span><b class="num">${tlk(kar)}</b></span><span class="kv"><span>Beklenen</span><b class="num ${ev >= 0 ? 'iyi' : 'kotu'}">${isaret(ev)}</b></span>
-      <span class="kv"><span>Günlük beklenen</span><b class="num">${tlk(ev / r.gun)}</b></span></button>`;
+      <span class="kv"><span>Süre</span><b>${h.gun} gün</b></span><span class="kv"><span>Başarı</span><b>${pct(1 - h.risk, 0)}</b></span>
+      <span class="olasilik"><i style="width:${(1 - h.risk) * 100}%"></i></span>
+      <span class="kv"><span>Kâr</span><b class="num">${tlk(h.kar)}</b></span><span class="kv"><span>Beklenen</span><b class="num ${h.ev >= 0 ? 'iyi' : 'kotu'}">${isaret(h.ev)}</b></span>
+      <span class="kv"><span>Günlük beklenen</span><b class="num">${tlk(h.ev / h.gun)}</b></span></button>`;
   }).join('');
-  const r = ROTALAR[o.sec], risk = r.risk * rc, prim = o.sigorta ? risk * 0.9 * o.base * 1.25 : 0;
+  const r = ROTALAR[o.sec], h = hesap(r, o.sec), prim = o.sigorta ? h.prim : 0;
+  const soforler = bos.map(x => `<button class="sekme ${x.id === o.sof ? 'on' : ''}" data-sof="${x.id}">${x.ad} · ${OZELLIK[x.oz].ad} · Sv${soforSeviye(x)}</button>`).join('');
   sheetAc('Riskli sefer', `<div><div class="buyuk">${o.ad}</div><div class="metin">Yakıt ve şoför avansı ${tlk(avans)}. Başarısız olursa avans ve ${tlk(0.5 * o.base)} hasar senin.</div></div>
+    <div><div class="etiket">Direksiyona kim geçsin?</div><div class="sekmeler">${soforler}</div><div class="metin">${memleketli(d.yer)} ${d.ad}: ${OZELLIK[d.oz].ac}. Seviye ${soforSeviye(d)} (her seviye riski %6 düşürür).</div></div>
     ${bonus ? '<div class="rozet reklam">Tecrübe bonusu: üst üste iki kayıptan sonra riskler %40 azaldı</div>' : ''}
     ${riskAzalt() < 1 ? `<div class="rozet">Teknoloji: kaza riski -%${Math.round((1 - riskAzalt()) * 100)}</div>` : ''}
     <div class="rotalar">${kartlar}</div>
     <label class="satir"><input type="checkbox" id="sigorta" ${o.sigorta ? 'checked' : ''}><span class="ana-metin"><span class="b">Yük sigortası yaptır</span><div class="s">Prim, riskin %125'i kadar. Kaza olursa avans geri döner, hasar ödenmez.</div></span></label>
     <div class="kv"><span>Ödenecek (avans + prim)</span><b class="num">${tl(avans + prim)}</b></div>
-    <button class="btn ana" id="yola" ${S.nakit < avans + prim ? 'disabled' : ''}>${r.ad} rotayla yola çık</button>`,
+    <button class="btn ana" id="yola" ${S.nakit < avans + prim ? 'disabled' : ''}>${d.ad} ${r.ad.toLowerCase()} rotadan yola çıksın</button>`,
     g => {
       g.querySelectorAll('[data-rota]').forEach(b => b.onclick = () => { o.sec = +b.dataset.rota; seferSheet(o); });
+      g.querySelectorAll('[data-sof]').forEach(b => b.onclick = () => { o.sof = b.dataset.sof; seferSheet(o); });
       g.querySelector('#sigorta').onchange = e => { o.sigorta = e.target.checked; seferSheet(o); };
       g.querySelector('#yola').onclick = () => {
         S.nakit -= avans + prim;
-        S.isler.push({tur:'sefer', ad:o.ad, rota:r.ad, kalan:r.gun, toplam:r.gun, base:o.base, avans, prim, kar:r.kar, risk, sigorta:o.sigorta});
-        log(`${o.ad} yola çıktı (${r.ad} rota, başarı ${pct(1 - risk, 0)}).`, 'not');
+        S.isler.push({tur:'sefer', ad:o.ad, rota:r.ad, kalan:h.gun, toplam:h.gun, base:o.base, avans, prim, kar:h.kar / o.base, risk:h.risk, sigorta:o.sigorta, sofor:d.id, soforAd:d.ad});
+        log(`${d.ad} yola çıktı: ${o.ad} (${r.ad} rota, başarı ${pct(1 - h.risk, 0)}).`, 'not');
         sheetKapat();
       };
     });
+}
+
+function soforSheet(adaylar){
+  const limit = 1 + S.cag, ucret = 150e3 * S.I * S.soforler.length;
+  const alinan = new Set(S.soforler.map(d => d.ad));
+  const a = adaylar || [...SOFOR_HAVUZ].filter(x => !alinan.has(x.ad)).sort(() => Math.random() - 0.5).slice(0, 3);
+  const liste = S.soforler.map(d => { const yolda = S.isler.find(j => j.sofor === d.id); return `<div class="satir"><span class="kod">Sv${soforSeviye(d)}</span><div class="ana-metin"><div class="b">${d.ad} <span class="rozet">${d.yer}</span> <span class="rozet">${OZELLIK[d.oz].ad}</span></div><div class="s">${OZELLIK[d.oz].ac} · ${d.xp} başarılı sefer · ${yolda ? `<span class="kotu">yolda: ${yolda.ad}</span>` : '<span class="iyi">garajda, hazır</span>'}</div></div></div>`; }).join('');
+  const aday = a.map((x, i) => `<div class="satir"><div class="ana-metin"><div class="b">${x.ad} <span class="rozet">${x.yer}</span> <span class="rozet">${OZELLIK[x.oz].ad}</span></div><div class="s">${OZELLIK[x.oz].ac}</div></div><button class="btn ana kucuk" data-aday="${i}" ${S.soforler.length >= limit || S.nakit < ucret ? 'disabled' : ''}>İşe al</button></div>`).join('');
+  sheetAc('Şoför kadrosu', `<div class="metin">Her şoför aynı anda bir sefere çıkar. Huyları rotadaki riski ve kârı değiştirir; başarılı seferlerle seviye atlarlar. Kadro sınırı her çağda bir artar.</div>
+    <div class="kv"><span>Kadro</span><b>${S.soforler.length} / ${limit}</b></div>
+    <div class="liste">${liste}</div><hr class="ayrac">
+    <div class="etiket">İş başvuruları · işe alım bedeli ${tlk(ucret)}</div><div class="liste">${aday || '<div class="bos">Şu an başvuru yok.</div>'}</div>`,
+    g => g.querySelectorAll('[data-aday]').forEach(b => b.onclick = () => {
+      const x = a[+b.dataset.aday]; if (S.soforler.length >= limit || S.nakit < ucret) return;
+      S.nakit -= ucret; S.soforler.push({...x, id:'s' + (S.sid++), xp:0});
+      log(`${memleketli(x.yer)} ${x.ad} işe başladı (${OZELLIK[x.oz].ad}). -${tlk(ucret)}`, 'not'); toast(`${x.ad} kadroya katıldı`);
+      soforSheet(a.filter(y => y !== x)); render();
+    }), false, () => soforSheet(a));
 }
 
 function ihaleOlasilik(ih, b){
@@ -763,7 +814,7 @@ function cagSheet(n){
     <div class="kart"><div class="etiket">Bu çağda açılanlar</div>${c.acar.map(a => `<div>· ${a}</div>`).join('')}</div>
     <div class="kart"><div class="etiket">Yeni varlıklar ve binalar</div>${vs.map(v => `<div class="kv"><span>${v.ad}${v.insaat ? ` <span class="rozet">inşaat ${v.insaat} gün</span>` : ''}</span><b class="num">${tlk(v.fiyat)}${v.gelir > 0 ? ` · ~${Math.round(v.fiyat / (v.gelir - v.gider))} gün` : ''}</b></div>`).join('')}
       ${TEKNO.filter(x => x.cag === n).map(x => `<div class="kv"><span>${x.ad} <span class="rozet">teknoloji</span></span><b class="num">${tlk(x.fiyat)}</b></div>`).join('')}
-      ${ARSA.filter(x => x.cag === n).map(x => `<div class="kv"><span>${x.ad} <span class="rozet">arsa</span></span><b class="num">${tlk(x.fiyat)}</b></div>`).join('')}</div>
+      ${HATLAR.filter(x => x.cag === n).map(x => `<div class="kv"><span>${x.ad} <span class="rozet">hat</span></span><b class="num">${tlk(x.fiyat)}</b></div>`).join('')}</div>
     <div class="metin">Demo kaydı bu çağa uygun nakit, filo ve itibarla başlar. Mevcut ilerlemen silinir.</div>
     <button class="btn ana" id="yukle">${n === S.cag ? 'Bu çağı baştan yükle' : 'Çağ ' + n + ' demo kaydını yükle'}</button>`,
     g => g.querySelector('#yukle').onclick = () => { yeniOyun(n, S.yildiz); sheetKapat(); kaydet(); toast(`Çağ ${n}: ${c.ad}`); });
@@ -813,11 +864,12 @@ $('#sifirla').onclick = () => { yeniOyun(1, S.yildiz); $('#iflas').hidden = true
 
 const AKSIYON = [
   {id:'yatirim', ad:'Yatırım yap', cag:1, ana:true, alt:() => `${VARLIK.filter(v => v.tur === 'arac' && v.cag <= S.cag).length} araç ve ekipman türü`, fn:() => yatirimSheet('arac')},
-  {id:'sefer', ad:'Risk al: sefer', cag:1, ana:true, alt:() => `${aktifSefer()}/${maxSefer()} ekip yolda`, fn:() => seferSheet()},
+  {id:'sefer', ad:'Risk al: sefer', cag:1, ana:true, alt:() => `${aktifSefer()}/${maxSefer()} şoför yolda`, fn:() => seferSheet()},
   {id:'insaat', ad:'İnşaat yap', cag:1, alt:() => `${aktifInsaat()}/${maxInsaat()} şantiye dolu`, fn:() => yatirimSheet('bina')},
   {id:'yan', ad:'Yan işler', cag:1, alt:() => `${VARLIK.filter(v => v.tur === 'yan' && adet(v.id) > 0).length} işletme açık`, fn:() => yatirimSheet('yan')},
   {id:'ihale', ad:'İhaleler', cag:2, alt:() => `${(S.ihaleler || []).filter(x => !x.sonuc).length} açık ilan · yenisi ${S.ihaleCd} gün`, fn:() => ihaleSheet()},
-  {id:'gayri', ad:'Arsa ve döviz', cag:1, alt:() => `${S.arsalar.length} arsa · ${fmtInt(S.eur)} €`, fn:() => yatirimSheet('gayri')},
+  {id:'gayri', ad:'Hatlar ve döviz', cag:1, alt:() => `${Object.keys(S.hatlar).length} hat · ${fmtInt(S.eur)} €`, fn:() => yatirimSheet('gayri')},
+  {id:'sofor', ad:'Şoför kadrosu', cag:1, alt:() => `${S.soforler.length}/${1 + S.cag} şoför`, fn:soforSheet},
   {id:'tekno', ad:'Teknoloji', cag:1, alt:() => `${Object.keys(S.tekno).length}/${TEKNO.length} kurulu`, fn:() => yatirimSheet('tekno')},
   {id:'kredi', ad:'Banka', cag:1, alt:() => `Borç ${tlk(S.borc)} · faiz ${pct(faizOrani(), 0)}`, fn:krediSheet},
   {id:'personel', ad:'Filo müdürü', cag:3, alt:() => `${S.mudur} müdür`, fn:personelSheet},
@@ -859,7 +911,7 @@ function render(){
 
   $('#isler').innerHTML = S.isler.length ? S.isler.map((j, i) => {
     const kod = {sefer:'SEFER', ihale:'İHALE', alacak:'ALACAK', hedge:'KİLİT', sorusturma:'DOSYA', insaat:'İNŞAAT'}[j.tur];
-    const ek = j.tur === 'sefer' ? `${j.rota} rota · başarı ${pct(1 - j.risk, 0)}${j.sigorta ? ' · sigortalı' : ''}` : j.tur === 'ihale' ? `Sözleşme bedeli ${tlk(j.b)}` : j.tur === 'alacak' ? `${tlk(j.tutar)} · %90 tahsil` : j.tur === 'hedge' ? 'Zam gelirse kazandırır' : j.tur === 'insaat' ? 'Şantiye: bitince hizmete girer' : '%55 ceza ihtimali';
+    const ek = j.tur === 'sefer' ? `${j.soforAd ? j.soforAd + ' · ' : ''}${j.rota} rota · başarı ${pct(1 - j.risk, 0)}${j.sigorta ? ' · sigortalı' : ''}` : j.tur === 'ihale' ? `Sözleşme bedeli ${tlk(j.b)}` : j.tur === 'alacak' ? `${tlk(j.tutar)} · %90 tahsil` : j.tur === 'hedge' ? 'Zam gelirse kazandırır' : j.tur === 'insaat' ? 'Şantiye: bitince hizmete girer' : '%55 ceza ihtimali';
     const hz = (j.tur === 'sefer' || j.tur === 'insaat') && !j.hizli && j.kalan > 1;
     return `<div class="is"><div class="satir"><span class="kod">${kod}</span><div class="ana-metin"><div class="b">${j.ad}</div><div class="s">${ek} · ${j.kalan} gün</div></div>${hz ? `<button class="btn kucuk" data-hizlandir="${i}"><span class="rozet reklam">Reklam</span> Hızlandır</button>` : ''}</div><div class="ilerle"><i style="width:${(1 - j.kalan / j.toplam) * 100}%"></i></div></div>`;
   }).join('') : '<div class="bos">Yolda iş ya da şantiye yok. "Risk al: sefer" veya "İnşaat yap" ile başla.</div>';
@@ -867,7 +919,7 @@ function render(){
   const grup = t => { const L = VARLIK.filter(v => v.tur === t && adet(v.id) > 0); return L.length ? `<div class="etiket">${{arac:'Araç ve ekipman', bina:'Binalar', yan:'Yan işler'}[t]}</div>` + L.map(v => { const nt = adet(v.id) * (v.gelir * carpan() - v.gider * (1 - indirim())) * S.I; return `<div class="satir"><span class="kod">${v.kod}</span><div class="ana-metin"><div class="b">${v.ad} × ${adet(v.id)}</div><div class="s">${v.indirim ? `Gider -%${Math.round(v.indirim * 100)} · ` : ''}${v.yonetim ? `Yönetim -%${Math.round(v.yonetim * 100)} · ` : ''}Değer ${tlk(adet(v.id) * v.fiyat * S.I * 0.7)}</div></div><span class="num ${nt >= 0 ? 'iyi' : 'kotu'}">${isaret(nt)}</span></div>`; }).join('') : ''; };
   $('#varliklar').innerHTML = `<div class="liste">${grup('arac')}${grup('bina')}${grup('yan')}${VARLIK.some(v => adet(v.id) > 0) ? '' : '<div class="bos">Filon yok.</div>'}</div>
     <hr class="ayrac">
-    ${S.arsalar.length ? `<div class="kv"><span>${S.arsalar.length} arsa (piyasa değeri)</span><b class="num">${tlk(arsaDeger())}</b></div>` : ''}
+    ${Object.keys(S.hatlar).length ? `<div class="kv"><span>${Object.keys(S.hatlar).length} hat ruhsatı (piyasa değeri)</span><b class="num">${tlk(hatDeger())}</b></div>` : ''}
     ${S.eur > 0 ? `<div class="kv"><span>Euro hesabı (${fmtInt(S.eur)} € · kur ${dec(S.kur, 2)})</span><b class="num">${tlk(S.eur * S.kur)}</b></div>` : ''}
     ${Object.keys(S.tekno).length ? `<div class="kv"><span>Teknoloji</span><b>${TEKNO.filter(x => S.tekno[x.id]).map(x => x.ad.split(' ')[0]).join(', ')}</b></div>` : ''}
     <div class="kv"><span>Gider indirimi (atölye, istasyon, teknoloji)</span><b class="num iyi">-%${Math.round(indirim() * 100)}</b></div>
@@ -887,9 +939,9 @@ document.addEventListener('click', e => {
   if (e.target.closest('#gec')){ const sc = sonraki(), u = sc.esik * 0.08 * S.I; if (S.nakit < u) return; S.nakit -= u; S.cag = sc.n; log(`Ruhsat alındı: Çağ ${sc.n} (${sc.ad}) başladı. -${tlk(u)}`, 'iyi'); kaydet(); render(); cagSheet(sc.n); }
 });
 
-const KEY = 'nakliye-baronu-demo-v2';
+const KEY = 'nakliye-baronu-demo-v3';
 function kaydet(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
-function yukle(){ try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.gun && s.varlik && s.arsalar && s.tekno) return s; } catch (e) {} return null; }
+function yukle(){ try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.gun && s.varlik && s.hatlar && s.soforler) return s; } catch (e) {} return null; }
 
 function start(veri){
   S = (veri && veri.S) || yukle();

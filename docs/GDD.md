@@ -25,7 +25,7 @@ Neden en güçlüsü:
 - **Anlaşılır ilerleme:** Kamyonet → kamyon → TIR → depo → liman → demiryolu → kargo uçağı. Her basamak görsel olarak ve rakam olarak hissedilir.
 - **Doğal olay motoru:** Akaryakıt zammı, asgari ücret artışı, köprü/otoyol zammı, sınır kapısı kuyruğu, kar yağışında kapanan geçitler, kanal tıkanması, gümrük mevzuatı. Türkiye gündemi her ay yeni içerik verir (canlı operasyon için ideal).
 - **Risk mekaniklerine uygun:** İhale, rota seçimi ve gümrük müzayedesi kumar değil, bilgiye dayalı karar mekanikleridir.
-- **Genişleme:** B ve C temaları ileride "Holding" katmanında ikinci/üçüncü sektör olarak eklenir (tarım ürünü taşıma sözleşmeleri, enerji lojistiği).
+- **Genişleme:** B teması ileride "Holding" katmanında tarım ürünü taşıma sözleşmeleri olarak eklenebilir. C teması (enerji, kuyu, rezerv) rakip oyuna fazla yakın olduğu için yol haritasından çıkarıldı (bkz. 1.4).
 
 ### 1.3 Ana Hikaye
 
@@ -45,6 +45,32 @@ Neden en güçlüsü:
 | 7. Holding | Borsa İstanbul | Halka arz (prestij sıfırlaması) | Demirkol'u satın al |
 
 - **İlerleme hissi:** Her çağda ekran teması değişir (kahvehane masası → plaza ofisi → holding toplantı salonu), unvan yükselir (Şoför → Esnaf → Patron → Ağa → Baron → Holding Başkanı), "Net Değer" bir sonraki unvana ilerleme çubuğu olarak her zaman görünür.
+
+### 1.4 Rakip Analizi ve Özgünlük Kuralları
+
+Referans oyun: **Müteahhit – Builder Tycoon** (App Store, geliştirici Emrecan Yardımcı). Mağaza bilgisine göre oyuncu Türkiye veya Almanya'da başlar, 81 ilde arsa alır, proje tasarlar, katları yükseltir, daireleri satar; son sürümlerde oyuncular arası ortak canlı borsa eklenmiştir. Oyuncunun paylaştığı görselde ayrıca "kuru kuyu / rezerv bulma" tipi bir şans mekaniği bulunmaktadır.
+
+**Bilinçli olarak kaçındığımız şeyler**
+
+| Müteahhit'te olan | Nakliye Baronu'nda yerine gelen |
+|-------------------|--------------------------------|
+| Arsa al → bina dik → daire sat (stok birikimi ve satış) | **Akış ekonomisi:** Para, yolda olan seferlerden ve sözleşmelerden gelir. Binalar satılmaz, operasyon tesisidir (depo, terminal) |
+| İl il arsa haritası, ülke seçimi | Tek başlangıç (Türkiye), büyüme **hatlar ve koridorlar** üzerinden: Marmara → Ankara → Kapıkule → Orta Koridor |
+| Arsa spekülasyonu | **Hat ruhsatları ve geçiş belgeleri** (CEMT kotası, liman slotu): kotalı, devredilebilir, gelire kalıcı bonus |
+| Oyuncular arası ortak borsa | Sosyal katman olarak **konsorsiyum ihaleleri** (oyuncular büyük ihaleye birlikte girer) ve sezonluk koridor ligi |
+| Kuru kuyu / rezerv şans mekaniği | Olasılığı açık **rota seçimi**, **kapalı zarf ihale** ve **gümrük müzayedesi**; enerji/kuyu teması tamamen yok |
+| Kat/daire görseli | Yol levhası, plaka, irsaliye ve takograf görsel dili |
+
+**Yalnızca bizde olan imza sistemler**
+1. **Şoför kadrosu:** Memleketi, huyu ve seviyesi olan isimli şoförler (Rizeli Temel: hızlı; Sivaslı Hüsniye: dikkatli; Karslı Cemal: kış kurdu). Sefere kimin çıkacağı rota riskini ve kârı değiştirir; başarılı seferle seviye atlarlar. Oyuncunun duygusal bağ kurduğu katman budur.
+2. **Rota kararları:** Her sefer küçük bir strateji anıdır (süre, risk, sigorta, şoför eşleşmesi).
+3. **Hat ruhsatları:** Gerçek sektör belgelerinden esinlenen kotalı ve devredilebilir yatırım.
+4. **Türkiye lojistik gündemi olay motoru:** Kapıkule kuyruğu, kantar cezası, akaryakıt gece zammı, asgari ücret farkı, Süveyş tıkanması.
+
+**Hukuki ve mağaza kuralları**
+- Rakip oyunun adını, görselini, metnini, menü yapısını ve ikonlarını kullanmıyoruz; mağaza açıklamasında rakibin adı geçmeyecek.
+- Mağaza anahtar kelimelerinde "müteahhit" kullanılmayacak (ASO'da marka çakışması ve şikâyet riski).
+- Yayından önce "Nakliye Baronu" adının App Store, Google Play ve TÜRKPATENT'te boş olduğu kontrol edilecek.
 
 ---
 
