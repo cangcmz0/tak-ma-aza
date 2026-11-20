@@ -42,4 +42,11 @@ _(henüz belirlenmedi)_
 - 
 
 ## 8. Not Defteri (konuşma sırasında gelen ham fikirler)
-- 
+- **20 Kasım 2026:** Hay Day tarzı bir çiftlik oyunu konuşuldu. Birebir o ölçekte yapmak küçük ekip için çok zor
+  (yüzlerce ürün, üretim zincirleri, oyuncular arası ticaret, sunucu, sürekli etkinlik, dev reklam bütçesi).
+  Küçültülmüş seçenekler:
+  1. **Mini çiftlik (offline):** 10–15 ürün, kısa üretim zinciri, tek oyunculu
+  2. **Idle / tycoon çiftlik:** Oyun kapalıyken de üretim; içerik ihtiyacı az
+  3. **Çiftlik + bulmaca karışımı:** Çiftlik temayı ve ilerlemeyi taşır, asıl oynanış bulmaca
+  4. **Yerel tema:** Karadeniz çay/fındık bahçesi, köy fırını, Ege zeytinliği vb.
+  - Açık soru: Hay Day'de seni çeken ne? (sakin çiftçilik, üretim zinciri, süsleme, arkadaşlarla ticaret)
