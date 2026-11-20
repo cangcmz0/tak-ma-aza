@@ -21,7 +21,17 @@ Ayrıntılı rapor: `reports/2026-11-20-insight-report.md`
 **Kaçınılacaklar:** match-3, merge + hikâye, battle royale/MOBA (devlerin sahası)
 
 ## 1. Oyunun Fikri
-_(henüz belirlenmedi)_
+**Karar (20 Kasım 2026):** Önce bir **bulmaca oyunu** çıkarılacak.
+Oyun para kazanırsa ilerleyen güncellemelerde **çiftlik** bölümü eklenecek: bölüm geçtikçe çiftlik büyüyecek.
+
+**Yol haritası:**
+- **Aşama 1 — Bulmaca oyunu:** Temel bulmaca + bölümler + basit ilerleme (yıldız/altın). Çiftlik yok.
+- **Aşama 2 — Çiftlik eklentisi (gelir varsa):** Bulmacadan kazanılan yıldız/altınla çiftlik kurma, süsleme, üretim.
+
+**Şimdiden dikkat edilecek:** Aşama 1'de oyuncuya biriktirdiği bir şey (yıldız, altın vb.) verilecek;
+böylece Aşama 2'de çiftlik eklenince oyuncu birikimini orada harcayabilir. Tema da çiftliğe geçişe uygun seçilecek.
+
+**Sıradaki kararlar:** bulmaca mekaniği, tema, platform.
 
 ## 2. Tür / Platform
 _(henüz belirlenmedi)_
