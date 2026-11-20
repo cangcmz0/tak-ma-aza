@@ -1,5 +1,7 @@
-// Persistent save data. Backend is pluggable: localStorage now, Capacitor
-// Preferences later (implement KeyValueBackend and pass it to SaveStore.load).
+// Persistent save data. Backend is pluggable (KeyValueBackend): localStorage on the web,
+// Capacitor Preferences on native (platform/preferencesBackend.ts, chosen in main.ts).
+// Pattern: load once at boot, keep a synchronous in-memory view, write in the background
+// (coalesced: many changes in one tick = one write; flush() on app pause).
 
 export interface KeyValueBackend {
   get(key: string): Promise<string | null>;
@@ -66,13 +68,30 @@ export interface SaveData {
   version: 1;
   levels: Record<string, LevelProgress>;
   settings: Settings;
+  /** Endless mode high score and finished runs. */
+  endlessBest: number;
+  endlessGames: number;
+  /** Mechanic intro cards already shown (GDD §13: shown once). */
+  seenIntros: string[];
+  /** Tutorials completed (t1..t3). */
+  tutorialsDone: string[];
 }
 
 const KEY = 'kumakisi.save.v1';
 
 function defaults(): SaveData {
-  return { version: 1, levels: {}, settings: { sound: true, haptics: true, volume: 1 } };
+  return {
+    version: 1,
+    levels: {},
+    settings: { sound: true, haptics: true, volume: 1 },
+    endlessBest: 0,
+    endlessGames: 0,
+    seenIntros: [],
+    tutorialsDone: [],
+  };
 }
+
+const strList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
 function sanitize(raw: unknown): SaveData {
   const d = defaults();
@@ -96,12 +115,18 @@ function sanitize(raw: unknown): SaveData {
     const vol = Number(r.settings.volume);
     if (r.settings.volume !== undefined && Number.isFinite(vol)) d.settings.volume = Math.max(0, Math.min(1, vol));
   }
+  d.endlessBest = Math.max(0, Number(r.endlessBest) || 0);
+  d.endlessGames = Math.max(0, Number(r.endlessGames) || 0);
+  d.seenIntros = strList(r.seenIntros);
+  d.tutorialsDone = strList(r.tutorialsDone);
   return d;
 }
 
 /** Synchronous in-memory view of the save, persisted asynchronously. */
 export class SaveStore {
   private data: SaveData;
+  private dirty = false;
+  private writing: Promise<void> | null = null;
 
   private constructor(
     private readonly backend: KeyValueBackend,
@@ -160,12 +185,68 @@ export class SaveStore {
     return orderedIds[orderedIds.length - 1];
   }
 
+  get endlessBest(): number {
+    return this.data.endlessBest;
+  }
+
+  /** Record a finished endless run. @returns true if it is a new high score. */
+  recordEndless(score: number): boolean {
+    const best = score > this.data.endlessBest;
+    if (best) this.data.endlessBest = score;
+    this.data.endlessGames++;
+    this.persist();
+    return best;
+  }
+
+  hasSeenIntro(id: string): boolean {
+    return this.data.seenIntros.includes(id);
+  }
+
+  markIntroSeen(id: string): void {
+    if (this.hasSeenIntro(id)) return;
+    this.data.seenIntros.push(id);
+    this.persist();
+  }
+
+  isTutorialDone(id: string): boolean {
+    return this.data.tutorialsDone.includes(id);
+  }
+
+  markTutorialDone(id: string): void {
+    if (this.isTutorialDone(id)) return;
+    this.data.tutorialsDone.push(id);
+    this.persist();
+  }
+
   reset(): void {
     this.data = defaults();
     this.persist();
   }
 
+  /** Schedule a background write (coalesced; writes never overlap and keep their order). */
   private persist(): void {
-    void this.backend.set(KEY, JSON.stringify(this.data));
+    this.dirty = true;
+    if (!this.writing) this.writing = Promise.resolve().then(() => this.drain());
+  }
+
+  private async drain(): Promise<void> {
+    try {
+      while (this.dirty) {
+        this.dirty = false;
+        try {
+          await this.backend.set(KEY, JSON.stringify(this.data));
+        } catch {
+          /* backend failure: keep playing from memory */
+        }
+      }
+    } finally {
+      this.writing = null;
+    }
+  }
+
+  /** Wait until pending changes are written (call when the app goes to background). */
+  async flush(): Promise<void> {
+    if (this.dirty && !this.writing) this.persist();
+    while (this.writing) await this.writing;
   }
 }

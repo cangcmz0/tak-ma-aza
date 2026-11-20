@@ -1,29 +1,31 @@
 {
   "id": 1,
   "name": "İlk Tutam",
-  "colors": [
-    1,
-    2
-  ],
-  "pieceLimit": 20,
-  "goals": [
-    {
-      "type": "clear_paths",
-      "count": 1
-    }
-  ],
-  "stars": [
-    300,
-    800,
-    1400
-  ],
+  "difficulty": 1,
+  "customer": "ayse",
+  "colors": [1, 2],
+  "pieceLimit": 10,
+  "goals": [{ "type": "clear_paths", "count": 2 }],
+  "stars": [500, 1000, 1400],
   "prefill": {
-    "type": "none"
+    "type": "pattern",
+    "rows": [
+      "111111111111................11111111111111111111",
+      "1111111111111..............111111111111111111111",
+      "11111111111111............1111111111111111111111",
+      "111111111111111..........11111111111111111111111",
+      "2222222222222222........222222222222222222222222",
+      "22222222222222222......2222222222222222222222222",
+      "222222222222222222....22222222222222222222222222",
+      "2222222222222222222..222222222222222222222222222"
+    ]
   },
   "obstacles": [],
-  "specials": {
-    "bombChance": 0
-  },
-  "seed": 12345,
-  "hint": "Aynı renk baharatı soldan sağa uzat!"
+  "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 1001,
+  "pieces": ["I", "O"],
+  "scriptedPieces": [{ "shape": "O", "color": 2, "rot": 0 }, { "shape": "I", "color": 1, "rot": 0 }],
+  "tutorial": "t1",
+  "intro": [],
+  "hint": "Keseyi sürükle, aynı rengin boşluğuna bırak!"
 }

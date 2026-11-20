@@ -1,5 +1,5 @@
 // Single source of truth for colours. The Art agent replaces values here.
-import { STONE } from '../engine/grid';
+import { JOKER, SACK, STONE } from '../engine/grid';
 
 export interface SandColor {
   /** Three grain shades: base, light, dark. */
@@ -18,6 +18,11 @@ export interface Theme {
   flash: string;
   /** Tint mixed into bomb grains. */
   bomb: string;
+  /** Joker ("Karışık Baharat") grains cycle through these colours (GDD §3.2: 0.8 s loop). */
+  joker: string[];
+  /** Sack ("Çuval") cloth shades and the colour of its hp knots. */
+  sack: [string, string, string];
+  sackKnot: string;
   ghostOk: string;
   ghostBad: string;
   columnHint: string;
@@ -40,6 +45,9 @@ export const defaultTheme: Theme = {
   },
   flash: '#ffffff',
   bomb: '#1a1a1a',
+  joker: ['#e8553f', '#f2c230', '#4fb874', '#4f6fe0', '#9b3d63', '#ffffff'],
+  sack: ['#c9a66b', '#d8b984', '#a88850'],
+  sackKnot: '#5a3b1c',
   ghostOk: 'rgba(255,255,255,0.55)',
   ghostBad: 'rgba(255,80,80,0.55)',
   columnHint: 'rgba(255,255,255,0.06)',
@@ -54,6 +62,7 @@ export const defaultTheme: Theme = {
     '--on-accent': '#2a1a00',
     '--danger': '#ff6b6b',
     '--star': '#ffd166',
+    '--danger-glow': 'rgba(255, 60, 60, 0.35)',
   },
 };
 
@@ -94,6 +103,8 @@ export interface PackedPalette {
   grain: Uint32Array;
   /** Same layout, bomb-tinted variants. */
   bomb: Uint32Array;
+  /** Joker cycle colours (index = phase). */
+  joker: Uint32Array;
   bg: number;
   flash: number;
 }
@@ -118,7 +129,10 @@ export function packedPalette(): PackedPalette {
   for (let id = 1; id < 256; id++) fill(id, ['#999999', '#aaaaaa', '#888888']);
   for (const [id, c] of Object.entries(t.sand)) fill(Number(id), c.shades);
   fill(STONE, t.stone);
-  paletteCache = { grain, bomb, bg: pack(hexToRgb(t.boardBg)), flash: pack(hexToRgb(t.flash)) };
+  fill(SACK, t.sack);
+  const joker = new Uint32Array(t.joker.map((c) => pack(hexToRgb(c))));
+  fill(JOKER, [t.joker[0], t.joker[1], t.joker[2]]);
+  paletteCache = { grain, bomb, joker, bg: pack(hexToRgb(t.boardBg)), flash: pack(hexToRgb(t.flash)) };
   return paletteCache;
 }
 

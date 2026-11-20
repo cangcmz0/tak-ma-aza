@@ -1,41 +1,16 @@
 {
   "id": 5,
-  "name": "Patlayan Baharat",
-  "colors": [
-    1,
-    2,
-    4
-  ],
-  "pieceLimit": 30,
-  "goals": [
-    {
-      "type": "clear_paths",
-      "count": 2
-    },
-    {
-      "type": "clear_paths",
-      "count": 1,
-      "color": 4
-    },
-    {
-      "type": "score",
-      "value": 900
-    }
-  ],
-  "stars": [
-    900,
-    1800,
-    2700
-  ],
-  "prefill": {
-    "type": "random",
-    "rows": 8,
-    "density": 0.9
-  },
+  "name": "Kırmızı Sipariş",
+  "difficulty": 3,
+  "customer": "ayse",
+  "colors": [1, 2, 3],
+  "pieceLimit": 15,
+  "goals": [{ "type": "clear_paths", "count": 2 }, { "type": "clear_paths", "count": 1, "color": 1 }],
+  "stars": [600, 1200, 1800],
+  "prefill": { "type": "random", "rows": 12, "density": 0.6, "colors": [1, 1, 2, 3] },
   "obstacles": [],
-  "specials": {
-    "bombChance": 0.15
-  },
-  "seed": 50505,
-  "hint": "Siyah benekli blok patlayınca çevresini de temizler."
+  "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 5005,
+  "intro": ["colorPath"],
+  "hint": "Ayşe Teyze pul biber istiyor: kırmızı bir yol patlat."
 }

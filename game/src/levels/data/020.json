@@ -1,0 +1,21 @@
+{
+  "id": 20,
+  "name": "Hancı Bey",
+  "difficulty": 8,
+  "customer": "mehmet",
+  "colors": [1, 2, 3, 4],
+  "pieceLimit": 26,
+  "goals": [{ "type": "clear_obstacles", "count": 4, "kind": "sack" }, { "type": "clear_paths", "count": 3 }],
+  "stars": [1500, 2800, 4200],
+  "prefill": { "type": "random", "rows": 36, "density": 0.9 },
+  "obstacles": [
+    { "type": "sack", "x": 1, "y": 17, "w": 2, "h": 2, "hp": 2 },
+    { "type": "sack", "x": 4, "y": 14, "w": 2, "h": 2, "hp": 3 },
+    { "type": "sack", "x": 7, "y": 17, "w": 2, "h": 2, "hp": 2 },
+    { "type": "sack", "x": 9, "y": 13, "w": 2, "h": 2, "hp": 3 }
+  ],
+  "specials": { "bombChance": 0.15, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 20020,
+  "intro": [],
+  "hint": "Hancı Bey'in çuvalları sağlam: acı biberi iyi kullan."
+}

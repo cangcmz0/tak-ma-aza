@@ -5,7 +5,7 @@ import { SOUND_NAMES, type SoundName } from '../audio/audio';
 import { WebAudioService } from '../audio/webAudio';
 import { feedbackFor } from '../fx/feedback';
 import { DeviceHaptics, type HapticType } from '../fx/haptics';
-import type { SessionEvent } from '../game/session';
+import type { SessionEvent } from '../core/events';
 
 const INFO: Record<SoundName, string> = {
   ui_tap: 'Kare 1 kHz, 20 ms, −20 dB',
@@ -33,8 +33,12 @@ const INFO: Record<SoundName, string> = {
 
 const HAPTICS: HapticType[] = ['selection', 'light', 'medium', 'heavy', 'success', 'warning', 'error'];
 
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...kids: (Node | string)[]) {
-  const e = Object.assign(document.createElement(tag), props);
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Record<string, string | boolean> = {}, ...kids: (Node | string)[]): HTMLElementTagNameMap[K] {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'style') e.setAttribute('style', String(v));
+    else (e as unknown as Record<string, unknown>)[k] = v;
+  }
   e.append(...kids);
   return e;
 }
@@ -145,13 +149,21 @@ const sims: [string, string, () => SessionEvent[]][] = [
   ['Bırakma', 'placed → drop + akış + light', () => [{ type: 'placed', slot: 0, piece, x: 10 } as SessionEvent]],
   ['Geçersiz bırakma', 'blocked → invalid + warning', () => [{ type: 'blocked', slot: 0, x: 10 }]],
   ['Yol (×1)', 'cleared chain 1', () => [{ type: 'cleared', paths: 1, grains: 120, chain: 1, points: 220 }]],
-  ['Zincir ×3 pul biber', 'cleared + chainWord + hapşırık', () => [{ type: 'cleared', paths: 1, grains: 140, chain: 3, points: 900, colors: [1] } as SessionEvent]],
+  ['Zincir ×3 pul biber', 'cleared + chainWord + hapşırık', () => [{ type: 'cleared', paths: 1, grains: 140, chain: 3, points: 900, colors: [1] }]],
   ['Çifte', 'cleared paths 2', () => [{ type: 'cleared', paths: 2, grains: 260, chain: 2, points: 700 }]],
-  ['Acı biber', 'cleared + bombs', () => [{ type: 'cleared', paths: 1, grains: 300, chain: 1, points: 400, bombs: 1 } as SessionEvent]],
+  ['Acı biber', 'bomb + cleared', () => [
+    { type: 'bomb', grains: 200, x: 20, y: 40 },
+    { type: 'cleared', paths: 1, grains: 300, chain: 1, points: 400 },
+  ]],
+  ['Çuval hasar / yırtılma', 'sackHit, sackBreak', () => [
+    { type: 'sackHit', index: 0, hp: 1, maxHp: 2, x: 8, y: 40, w: 8, h: 8 },
+    { type: 'sackBreak', index: 1, x: 24, y: 40, w: 8, h: 8, points: 100 },
+  ]],
+  ['Booster', 'toolCleared → vuuş + medium', () => [{ type: 'toolCleared', grains: 40, points: 40 }]],
   ['Hedef tamam', 'goalComplete', () => [{ type: 'goalComplete', index: 0 }]],
   ['Kazandın (3 yıldız)', 'won → jingle + yıldızlar + success', () => [{ type: 'won', score: 3000, stars: 3, bonus: 300 }]],
   ['Kaybettin', 'lost → yumuşak jingle', () => [{ type: 'lost', reason: 'out_of_pieces', score: 800 }]],
-  ['Tehlike aç/kapa', 'danger {on}', () => [{ type: 'danger', on: !audio.dangerOn } as unknown as SessionEvent]],
+  ['Tehlike aç/kapa', 'danger {on, first}', () => [{ type: 'danger', on: !audio.dangerOn, first: true }]],
 ];
 root.append(
   el('h2', { textContent: 'Oyun olayları (fx/feedback.ts üzerinden)' }),

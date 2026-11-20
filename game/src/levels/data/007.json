@@ -1,0 +1,16 @@
+{
+  "id": 7,
+  "name": "Gram Gram",
+  "difficulty": 3,
+  "customer": "selim",
+  "colors": [1, 2, 3],
+  "pieceLimit": 16,
+  "goals": [{ "type": "clear_color_grains", "color": 2, "count": 400 }],
+  "stars": [700, 1400, 2100],
+  "prefill": { "type": "pattern", "rows": ["2..1..2..3.2", "12.3.212.312", "312132213123"] },
+  "obstacles": [],
+  "specials": { "bombChance": 0.1, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 7007,
+  "intro": ["grains", "boosterScoop"],
+  "hint": "Zerdeçal patlat, sipariş kesesi dolsun."
+}

@@ -1,0 +1,26 @@
+{
+  "id": 12,
+  "name": "Elek",
+  "difficulty": 4,
+  "customer": "ayse",
+  "colors": [1, 2, 3, 4],
+  "pieceLimit": 20,
+  "goals": [{ "type": "clear_color_grains", "color": 4, "count": 500 }],
+  "stars": [900, 1700, 2600],
+  "prefill": {
+    "type": "pattern",
+    "rows": [
+      "1.4..2..4..3",
+      "34413.2443.2",
+      "144321344312",
+      "213432134123",
+      "342114432441",
+      "123342121334"
+    ]
+  },
+  "obstacles": [],
+  "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 12012,
+  "intro": ["boosterSieve"],
+  "hint": "Sumak adacıklarını birleştir."
+}

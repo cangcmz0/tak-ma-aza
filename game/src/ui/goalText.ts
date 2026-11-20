@@ -14,6 +14,8 @@ export function goalLabel(g: Goal): string {
       return fmt(s.score, { n: d.value });
     case 'clear_color_grains':
       return fmt(s.clear_color_grains, { n: d.count, color: colorName(d.color) });
+    case 'clear_obstacles':
+      return fmt(s.clear_obstacles, { n: d.count });
   }
 }
 

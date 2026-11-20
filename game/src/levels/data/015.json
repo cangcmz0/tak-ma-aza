@@ -1,0 +1,30 @@
+{
+  "id": 15,
+  "name": "Han Avlusu",
+  "difficulty": 7,
+  "customer": "anna",
+  "colors": [1, 2, 3, 4],
+  "pieceLimit": 22,
+  "goals": [{ "type": "clear_paths", "count": 5 }, { "type": "clear_paths", "count": 2, "color": 3 }],
+  "stars": [1400, 2600, 3900],
+  "prefill": {
+    "type": "pattern",
+    "rows": [
+      "333334333333",
+      "111111112111",
+      "443444444444",
+      "222222122222",
+      "333333333433",
+      "111211111111",
+      "444444434444",
+      "222212222222",
+      "333333333343",
+      "141111111111"
+    ]
+  },
+  "obstacles": [],
+  "specials": { "bombChance": 0.1, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 15015,
+  "intro": [],
+  "hint": "Kazıkları aş: iki nane yolu lazım."
+}

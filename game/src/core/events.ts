@@ -27,7 +27,7 @@ export type LoseReason = 'out_of_pieces' | 'no_space';
  * Coordinates are in grains (x right, y down, origin top-left of the board); `cells` are
  * grain indices (i = y * grid.w + x).
  *
- * Order within one resolved clear: grainsToGoal* → jokerJoined? → bomb? → cleared →
+ * Order within one resolved clear: grainsToGoal* → joker? → bomb? → cleared →
  * double? → chainWord? → sackHit/sackBreak* → goalComplete*.
  */
 export type SessionEvent =
@@ -37,8 +37,13 @@ export type SessionEvent =
   | { type: 'trayRefill' }
   /** Paths found; the blink starts (session.clear.marked is valid until `cleared`). */
   | { type: 'clearStart'; paths: number; grains: number }
-  /** Paths removed. cx/cy = centre of the path grains (score popup anchor). */
-  | { type: 'cleared'; paths: number; grains: number; chain: number; points: number; cx: number; cy: number }
+  /**
+   * Paths removed. Session always sets the optional fields (optional only so tools/tests can
+   * build events by hand): cx/cy = centre of the path grains (score popup anchor),
+   * colors = path colours largest first (JOKER = 15 for a joker-only path).
+   * Bombs are announced separately by a `bomb` event.
+   */
+  | { type: 'cleared'; paths: number; grains: number; chain: number; points: number; cx?: number; cy?: number; colors?: number[] }
   /** Two or more paths in one check ("Çifte!"). */
   | { type: 'double'; paths: number }
   /** Chain reached ≥ 2 in this clear (×2 "Güzel!" … ×5 "Maşallah!"). */
@@ -46,7 +51,7 @@ export type SessionEvent =
   /** Grains of a grain-goal colour are about to fly into the order bag (sampled cells, ≤ 24). */
   | { type: 'grainsToGoal'; goal: number; color: number; total: number; cells: number[] }
   /** Joker grains were part of the cleared paths. */
-  | { type: 'jokerJoined'; grains: number }
+  | { type: 'joker'; grains: number }
   /** A bomb went off: `grains` removed by blasts; x/y = first bomb grain. */
   | { type: 'bomb'; grains: number; x: number; y: number }
   /** A sack took damage but is still standing. Rect in grains. */

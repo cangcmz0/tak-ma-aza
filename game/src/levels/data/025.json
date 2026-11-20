@@ -1,0 +1,16 @@
+{
+  "id": 25,
+  "name": "Çivit Mavisi",
+  "difficulty": 8,
+  "customer": "anna",
+  "colors": [1, 2, 3, 4, 5],
+  "pieceLimit": 26,
+  "goals": [{ "type": "clear_paths", "count": 5 }],
+  "stars": [1400, 2700, 4000],
+  "prefill": { "type": "random", "rows": 24, "density": 0.9 },
+  "obstacles": [],
+  "specials": { "bombChance": 0, "jokerChance": 0.15, "twoColorChance": 0 },
+  "seed": 25025,
+  "intro": ["newColorIndigo"],
+  "hint": "Yeni baharat: Çivit! Beş renkle tezgâh kalabalık."
+}

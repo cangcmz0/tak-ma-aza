@@ -1,0 +1,19 @@
+{
+  "id": 23,
+  "name": "Çifte Sipariş",
+  "difficulty": 5,
+  "customer": "ayse",
+  "colors": [1, 2, 3, 4],
+  "pieceLimit": 24,
+  "goals": [
+    { "type": "clear_color_grains", "color": 2, "count": 500 },
+    { "type": "clear_color_grains", "color": 1, "count": 500 }
+  ],
+  "stars": [1300, 2500, 3700],
+  "prefill": { "type": "random", "rows": 24, "density": 0.9 },
+  "obstacles": [],
+  "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0.25 },
+  "seed": 23023,
+  "intro": [],
+  "hint": "Zerdeçal ve pul biber: ikisi de 500 g."
+}

@@ -1,48 +1,47 @@
-// One play-through of a level: board, tray, score, chain, goals, win/lose.
+// One play-through of a level (or an endless run): board, tray, score, chain, goals, win/lose.
 // Driven by fixed ticks (tick()) so it is deterministic and testable headless.
 import {
   ATTEMPT_SEED_STEP,
   CHAIN_MAX,
   CHAIN_RESET_ON_DROP,
   CLEAR_FLASH_TICKS,
+  DANGER_ROWS,
   END_BONUS_PER_PIECE,
   GRID_H,
   GRID_W,
+  HELP_COLOR_WEIGHT,
+  HELP_LOSS_STREAK,
   PATH_BONUS,
+  SACK_BREAK_POINTS,
   SCORE_PER_GRAIN,
   SIM_STEPS_PER_TICK,
   TRAY_SIZE,
 } from '../config';
-import { Emitter } from '../core/events';
+import { Emitter, type LoseReason, type SessionEvent } from '../core/events';
 import { Rng, deriveSeed } from '../core/rng';
 import { ClearResult, findClears, removeMarked } from '../engine/clear';
-import { SandGrid } from '../engine/grid';
+import { FLAG_BOMB, FLAG_STATIC, MAX_SAND_COLOR, SandGrid } from '../engine/grid';
 import { canStamp, fitsAnywhere, PieceBag, pieceShape, rotatePiece, stamp, type Piece } from '../engine/pieces';
+import { Sacks } from '../engine/sacks';
 import { step } from '../engine/sim';
-import type { LevelDef } from '../levels/schema';
+import type { LevelDef, ScriptedPieceDef } from '../levels/schema';
+import { buildEndlessBoard, endlessParams } from './endless';
 import { computeStars, goalDone, GoalTracker } from './goals';
 import { buildBoard } from './setup';
 
-export type SessionState = 'playing' | 'won' | 'lost';
-export type LoseReason = 'out_of_pieces' | 'no_space';
+// Event types live in core/events.ts (re-exported for existing imports).
+export type { LoseReason, SessionEvent } from '../core/events';
 
-export type SessionEvent =
-  | { type: 'placed'; slot: number; piece: Piece; x: number }
-  | { type: 'blocked'; slot: number; x: number }
-  | { type: 'rotated'; slot: number }
-  | { type: 'trayRefill' }
-  | { type: 'clearStart'; paths: number; grains: number }
-  | { type: 'cleared'; paths: number; grains: number; chain: number; points: number }
-  | { type: 'goalComplete'; index: number }
-  | { type: 'settled' }
-  | { type: 'won'; score: number; stars: number; bonus: number }
-  | { type: 'lost'; reason: LoseReason; score: number };
+export type SessionState = 'playing' | 'won' | 'lost';
 
 /** RNG stream ids (see deriveSeed). */
 const STREAM_BOARD = 1;
 const STREAM_PIECES = 2;
 const STREAM_SIM = 3;
 const STREAM_COSMETIC = 4;
+
+/** Max sampled cells per grainsToGoal event. */
+const FLY_SAMPLES = 24;
 
 export interface SessionOptions {
   /** Override the level seed for all streams (e.g. replays / daily challenge). */
@@ -52,8 +51,36 @@ export interface SessionOptions {
    * use base + attempt * ATTEMPT_SEED_STEP so every retry deals differently (GDD §4.2).
    */
   attempt?: number;
+  /** Help rule (GDD §4.2): goal colours get HELP_COLOR_WEIGHT in the colour bag. See shouldHelp(). */
+  help?: boolean;
+  /** Endless mode (GDD §6): never won, difficulty follows the score, endless board prefill. */
+  endless?: boolean;
   gridW?: number;
   gridH?: number;
+}
+
+/** Help rule: active on every HELP_LOSS_STREAK-th consecutive loss, for one attempt. */
+export function shouldHelp(lossStreak: number): boolean {
+  return lossStreak > 0 && lossStreak % HELP_LOSS_STREAK === 0;
+}
+
+/** Colours named by the level goals (help rule targets). */
+export function goalColors(level: LevelDef): number[] {
+  const out = new Set<number>();
+  for (const g of level.goals) if ('color' in g && g.color !== undefined) out.add(g.color);
+  return [...out];
+}
+
+export function scriptedToPiece(d: ScriptedPieceDef): Piece {
+  return {
+    kind: d.shape,
+    rot: (d.rot ?? 0) & 3,
+    color: d.colors ? d.colors[0] : d.color,
+    color2: d.colors ? d.colors[1] : null,
+    special: d.bomb !== undefined ? 'bomb' : null,
+    specialCell: d.bomb ?? -1,
+    jokerCell: d.joker ?? -1,
+  };
 }
 
 export class Session {
@@ -61,22 +88,31 @@ export class Session {
   readonly grid: SandGrid;
   readonly clear: ClearResult;
   readonly goals: GoalTracker;
+  readonly sacks: Sacks;
   readonly events = new Emitter<SessionEvent>();
   readonly tray: (Piece | null)[] = [];
+  readonly endless: boolean;
+  /** True when the help rule is active for this attempt. */
+  readonly helped: boolean;
 
   state: SessionState = 'playing';
   loseReason: LoseReason | null = null;
   score = 0;
-  /** Current chain level (consecutive clears since the last drop). */
+  /** Current chain level (consecutive clears; resets when the board settles without a path). */
   chain = 0;
   bestChain = 0;
   /** Pieces placed so far. */
   placed = 0;
   /** Pieces dealt into the tray so far. */
   dealt = 0;
+  /** Extra pieces granted on top of the level limit (continue / booster). */
+  extraPieces = 0;
   /** Total ticks run (for stats / replays). */
   ticks = 0;
   stars = 0;
+  /** Settled sand is within DANGER_ROWS of the top. */
+  danger = false;
+  private dangerWarned = false;
 
   /** Ticks left in the clear blink; > 0 means a clear is pending (clear.marked is valid). */
   flashTicks = 0;
@@ -89,33 +125,54 @@ export class Session {
   private readonly rngCosmetic: Rng;
   private readonly goalDoneFlags: boolean[];
   private readonly regionOrder: Int32Array;
+  private endlessColors = 0;
   /** Points from the end-of-level bonus (included in score after a win). */
   endBonus = 0;
 
   constructor(level: LevelDef, opts: SessionOptions = {}) {
     this.level = level;
+    this.endless = !!opts.endless;
     const base = opts.seed ?? level.seed;
     const seed = (base + (opts.attempt ?? 0) * ATTEMPT_SEED_STEP) >>> 0;
     this.grid = new SandGrid(opts.gridW ?? GRID_W, opts.gridH ?? GRID_H);
     this.clear = ClearResult.for(this.grid);
-    this.bag = new PieceBag(new Rng(deriveSeed(seed, STREAM_PIECES)), {
-      colors: level.colors,
-      kinds: level.pieces,
-      bombChance: level.specials.bombChance,
-    });
+    const helpColors = opts.help ? goalColors(level) : [];
+    this.helped = helpColors.length > 0;
+    const colorWeights: Record<number, number> = {};
+    for (const c of helpColors) colorWeights[c] = HELP_COLOR_WEIGHT;
+    this.bag = new PieceBag(
+      new Rng(deriveSeed(seed, STREAM_PIECES)),
+      {
+        colors: level.colors,
+        kinds: level.pieces,
+        bombChance: level.specials.bombChance,
+        jokerChance: level.specials.jokerChance ?? 0,
+        twoColorChance: level.specials.twoColorChance ?? 0,
+        colorWeights: this.helped ? colorWeights : undefined,
+      },
+      (level.scriptedPieces ?? []).map(scriptedToPiece),
+    );
     this.rngSim = new Rng(deriveSeed(seed, STREAM_SIM));
     this.rngCosmetic = new Rng(deriveSeed(seed, STREAM_COSMETIC));
-    buildBoard(this.grid, level, new Rng(deriveSeed(base, STREAM_BOARD)), this.clear);
-    this.regionOrder = new Int32Array(this.grid.h);
+    this.sacks = new Sacks();
+    if (this.endless) buildEndlessBoard(this.grid, level, new Rng(deriveSeed(base, STREAM_BOARD)), this.clear);
+    else buildBoard(this.grid, level, new Rng(deriveSeed(base, STREAM_BOARD)), this.clear, this.sacks);
+    this.endlessColors = level.colors.length;
+    this.regionOrder = new Int32Array(this.clear.regionColor.length);
     this.goals = new GoalTracker(level.goals);
     this.goalDoneFlags = this.goals.goals.map(() => false);
     for (let i = 0; i < TRAY_SIZE; i++) this.tray.push(null);
     this.refillTray();
   }
 
+  /** Total pieces allowed (level limit + granted extras); Infinity when unlimited. */
+  get pieceBudget(): number {
+    return this.level.pieceLimit === null ? Infinity : this.level.pieceLimit + this.extraPieces;
+  }
+
   /** Pieces the player can still place (Infinity when unlimited). */
   get piecesLeft(): number {
-    return this.level.pieceLimit === null ? Infinity : this.level.pieceLimit - this.placed;
+    return this.pieceBudget - this.placed;
   }
 
   get isPlaying(): boolean {
@@ -126,9 +183,13 @@ export class Session {
     return this.flashTicks > 0;
   }
 
+  /** Current dealing options (endless difficulty is visible here). */
+  get dealOptions() {
+    return this.bag.options;
+  }
+
   private refillTray(): void {
-    const limit = this.level.pieceLimit;
-    const toDeal = limit === null ? TRAY_SIZE : Math.min(TRAY_SIZE, limit - this.dealt);
+    const toDeal = Math.min(TRAY_SIZE, this.pieceBudget - this.dealt);
     if (toDeal <= 0) return;
     for (let i = 0; i < toDeal; i++) {
       this.tray[i] = this.bag.next();
@@ -165,12 +226,76 @@ export class Session {
     this.tray[slot] = null;
     this.placed++;
     if (CHAIN_RESET_ON_DROP) this.chain = 0;
-    this.settled = false;
-    this.needsCheck = true;
+    this.wake();
     this.events.emit({ type: 'placed', slot, piece: p, x });
     if (this.tray.every((t) => t === null)) this.refillTray();
     return true;
   }
+
+  // --- external actions (boosters / continue; economy wave) ----------------
+
+  /** Grant extra pieces (e.g. "continue +5"). Refills an empty tray. */
+  addPieces(n: number): void {
+    if (n <= 0 || !Number.isFinite(this.pieceBudget)) return;
+    this.extraPieces += n;
+    this.events.emit({ type: 'piecesAdded', n });
+    if (this.tray.every((t) => t === null)) this.refillTray();
+    this.wake();
+  }
+
+  /** Replace every piece in the tray with a new one (does not use up the piece limit). */
+  rerollTray(): boolean {
+    if (!this.isPlaying) return false;
+    let any = false;
+    for (let i = 0; i < this.tray.length; i++) {
+      if (this.tray[i]) {
+        this.tray[i] = this.bag.next();
+        any = true;
+      }
+    }
+    if (any) {
+      this.events.emit({ type: 'trayRerolled' });
+      this.wake();
+    }
+    return any;
+  }
+
+  /**
+   * Remove all sand in grain columns [x0, x0 + w) ("Kepçe"). Grains count for colour goals,
+   * score 1 point each without multiplier (GDD §4.7). Refused while a clear is blinking.
+   * @returns grains removed
+   */
+  scoopColumns(x0: number, w: number): number {
+    if (!this.isPlaying || this.clearPending) return 0;
+    const g = this.grid;
+    const res = this.clear;
+    res.reset();
+    for (let y = 0; y < g.h; y++)
+      for (let x = Math.max(0, x0); x < Math.min(g.w, x0 + w); x++) {
+        const i = y * g.w + x;
+        const c = g.color[i];
+        if (c !== 0 && c <= MAX_SAND_COLOR && !(g.flags[i] & FLAG_STATIC)) res.markCell(g, i);
+      }
+    const n = res.cellCount;
+    if (n > 0) {
+      removeMarked(g, res);
+      this.score += n;
+      this.goals.onClear(res);
+      this.goals.onScore(this.score);
+      this.events.emit({ type: 'toolCleared', grains: n, points: n });
+      this.checkGoalCompletion();
+      this.wake();
+    }
+    res.reset();
+    return n;
+  }
+
+  private wake(): void {
+    this.settled = false;
+    this.needsCheck = true;
+  }
+
+  // --- simulation -----------------------------------------------------------
 
   /** Advance one fixed simulation tick. */
   tick(): void {
@@ -183,8 +308,7 @@ export class Session {
     let moved = 0;
     for (let k = 0; k < SIM_STEPS_PER_TICK; k++) moved += step(this.grid, this.rngSim);
     if (moved > 0) {
-      this.settled = false;
-      this.needsCheck = true;
+      this.wake();
       return;
     }
     if (!this.needsCheck) return;
@@ -198,6 +322,7 @@ export class Session {
     this.settled = true;
     this.chain = 0;
     this.events.emit({ type: 'settled' });
+    this.updateDanger();
     this.evaluateEnd();
   }
 
@@ -210,8 +335,64 @@ export class Session {
     return false;
   }
 
+  /** Highest row (0 = top) holding a non-static grain; grid.h if the board is empty. */
+  topSandRow(): number {
+    const { color, flags, size, w, h } = this.grid;
+    for (let i = 0; i < size; i++) if (color[i] !== 0 && !(flags[i] & FLAG_STATIC)) return (i / w) | 0;
+    return h;
+  }
+
+  private updateDanger(): void {
+    const on = this.topSandRow() < DANGER_ROWS;
+    if (on === this.danger) return;
+    this.danger = on;
+    const first = on && !this.dangerWarned;
+    if (on) this.dangerWarned = true;
+    this.events.emit({ type: 'danger', on, first });
+  }
+
+  private emitClearDetails(): { cx: number; cy: number } {
+    const res = this.clear;
+    const g = this.grid;
+    const w = g.w;
+    // Path centre (score popup anchor) and bomb origin.
+    let sx = 0;
+    let sy = 0;
+    let bomb = -1;
+    for (let k = 0; k < res.pathCellCount; k++) {
+      const i = res.cells[k];
+      sx += i % w;
+      sy += (i / w) | 0;
+      if (bomb < 0 && g.flags[i] & FLAG_BOMB) bomb = i;
+    }
+    const n = Math.max(1, res.pathCellCount);
+    // Grains flying into the order bag (one event per grain goal whose colour was cleared).
+    this.goals.goals.forEach((goal, gi) => {
+      if (goal.def.type !== 'clear_color_grains' || goalDone(goal)) return;
+      const color = goal.def.color;
+      const total = res.colorCounts[color];
+      if (!total) return;
+      const cells: number[] = [];
+      const stride = Math.max(1, Math.floor(total / FLY_SAMPLES));
+      let seen = 0;
+      for (let k = 0; k < res.cellCount && cells.length < FLY_SAMPLES; k++) {
+        const i = res.cells[k];
+        if (g.color[i] !== color) continue;
+        if (seen++ % stride === 0) cells.push(i);
+      }
+      this.events.emit({ type: 'grainsToGoal', goal: gi, color, total, cells });
+    });
+    const jokers = res.jokerPathGrains(g);
+    if (jokers > 0) this.events.emit({ type: 'joker', grains: jokers });
+    if (bomb >= 0) this.events.emit({ type: 'bomb', grains: res.cellCount - res.pathCellCount, x: bomb % w, y: (bomb / w) | 0 });
+    return { cx: sx / n, cy: sy / n };
+  }
+
   private resolveClear(): void {
     const res = this.clear;
+    const { cx, cy } = this.emitClearDetails();
+    // Sack damage needs the marks of this clear (before they are reset).
+    const sackHits = this.sacks.list.length ? this.sacks.applyClear(this.grid, res) : [];
     removeMarked(this.grid, res);
     // Paths of one check are separate chain steps, largest first (GDD §4.6/4.7).
     const order = this.regionOrder;
@@ -227,31 +408,56 @@ export class Session {
       order[b + 1] = v;
     }
     let points = 0;
+    const colors: number[] = [];
     for (let k = 0; k < n; k++) {
+      colors.push(res.regionColor[order[k]]);
       this.chain++;
       const z = Math.min(this.chain, CHAIN_MAX);
       points += (res.regionLen[order[k]] * SCORE_PER_GRAIN + PATH_BONUS) * z;
     }
     // Grains removed by specials (bombs): per grain at the current multiplier, no path bonus.
     points += (res.cellCount - res.pathCellCount) * SCORE_PER_GRAIN * Math.min(this.chain, CHAIN_MAX);
+    // Torn sacks: flat points, no multiplier.
+    let broken = 0;
+    for (const hit of sackHits) if (hit.broken) broken++;
+    points += broken * SACK_BREAK_POINTS;
     if (this.chain > this.bestChain) this.bestChain = this.chain;
     this.score += points;
     this.goals.onClear(res);
+    for (let k = 0; k < broken; k++) this.goals.onObstacle('sack');
     this.goals.onScore(this.score);
-    this.events.emit({ type: 'cleared', paths: res.regionCount, grains: res.cellCount, chain: this.chain, points });
+    this.events.emit({ type: 'cleared', paths: n, grains: res.cellCount, chain: this.chain, points, cx, cy, colors });
+    if (n >= 2) this.events.emit({ type: 'double', paths: n });
+    if (this.chain >= 2) this.events.emit({ type: 'chainWord', chain: Math.min(this.chain, CHAIN_MAX) });
+    for (const { index, sack: s, broken: b } of sackHits) {
+      if (b) this.events.emit({ type: 'sackBreak', index, x: s.x, y: s.y, w: s.w, h: s.h, points: SACK_BREAK_POINTS });
+      else this.events.emit({ type: 'sackHit', index, hp: s.hp, maxHp: s.maxHp, x: s.x, y: s.y, w: s.w, h: s.h });
+    }
+    this.checkGoalCompletion();
+    if (this.endless) this.applyEndlessDifficulty();
+    res.marked.fill(0);
+    this.wake();
+  }
+
+  private checkGoalCompletion(): void {
     this.goals.goals.forEach((g, i) => {
       if (!this.goalDoneFlags[i] && goalDone(g)) {
         this.goalDoneFlags[i] = true;
         this.events.emit({ type: 'goalComplete', index: i });
       }
     });
-    res.marked.fill(0);
-    this.settled = false;
-    this.needsCheck = true;
+  }
+
+  private applyEndlessDifficulty(): void {
+    const p = endlessParams(this.score);
+    if (p.colors.length !== this.endlessColors || p.bombChance !== this.bag.options.bombChance || p.jokerChance !== this.bag.options.jokerChance) {
+      this.endlessColors = p.colors.length;
+      this.bag.setOptions({ colors: p.colors, bombChance: p.bombChance, jokerChance: p.jokerChance });
+    }
   }
 
   private evaluateEnd(): void {
-    if (this.goals.allDone()) {
+    if (!this.endless && this.goals.allDone()) {
       this.state = 'won';
       // End bonus for unused pieces; added after goal checks so it never completes a score goal.
       this.endBonus = Number.isFinite(this.piecesLeft) ? this.piecesLeft * END_BONUS_PER_PIECE : 0;
