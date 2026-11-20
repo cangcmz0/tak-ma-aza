@@ -46,12 +46,17 @@ Gerekçe: Para bulmaca oyunlarında. Türk stüdyolarının gelirinin ~%97'si bu
 **Teknik öneri:** Web teknolojisiyle devam (prototip zaten web'de). Önce web'de test,
 sonra aynı kod Android/iOS uygulamasına paketlenir. Ucuz ve hızlı.
 
-**Sıradaki kararlar:** bizi farklı kılacak özellik, tema, platform, ekip (kim kodlar/kim çizer), bütçe.
+**Sıradaki kararlar:** bizi farklı kılacak özellik, tema, ekip (kim kodlar/kim çizer), bütçe.
 
 **Tema fikri:** Baharat çarşısı — kum yerine renkli baharatlar (pul biber, zerdeçal, sumak, nane).
 
 ## 2. Tür / Platform
-_(henüz belirlenmedi)_
+- **Tür:** Kum bulmacası (casual puzzle)
+- **Platform: MOBİL** (karar: 20 Kasım 2026)
+  - Önerilen sıra: önce **Android** (Play Store tek seferlik ~25 $), sonra **iOS** (Apple yıllık ~99 $, derleme için Mac gerekir)
+  - Önerilen teknik: Web teknolojisi (TypeScript + Canvas) + **Capacitor** ile Android/iOS uygulamasına paketleme
+    - Artısı: prototip zaten bu teknolojide, hızlı ilerler, reklam (AdMob) eklentisi var
+    - Eksisi: bazı yayıncılar Unity ile yapılmış oyunları tercih eder (yayıncıyla çalışılacaksa tekrar değerlendirilir)
 
 ## 3. Temel Oynanış (Core Loop)
 _(henüz belirlenmedi)_
