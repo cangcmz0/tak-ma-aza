@@ -27,7 +27,12 @@ Gerekçe: Para bulmaca oyunlarında. Türk stüdyolarının gelirinin ~%97'si bu
 - Bulmaca oyunu çiftlik temalı **olmak zorunda değil**; çiftlikle bağlantı kurulmayacak.
 - Çiftlik oyunu fikri ileride, para kazanılırsa ayrı bir proje olarak düşünülebilir.
 
-**Sıradaki kararlar:** bulmaca mekaniği, tema, platform.
+**Mekanik seçimi (20 Kasım 2026):** 1 numara — **kum bulmacası** ile başlanacak.
+- Kural: Parçalar tahtaya bırakılınca kuma dönüşüp akar; aynı renk kum soldan sağa kesintisiz yol oluşturunca patlar.
+- İlk oynanabilir örnek: `prototip/kum-akisi.html` (çalışma adı "Kum Akışı")
+- Referans oyun: Sand Blocks: Drop Puzzle (Ekim 2026'da aylık +%419 büyüme)
+
+**Sıradaki kararlar:** bizi farklı kılacak özellik, tema, platform.
 
 ## 2. Tür / Platform
 _(henüz belirlenmedi)_
