@@ -19,10 +19,10 @@ Yapımcı (koordinatör) işleri dağıtır, sonuçları birleştirir, her aşam
 ## Aşamalar
 | Dalga | İş | Durum |
 |---|---|---|
-| 1 | Oyun tasarım dokümanı (GDD) + proje altyapısı ve kum motoru | Devam ediyor |
-| 2 | Oynanış mekanikleri, 30 bölüm, görsel tema, ses | Bekliyor |
-| 3 | Android paketleme + APK derleme hattı | Bekliyor |
-| 4 | QA turu, hata düzeltme, ilk test sürümü | Bekliyor |
+| 1 | Oyun tasarım dokümanı (GDD) + proje altyapısı ve kum motoru | ✅ Bitti |
+| 2a | Oynanış mekanikleri, 30 bölüm, ses, Android + APK hattı | Devam ediyor |
+| 2b | Görsel tema (Sanat & Arayüz), ekonomi ve güçlendiriciler | Bekliyor |
+| 3 | QA turu, hata düzeltme, ilk test sürümü | Bekliyor |
 
 ## Kurallar
 - Ajanlar commit/push yapmaz; birleştirmeyi yapımcı yapar.
