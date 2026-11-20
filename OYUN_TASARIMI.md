@@ -32,7 +32,23 @@ Gerekçe: Para bulmaca oyunlarında. Türk stüdyolarının gelirinin ~%97'si bu
 - İlk oynanabilir örnek: `prototip/kum-akisi.html` (çalışma adı "Kum Akışı")
 - Referans oyun: Sand Blocks: Drop Puzzle (Ekim 2026'da aylık +%419 büyüme)
 
-**Sıradaki kararlar:** bizi farklı kılacak özellik, tema, platform.
+**✅ KESİN KARAR (20 Kasım 2026): Bu oyunu yapıyoruz — kum bulmacası.**
+
+**Taslak yol haritası:**
+| Aşama | İş | Tahmini süre |
+|---|---|---|
+| 1 | Farklılaştırma + tema kararı; oyun hissi (ses, titreşim, patlama efekti) | 1–2 hafta |
+| 2 | Bölüm sistemi (hedefli bölümler), ilk 30 bölüm, kayıt | 2 hafta |
+| 3 | Görsel tema, menüler, ilk açılış öğreticisi | 2 hafta |
+| 4 | Test: web portalı ve/veya Play Store kapalı test; TikTok/Reels videoları | 1–2 hafta |
+| 5 | Ödüllü reklam + mağazaya çıkış | 1 hafta |
+
+**Teknik öneri:** Web teknolojisiyle devam (prototip zaten web'de). Önce web'de test,
+sonra aynı kod Android/iOS uygulamasına paketlenir. Ucuz ve hızlı.
+
+**Sıradaki kararlar:** bizi farklı kılacak özellik, tema, platform, ekip (kim kodlar/kim çizer), bütçe.
+
+**Tema fikri:** Baharat çarşısı — kum yerine renkli baharatlar (pul biber, zerdeçal, sumak, nane).
 
 ## 2. Tür / Platform
 _(henüz belirlenmedi)_
