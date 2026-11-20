@@ -290,7 +290,8 @@ export class Session {
     return n;
   }
 
-  private wake(): void {
+  /** The grid changed outside of tick() (tools, debug edits): re-run physics and path checks. */
+  wake(): void {
     this.settled = false;
     this.needsCheck = true;
   }

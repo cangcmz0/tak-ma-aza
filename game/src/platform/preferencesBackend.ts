@@ -1,5 +1,6 @@
 // KeyValueBackend on Capacitor Preferences (native SharedPreferences / UserDefaults).
 // The plugin is loaded lazily so web builds and unit tests never touch it.
+import { Capacitor } from '@capacitor/core';
 import { LocalStorageBackend, type KeyValueBackend } from './storage';
 
 /** The subset of the Preferences plugin API we use (injectable for tests). */
@@ -38,7 +39,6 @@ export class PreferencesBackend implements KeyValueBackend {
 /** Preferences on a native Capacitor platform, localStorage on the web. */
 export async function createStorageBackend(): Promise<KeyValueBackend> {
   try {
-    const { Capacitor } = await import('@capacitor/core');
     if (Capacitor.isNativePlatform()) return new PreferencesBackend();
   } catch {
     /* not running under Capacitor */

@@ -67,9 +67,15 @@ src/
   ui/app.ts               App bağlamı + SceneManager (replace/push/pop, overlay)
   ui/menu.ts, levelSelect.ts, play.ts, pause.ts, result.ts, goalText.ts, dom.ts
   platform/storage.ts     SaveStore (bellek içi görünüm, asenkron kalıcılık); KeyValueBackend: LocalStorage / Memory
-  audio/audio.ts          AudioService arayüzü + NoopAudio
-  fx/haptics.ts           HapticsService arayüzü + NoopHaptics
+  audio/audio.ts          AudioService arayüzü, SoundName/SOUND_NAMES, NoopAudio
+  audio/webAudio.ts       WebAudioService: tek AudioContext, ilk dokunuşta açılır, ana ses/sessiz, döngüler (akış, tehlike)
+  audio/sounds.ts         Her sesin sentez tarifi (GDD §14.4) + cooldown/polifoni kuralı
+  audio/synth.ts          Osilatör/gürültü/çan/Karplus-Strong yardımcıları, gürültü tamponu üreticileri
+  audio/limiter.ts        VoiceLimiter: ses başına cooldown + en fazla eşzamanlı ses
+  fx/haptics.ts           HapticsService + DeviceHaptics (native: @capacitor/haptics, web: navigator.vibrate) + NoopHaptics
   fx/feedback.ts          Oyun olayları → ses/titreşim eşlemesi (tek yer)
+  fx/settingsToggle.ts    Ses / Titreşim aç-kapa düğmeleri (Duraklat ekranında)
+  dev/soundLab.ts         Ses laboratuvarı (sound-lab.html, yalnızca dev sunucusunda)
   i18n/tr.ts, index.ts    Tüm oyuncu metinleri (Türkçe), fmt() yer tutucu doldurma
   dev/bot.ts              Açgözlü otomatik oyuncu (bölüm QA/denge; pakete girmez)
   styles/main.css         Sade koyu tema, güvenli alanlar, min 44–48px dokunma hedefleri
@@ -136,18 +142,52 @@ Taşlar düşmez, temizlenmez, kumu taşır.
 Doğrulama: `validateLevel()` hatalı bölümü atlar ve konsola yazar; `npm test` tüm bölümlerin geçerli olduğunu, hazır yol olmadığını ve botun her bölümü sonuçlandırdığını kontrol eder.
 Denge için: `tests/bot.test.ts` çıktısı her bölümde açgözlü botun sonucunu (kazandı/kaybetti, puan, kullanılan parça) yazar — `npx vitest run tests/bot.test.ts --silent=false`.
 
+## Ses ve titreşim
+
+Ses dosyası yok: tüm efektler **Web Audio API ile sentezlenir** (`src/audio/`). `main.ts` → `createAudio()` + `new DeviceHaptics()`.
+
+- **Tek AudioContext**, ilk kullanıcı hareketinde oluşturulur ve `resume()` edilir (pencereye `pointerup/touchend/click/keydown` dinleyicisi + Menü düğmelerindeki `unlock()`); iOS için sessiz tampon çalınır. Hareketten önce bağlam açılmaz → tarayıcı autoplay uyarısı yok.
+- Beyaz/pembe gürültü tamponları bir kez, Karplus-Strong telli notaları ilk kullanımda (jingle notaları açılışta) üretilir ve önbelleklenir.
+- Zincir: master → kompresör → hoparlör; kısa geri beslemeli gecikme "oda" efekti (clear/yıldız/jingle).
+- **Üst üste binme sınırı:** her sesin `cooldownMs` ve `maxVoices` değeri var (`sounds.ts`); sınırı aşan çağrı sessizce atlanır.
+- **Ayarlar** (`SaveStore.settings`): `sound`, `haptics`, `volume` (0..1). Menü ve **Duraklat** ekranında Ses/Titreşim düğmeleri. Ses kapalıyken hiç düğüm oluşturulmaz ve bağlam askıya alınır. Uygulama arka plana geçince döngüler durur, bağlam askıya alınır; Duraklat açılınca döngüler durur.
+- Döngüler: `setFlow(0..1)` kum hışırtısı (yenilenmezse 2,5 sn'de kendiliğinden söner), `setDanger(on)` 1,2 sn'de bir iki "küt". `stopLoops()` ikisini de keser.
+- WebAudio yoksa (Node/vitest, eski WebView) her çağrı güvenli no-op.
+
+**Ses laboratuvarı** (geliştirici aracı): `npm run dev` → `http://localhost:5173/sound-lab.html`. Her ses için düğme, zincir/yıldız seçici, ana ses, akış/tehlike döngüleri, `feedback.ts` üzerinden oyun olayı simülasyonu ve titreşim düğmeleri. Production build'e girmez (Vite yalnızca `index.html`'i paketler).
+
+| Olay (`core/events.ts`) | Ses | Titreşim |
+|---|---|---|
+| `placed` | `drop` + akış döngüsü başlar | light |
+| `blocked` | `blocked` (GDD `invalid`) | warning |
+| `rotated` | `rotate` | — |
+| tepsiden seçme (`play.ts`) | `pick` | — (öneri: `selection`) |
+| `clearStart`, `settled` | akış döngüsü söner | — |
+| `cleared` | `clear` (zincir başına +2 yarım ton) / 2+ yol → `double`; zincir ≥2 → `chainWord`; pul biber (renk 1) ve zincir ≥3 → `sneeze` (Zerde) | medium; zincir ≥3 → heavy |
+| `bomb` | `bomb` | heavy |
+| `joker` | `joker` | — |
+| `sackHit` / `sackBreak` | `sackHit` / `sackBreak` | light / medium |
+| `goalComplete` | `goal` | — |
+| `danger` | `on` → tehlike döngüsü, `off` → durur | warning (yalnız `first`) |
+| `toolCleared`, `trayRerolled` | `booster` | medium |
+| `piecesAdded` | `coin` | — |
+| `won` | `win` (Hicaz motifi) + yıldız başına `star` (0,35 sn arayla) | success |
+| `lost` | `lose` (yumuşak; GDD gereği titreşim yok) | — |
+
+`double` ve `chainWord` olayları görsel içindir; sesleri zincir değerini taşıyan `cleared` çalar.
+**Yeni olaya ses eklemek:** `feedbackFor()` içine `case 'yeniOlay': audio.play('…'); haptics.haptic('…'); break;`. Yeni ses gerekiyorsa `SoundName` + `SOUND_NAMES`'e ad, `RECIPES`'e tarif ekle; `sound-lab.html`'de dene. Testler: `tests/audio.test.ts`, `tests/haptics.test.ts`.
+
 ## Diğer ajanlar için genişleme noktaları
 
 | İş | Nereye |
 |---|---|
 | **Tema / renkler** (Sanat) | `src/render/theme.ts`: `defaultTheme` (kum gölgeleri, taş, arka plan, flaş, bomba tonu, hayalet, `css` değişkenleri). Başka tema: yeni `Theme` nesnesi + `setTheme()`. UI biçimi: `src/styles/main.css` (yalnızca CSS değişkenlerini kullanır). Renk adları: `src/i18n/tr.ts` → `colors`. Tane dokusu gölge sayısı `config.ts` → `SHADES`. |
-| **Ses** (Ses) | `AudioService` uygula (`src/audio/audio.ts`; ses adları `SoundName`), `main.ts`'de `NoopAudio` yerine ver. Olay→ses eşlemesi `src/fx/feedback.ts`. `unlock()` ilk dokunuşta çağrılır (Menü "Oyna"/"Bölümler"). |
-| **Titreşim** | `HapticsService` uygula (`src/fx/haptics.ts`), ör. `@capacitor/haptics`; `main.ts`'de bağla. |
+| **Ses / titreşim** | Bkz. yukarıdaki **Ses ve titreşim** bölümü. Yeni olay → `src/fx/feedback.ts`'e `case`; yeni ses → `SoundName` + `src/audio/sounds.ts` tarifi. |
 | **Kayıt → Capacitor Preferences** | `KeyValueBackend` uygula (`get/set/remove`, async) ve `SaveStore.load(backend)`'e ver (`main.ts`). |
 | **Yeni hedef türü** (Oynanış) | `src/game/goals.ts`: `GoalDef` birleşimine tip ekle, `GOAL_TYPES`'a `{ validate, create }` kaydet (create → `onClear(res)` / `onScore(score)` ile `current` güncelle). HUD metni: `src/ui/goalText.ts` + `src/i18n/tr.ts` → `goals`. Test ekle. |
 | **Yeni özel tane** (Oynanış) | `src/engine/grid.ts`'de boş bir `FLAG_*` biti (2..7) ayır; `src/engine/specials.ts`'de `SPECIALS` listesine `{ id, flag, onClear(g, i, mark) }` ekle (`SpecialId` tipini genişlet). Parçaya dağıtma: `randomPiece()` (`pieces.ts`) + şemada şans alanı (`specials`). Görünüm: `boardRenderer.upload()` şu an tüm özel taneleri bomba tonuyla boyar — türe göre palet eklenebilir. Temizlenmeyen/taş benzeri davranış için `FLAG_STATIC` kullan. |
 | **Yeni prefill / engel türü** | `levels/schema.ts` (`PrefillDef` + `validatePrefill`) ve `game/setup.ts` (`buildBoard`). |
-| **Oturum olayları** (efekt, analitik) | `session.events.on(e => …)` — `placed, blocked, rotated, trayRefill, clearStart, cleared, goalComplete, settled, won, lost`. Patlama sırasında işaretli hücreler `session.clear.marked`/`cells` içinde (parçacık efekti için). |
+| **Oturum olayları** (efekt, analitik) | `session.events.on(e => …)` — tam liste `src/core/events.ts` (`SessionEvent`). Patlama sırasında işaretli hücreler `session.clear.marked`/`cells` içinde (parçacık efekti için). |
 | **Metinler / İngilizce** | `src/i18n/tr.ts` (`Strings` tipi). `en.ts` aynı şekilde yazılıp `setStrings()` ile seçilir. |
 | **Android geri tuşu** | `@capacitor/app` `backButton` → `app.scenes.back()` (Esc ile aynı yol). |
 | **Hız / his / puan ayarı** | `src/config.ts` (`SIM_STEPS_PER_TICK`, `CLEAR_FLASH_TICKS`, `SCORE_PER_GRAIN`, `PATH_BONUS`, `CHAIN_MAX`, `END_BONUS_PER_PIECE`, `CHAIN_RESET_ON_DROP`, `SHOW_ROTATE_BUTTON`, `GRID_W/H`, `BLOCK`). |
@@ -158,7 +198,7 @@ GDD §18.6'daki farklardan **yapılanlar**: puan formülü + zincir tavanı + Te
 **Yapılmayanlar** (Oynanış Mühendisi, dalga 2): `clear_obstacles` hedefi ve çuval (`obstacles[].type: "sack"`, `hp`), joker tane (`specials.jokerChance`, legend `"joker"`), ikili kese (`twoColorChance`), `scriptedPieces`, `tutorial` / `intro` / `customer` (şimdilik korunur ama yok sayılır), yardım kuralı (×1,5 renk ağırlığı; `lossStreak` hazır), sürüklenen kesenin parmağın 64 dp üstünde çizilmesi, tehlike uyarısı (üst 8 satır), "Çifte!" yazısı, Sonsuz mod. `obstacles[].type` alanı yok sayılır (hepsi raf/taş).
 
 - Görseller placeholder; patlama parçacıkları, puan uçuşu, kum dokusu yok.
-- Ses ve titreşim no-op.
+- Müzik yok (GDD: MVP sonrası). Ana ses seviyesi kayıtta (`settings.volume`) ama oyunda kaydırıcısı yok (Ayarlar ekranı gelince eklenmeli).
 - Öğretici (ilk açılış) yok; yalnızca bölüm `hint` metni.
 - Kalan parça bonusu, ödüllü reklam, "devam et" mekanikleri yok.
 - Örnek 5 bölüm yalnızca teknik örnek; denge Bölüm Tasarımcısının işi.

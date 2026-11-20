@@ -191,3 +191,110 @@ canvas.board { display: block; touch-action: none; }
 @media (prefers-reduced-motion: reduce) {
   .board-area.shake, .overlay { animation: none; }
 }
+
+/* --- Wave 2 gameplay UI (functional placeholders; Art agent restyles) --- */
+
+.board-frame { position: relative; }
+.slot.dim { opacity: 0.35; }
+.slot.dragging canvas { opacity: 0.2; }
+
+/* Dragged piece, lifted above the finger (GDD §4.4). */
+.drag-piece {
+  position: absolute; left: 0; top: 0; pointer-events: none; z-index: 15;
+  opacity: 0; filter: drop-shadow(0 6px 6px rgba(0, 0, 0, 0.45));
+}
+.drag-piece.show { opacity: 1; }
+.drag-piece canvas { display: block; }
+
+/* Danger: red pulse over the top 2 blocks (DANGER_ROWS / GRID_H = 10%). */
+.danger-edge {
+  position: absolute; left: 0; right: 0; top: 0; height: 10%; pointer-events: none; opacity: 0;
+  background: linear-gradient(to bottom, var(--danger-glow, rgba(255, 60, 60, 0.35)), transparent);
+}
+.board-frame.danger { border-color: var(--danger); }
+.board-frame.danger .danger-edge { animation: danger-pulse 1.2s ease-in-out infinite; }
+@keyframes danger-pulse { 0%, 100% { opacity: 0.15; } 50% { opacity: 1; } }
+
+/* Chain word / "Çifte!" */
+.fx-word {
+  position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) scale(0.6);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  pointer-events: none; opacity: 0; z-index: 5; text-align: center; white-space: nowrap;
+  font-weight: 900; font-size: 2.2rem; color: var(--star);
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.45), 0 0 16px rgba(0, 0, 0, 0.35);
+}
+.fx-word span:first-child:not(:last-child) { font-size: 1.5rem; color: var(--accent); }
+.fx-word.show { animation: word-pop 1100ms ease-out forwards; }
+@keyframes word-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  30% { transform: translate(-50%, -50%) scale(1); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1.05); }
+}
+
+/* Score popup */
+.fx-float {
+  position: absolute; transform: translate(-50%, -50%); pointer-events: none; z-index: 4;
+  font-weight: 800; font-size: 1.1rem; color: var(--fg); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
+  animation: float-up 1000ms ease-out forwards;
+}
+@keyframes float-up { from { opacity: 1; transform: translate(-50%, -50%); } to { opacity: 0; transform: translate(-50%, -260%); } }
+
+/* Grains flying into the order chip */
+.fx-grain { position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3.5px 0 0 -3.5px; border-radius: 2px; pointer-events: none; z-index: 14; }
+.goal.bump { animation: bump 260ms ease; }
+@keyframes bump { 50% { transform: scale(1.12); } }
+
+/* Tutorial hand + bubble */
+.tut-hand {
+  position: absolute; left: 0; top: 0; width: 46px; height: 46px; margin: -23px 0 0 -23px; z-index: 20;
+  border-radius: 50%; background: rgba(255, 255, 255, 0.6); box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.2);
+  pointer-events: none; opacity: 0;
+}
+.tut-hand.show { opacity: 1; }
+.tut-bubble {
+  position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6;
+  max-width: 88%; width: max-content; padding: 10px 16px; border-radius: 16px;
+  background: rgba(20, 17, 43, 0.92); border: 2px solid var(--accent); color: var(--fg);
+  font-weight: 700; font-size: 1rem; text-align: center; pointer-events: none;
+  opacity: 0; transition: opacity 200ms ease;
+}
+.tut-bubble.show { opacity: 1; }
+.tut-pulse { animation: tut-pulse 900ms ease-in-out infinite; }
+@keyframes tut-pulse { 50% { transform: scale(1.18); color: var(--accent); } }
+
+/* Pre-level card */
+.intro-card { gap: 10px; max-height: 100%; overflow-y: auto; }
+.intro-level { color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.75rem; }
+.intro-order { display: flex; align-items: center; gap: 10px; text-align: left; }
+.intro-order p { margin: 0; font-weight: 600; }
+.avatar {
+  flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; font-size: 1.3rem; color: #1a1030; border: 3px solid rgba(255, 255, 255, 0.6);
+}
+.intro-goals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.intro-goals li { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border-radius: 10px; padding: 8px 12px; font-weight: 700; }
+.swatch-none { background: var(--muted); border-radius: 50%; }
+.intro-hint { margin: 0; color: var(--accent); font-weight: 600; }
+.mech-card { display: flex; gap: 12px; align-items: center; text-align: left; background: var(--panel-2); border: 2px solid var(--accent); border-radius: 14px; padding: 10px; }
+.mech-text p { margin: 2px 0 0; font-size: 0.9rem; }
+.badge { display: inline-block; background: var(--accent); color: var(--on-accent); font-size: 0.7rem; font-weight: 800; border-radius: 999px; padding: 1px 8px; margin-right: 6px; }
+/* 2 s loop placeholder: three grains falling into a pile. */
+.mech-anim { position: relative; flex: none; width: 48px; height: 48px; border-radius: 10px; background: var(--bg); overflow: hidden; }
+.mech-anim i { position: absolute; top: -8px; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); animation: mech-fall 2s ease-in infinite; }
+.mech-anim i:nth-child(1) { left: 8px; }
+.mech-anim i:nth-child(2) { left: 20px; animation-delay: 0.3s; }
+.mech-anim i:nth-child(3) { left: 32px; animation-delay: 0.6s; }
+.mech-joker .mech-anim i { animation: mech-fall 2s ease-in infinite, joker-hue 0.8s linear infinite; }
+.mech-bomb .mech-anim i { background: var(--danger); }
+@keyframes mech-fall { 0% { transform: translateY(0); } 60%, 100% { transform: translateY(46px); } }
+@keyframes joker-hue { to { filter: hue-rotate(360deg); } }
+
+/* Endless */
+.btn-endless:disabled { opacity: 0.5; cursor: default; }
+.new-best { margin: 0; color: var(--star); font-weight: 900; font-size: 1.4rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-word.show, .fx-float, .board-frame.danger .danger-edge, .tut-pulse, .mech-anim i { animation-duration: 0.01ms; animation-iteration-count: 1; }
+}

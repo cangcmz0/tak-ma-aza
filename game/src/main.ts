@@ -3,6 +3,8 @@ import './styles/main.css';
 import { createAudio } from './audio/webAudio';
 import { DeviceHaptics } from './fx/haptics';
 import { LEVEL_ERRORS } from './levels/levels';
+import { bindNativeShell } from './platform/native';
+import { createStorageBackend } from './platform/preferencesBackend';
 import { SaveStore } from './platform/storage';
 import { applyCssVars } from './render/theme';
 import { SceneManager, type App } from './ui/app';
@@ -16,7 +18,7 @@ async function boot(): Promise<void> {
   if (!root) throw new Error('#app missing');
 
   const params = new URLSearchParams(location.search);
-  const save = await SaveStore.load();
+  const save = await SaveStore.load(await createStorageBackend()); // Preferences on native, localStorage on web
   const audio = createAudio(); // WebAudio synth; unlocks itself on the first tap
   const haptics = new DeviceHaptics(); // Capacitor Haptics on native, navigator.vibrate on web
   audio.setEnabled(save.settings.sound);
@@ -35,6 +37,7 @@ async function boot(): Promise<void> {
   if (LEVEL_ERRORS.length && app.debug) console.warn('Level validation errors', LEVEL_ERRORS);
 
   app.scenes.replace(new MenuScene(app));
+  void bindNativeShell(app); // Android back button + background save (no-op on web)
 
   // Resize / orientation.
   let resizeQueued = false;
@@ -51,7 +54,10 @@ async function boot(): Promise<void> {
 
   // Pause when the app goes to background.
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) app.scenes.suspend();
+    if (document.hidden) {
+      app.scenes.suspend();
+      void app.save.flush();
+    }
   });
 
   // Block pinch / double-tap zoom and long-press menus inside the game.

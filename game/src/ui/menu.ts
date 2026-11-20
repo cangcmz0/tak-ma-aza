@@ -1,9 +1,16 @@
+import { ENDLESS_UNLOCK_LEVEL } from '../config';
 import { fmt, strings } from '../i18n';
-import { LEVELS } from '../levels/levels';
+import { getLevel, LEVELS } from '../levels/levels';
 import type { App, Scene } from './app';
 import { h } from './dom';
 import { LevelSelectScene } from './levelSelect';
 import { PlayScene } from './play';
+
+/** Endless mode opens after winning level ENDLESS_UNLOCK_LEVEL (or if that level does not exist). */
+export function isEndlessUnlocked(app: App): boolean {
+  if (app.debug && new URLSearchParams(location.search).has('unlockAll')) return true;
+  return !getLevel(ENDLESS_UNLOCK_LEVEL) || !!app.save.level(ENDLESS_UNLOCK_LEVEL)?.completed;
+}
 
 export class MenuScene implements Scene {
   readonly el: HTMLElement;
@@ -12,6 +19,7 @@ export class MenuScene implements Scene {
     const s = strings();
     const ids = LEVELS.map((l) => l.id);
     const current = app.save.currentLevel(ids);
+    const endlessOpen = isEndlessUnlocked(app);
     const toggle = (key: 'sound' | 'haptics', label: string) => {
       const btn = h('button', { class: 'btn btn-ghost', type: 'button' });
       const paint = () => {
@@ -64,6 +72,24 @@ export class MenuScene implements Scene {
             app.scenes.replace(new LevelSelectScene(app));
           },
         }),
+        h(
+          'button',
+          {
+            class: 'btn btn-big btn-endless',
+            type: 'button',
+            'data-testid': 'menu-endless',
+            disabled: !endlessOpen,
+            onclick: () => {
+              app.audio.unlock();
+              app.audio.play('ui_tap');
+              app.scenes.replace(new PlayScene(app, { kind: 'endless' }));
+            },
+          },
+          s.menu.endless,
+          h('small', {
+            text: endlessOpen ? fmt(s.menu.endlessBest, { n: app.save.endlessBest }) : fmt(s.menu.endlessLocked, { n: ENDLESS_UNLOCK_LEVEL }),
+          }),
+        ),
         h('div', { class: 'menu-toggles' }, toggle('sound', s.menu.sound), toggle('haptics', s.menu.haptics)),
       ),
       h('p', { class: 'version', text: fmt(s.menu.version, { v: app.version }) }),
