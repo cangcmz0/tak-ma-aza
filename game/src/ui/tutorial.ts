@@ -82,7 +82,8 @@ export class Tutorial {
   constructor(
     readonly id: TutorialId,
     private readonly host: TutorialHost,
-    private readonly onDone: () => void,
+    /** completed = all steps shown or the level was won (false when the attempt was lost). */
+    private readonly onDone: (completed: boolean) => void,
   ) {
     this.steps = TUTORIAL_STEPS[id];
     this.hand = h('div', { class: 'tut-hand', 'aria-hidden': 'true', 'data-testid': 'tutorial-hand' });
@@ -109,7 +110,7 @@ export class Tutorial {
     this.elapsed = 0;
     this.handDirty = true;
     const st = this.step;
-    if (!st) return this.finish();
+    if (!st) return this.finish(true);
     const text = st.text?.(this.host.session) ?? '';
     this.bubble.textContent = text;
     this.bubble.classList.toggle('show', !!text);
@@ -131,7 +132,7 @@ export class Tutorial {
 
   onEvent(e: SessionEvent): void {
     if (this.finished) return;
-    if (e.type === 'won' || e.type === 'lost') return this.finish();
+    if (e.type === 'won' || e.type === 'lost') return this.finish(e.type === 'won');
     if (e.type === 'settled' || e.type === 'trayRefill' || e.type === 'rotated' || e.type === 'placed') {
       this.handDirty = true;
       this.updateFocus();
@@ -261,11 +262,11 @@ export class Tutorial {
     this.start(frames, 900 * n);
   }
 
-  private finish(): void {
+  private finish(completed: boolean): void {
     if (this.finished) return;
     this.finished = true;
     this.destroy();
-    this.onDone();
+    this.onDone(completed);
   }
 
   destroy(): void {
