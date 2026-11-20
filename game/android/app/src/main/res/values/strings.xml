@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Kum Akışı</string>
+    <string name="title_activity_main">Kum Akışı</string>
+    <string name="package_name">com.takmaaza.kumbulmaca</string>
+    <string name="custom_url_scheme">com.takmaaza.kumbulmaca</string>
+</resources>
