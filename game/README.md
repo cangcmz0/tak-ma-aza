@@ -24,18 +24,21 @@ NODE_PATH=$(npm root -g) node scripts/smoke.cjs /tmp/ekranlar
 Hata ayıklama: URL'ye `?debug=1` ekle → `window.__app`, oynarken `window.__kum.session` / `window.__kum.scene`.
 `?debug=1&unlockAll` tüm bölümleri açar. Masaüstü tuşları: ←/→ kaydır, ↑ veya R döndür, Boşluk/↓ bırak, 1–3 parça seç, Esc duraklat.
 
-### Capacitor / Android
+### Android
 
-`capacitor.config.ts` hazır (appId `com.takmaaza.kumbulmaca`, appName "Kum Akışı", webDir `dist`).
-Android platformu **eklenmedi** (bu ortamda SDK yok). Yayın ajanı:
+Android projesi `android/` klasöründe (Capacitor 8, appId `com.takmaaza.kumbulmaca`, ad "Kum Akışı",
+`versionCode 1` / `versionName "0.1.0"` → `android/app/build.gradle`). Sadece dikey ekran; arka plan koyu `#14112b`.
 
-```bash
-npm install --save-exact @capacitor/android@8.6.2
-npx cap add android
-npm run cap:sync     # build + cap sync
-```
-
-`vite.config.ts` içinde `base: './'` — WebView içinde göreli yollarla çalışır.
+- **APK'yı GitHub derler:** `game/**` değişen her push'ta (`main`, `ccr-*`) veya elle (Actions → *Android APK* → *Run workflow*)
+  `.github/workflows/android-apk.yml` çalışır: `npm ci` → `npm test` → `npm run build` → `npx cap sync android` → `./gradlew assembleDebug`.
+  APK: Actions → çalışma → Artifacts → `kum-akisi-debug-apk`. Telefona kurulum ve Play Store adımları: [`docs/release.md`](../docs/release.md).
+- **Web kodu değişince:** `npm run cap:sync` (build + `cap sync`). `android/app/src/main/assets/public` ve Capacitor'un ürettiği
+  config dosyaları git'e girmez; CI her seferinde yeniden üretir.
+- **Yerelde derleme** (Android SDK + JDK 21 gerekli): `cd android && ./gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`.
+- **İkon / açılış görseli:** `NODE_PATH=$(npm root -g) node scripts/make-icons.cjs` (Playwright ile canvas → PNG; mipmap'ler,
+  adaptive ön plan, `splash.png`'ler ve mağaza ikonu `store/icon-512.png`). Adaptive arka plan rengi `res/values/ic_launcher_background.xml`.
+- Renk değişirse üç yer birlikte güncellenir: `src/render/theme.ts` (`--bg`), `capacitor.config.ts`, `android/app/src/main/res/values/colors.xml`.
+- `vite.config.ts` içinde `base: './'` — WebView içinde göreli yollarla çalışır.
 
 ## Mimari
 
@@ -159,4 +162,4 @@ GDD §18.6'daki farklardan **yapılanlar**: puan formülü + zincir tavanı + Te
 - Öğretici (ilk açılış) yok; yalnızca bölüm `hint` metni.
 - Kalan parça bonusu, ödüllü reklam, "devam et" mekanikleri yok.
 - Örnek 5 bölüm yalnızca teknik örnek; denge Bölüm Tasarımcısının işi.
-- Android platformu eklenmedi; `@capacitor/app`, `@capacitor/preferences`, `@capacitor/haptics` henüz kurulu değil.
+- Android platformu eklendi (debug APK CI'da). Release imzalama yok (bkz. `docs/release.md`).

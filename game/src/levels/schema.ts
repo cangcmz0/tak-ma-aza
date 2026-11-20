@@ -1,8 +1,8 @@
 // Level definition type + runtime validation. Unknown fields are preserved
 // (designers may add fields before code supports them).
 import { BLOCK, GRID_H, GRID_W } from '../config';
-import { MAX_SAND_COLOR } from '../engine/grid';
-import { PIECE_KINDS, type PieceKind } from '../engine/pieces';
+import { MAX_PLAIN_COLOR } from '../engine/grid';
+import { PIECE_BLOCKS, PIECE_KINDS, type PieceKind } from '../engine/pieces';
 import { validateGoal, type GoalDef } from '../game/goals';
 
 export type GeoUnit = 'block' | 'grain';
@@ -14,24 +14,58 @@ export type PrefillDef =
   /**
    * Bottom-aligned picture. Each row string is either GRID_W/BLOCK chars (one char = one block)
    * or GRID_W chars (one char = one grain). '.' empty, '#' stone, '1'..'9' colour id,
-   * other chars via `legend` (value: colour id or "stone").
+   * other chars via `legend` (value: colour id, "stone" or "joker").
    */
-  | { type: 'pattern'; rows: string[]; legend?: Record<string, number | 'stone'> };
+  | { type: 'pattern'; rows: string[]; legend?: Record<string, LegendValue> };
 
-/** Rectangular stone obstacle. Coordinates from the top-left; default unit = block. */
+export type LegendValue = number | 'stone' | 'joker';
+
+export type ObstacleType = 'shelf' | 'sack';
+
+/**
+ * Rectangular obstacle. Coordinates from the top-left; default unit = block.
+ * `type` "shelf" (default) = stone ("Raf"); "sack" = breakable "Çuval" with `hp` 1..3
+ * (default size 2×2 blocks).
+ */
 export interface ObstacleDef {
+  type?: ObstacleType;
   x: number;
   y: number;
   w?: number;
   h?: number;
   unit?: GeoUnit;
+  /** Sack hit points 1..3 (default 1). */
+  hp?: number;
 }
 
 export interface SpecialsDef {
   /** Chance (0..1) that a dealt piece carries a bomb block. */
   bombChance: number;
+  /** Chance (0..1) that a dealt piece carries one joker block. */
+  jokerChance: number;
+  /** Chance (0..1) that a dealt piece has two colours. */
+  twoColorChance: number;
   [key: string]: unknown;
 }
+
+/** A fixed piece dealt at the start of the level (GDD §18.1 `scriptedPieces`). */
+export interface ScriptedPieceDef {
+  shape: PieceKind;
+  /** Colour id (colour A when `colors` is given). */
+  color: number;
+  rot?: number;
+  /** Block index 0..3 carrying a bomb. */
+  bomb?: number;
+  /** Block index 0..3 made of joker grains. */
+  joker?: number;
+  /** Two-colour piece: [A, B]. */
+  colors?: [number, number];
+}
+
+export type CustomerId = 'ayse' | 'mehmet' | 'selim' | 'anna';
+export const CUSTOMERS: readonly CustomerId[] = ['ayse', 'mehmet', 'selim', 'anna'];
+export type TutorialId = 't1' | 't2' | 't3';
+export const TUTORIALS: readonly TutorialId[] = ['t1', 't2', 't3'];
 
 export interface LevelDef {
   id: number;
@@ -51,6 +85,14 @@ export interface LevelDef {
   pieces?: PieceKind[];
   /** Optional: short Turkish hint shown when the level starts. */
   hint?: string;
+  /** Fixed first pieces (tutorials / mechanic introductions). Default []. */
+  scriptedPieces: ScriptedPieceDef[];
+  /** Tutorial scenario id (GDD §13), or null. */
+  tutorial: TutorialId | null;
+  /** Mechanic intro card ids (GDD §13), shown once each. Default []. */
+  intro: string[];
+  /** Order card avatar. Default "ayse". */
+  customer: CustomerId;
   /** Extra designer fields are kept as-is. */
   [extra: string]: unknown;
 }
@@ -67,7 +109,7 @@ function validateColorList(v: unknown, path: string, e: string[]): number[] {
   }
   const out: number[] = [];
   for (const c of v) {
-    if (!isInt(c) || c < 1 || c > MAX_SAND_COLOR) e.push(`${path}: invalid colour ${String(c)}`);
+    if (!isInt(c) || c < 1 || c > MAX_PLAIN_COLOR) e.push(`${path}: invalid colour ${String(c)}`);
     else out.push(c);
   }
   return out;
@@ -107,9 +149,9 @@ function validatePrefill(v: unknown, colors: number[], e: string[]): PrefillDef 
         for (const ch of r) {
           if (ch === '.' || ch === '#') continue;
           const lv = legend[ch];
-          if (lv === 'stone') continue;
+          if (lv === 'stone' || lv === 'joker') continue;
           const c = lv !== undefined ? lv : Number(ch);
-          if (!isInt(c) || c < 1 || c > MAX_SAND_COLOR) e.push(`prefill.rows[${i}]: unknown char '${ch}'`);
+          if (!isInt(c) || c < 1 || c > MAX_PLAIN_COLOR) e.push(`prefill.rows[${i}]: unknown char '${ch}'`);
           else if (!colors.includes(c)) e.push(`prefill.rows[${i}]: colour ${c} not in level colors`);
         }
       });
@@ -119,6 +161,51 @@ function validatePrefill(v: unknown, colors: number[], e: string[]): PrefillDef 
       e.push(`unknown prefill type: ${String(v.type)}`);
       return { type: 'none' };
   }
+}
+
+/** Default sack size: 2×2 blocks (8×8 grains). */
+export function obstacleDefaultSize(unit: GeoUnit): number {
+  return unit === 'grain' ? 2 * BLOCK : 2;
+}
+
+/** Obstacle rectangle in grains (applies type defaults). */
+export function obstacleRect(o: ObstacleDef): { x: number; y: number; w: number; h: number } {
+  const unit = o.unit ?? 'block';
+  const k = unit === 'grain' ? 1 : BLOCK;
+  const def = o.type === 'sack' ? obstacleDefaultSize(unit) : 1;
+  return { x: o.x * k, y: o.y * k, w: (o.w ?? def) * k, h: (o.h ?? def) * k };
+}
+
+function validateScripted(v: unknown, colors: number[], pieceLimit: number | null, e: string[]): ScriptedPieceDef[] {
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v)) {
+    e.push('scriptedPieces must be an array');
+    return [];
+  }
+  if (pieceLimit !== null && v.length > pieceLimit) e.push('scriptedPieces: more pieces than pieceLimit');
+  const blockIdx = (x: unknown) => x === undefined || (isInt(x) && x >= 0 && x < PIECE_BLOCKS);
+  v.forEach((p, i) => {
+    const at = `scriptedPieces[${i}]`;
+    if (!isObj(p)) {
+      e.push(`${at} must be an object`);
+      return;
+    }
+    if (!(PIECE_KINDS as readonly unknown[]).includes(p.shape)) e.push(`${at}.shape must be one of ${PIECE_KINDS.join(',')}`);
+    const cs = p.colors;
+    if (cs !== undefined) {
+      if (!Array.isArray(cs) || cs.length !== 2 || cs.some((c) => !colors.includes(c as number)))
+        e.push(`${at}.colors must be two level colours`);
+    }
+    if (p.color === undefined && cs === undefined) e.push(`${at}.color is required`);
+    else if (p.color !== undefined && !colors.includes(p.color as number)) e.push(`${at}.color ${String(p.color)} is not in level colors`);
+    if (p.rot !== undefined && !(isInt(p.rot) && p.rot >= 0 && p.rot <= 3)) e.push(`${at}.rot must be 0..3`);
+    if (!blockIdx(p.bomb)) e.push(`${at}.bomb must be a block index 0..3`);
+    if (!blockIdx(p.joker)) e.push(`${at}.joker must be a block index 0..3`);
+  });
+  return (v as Record<string, unknown>[]).map((p) => {
+    const cs = p.colors as [number, number] | undefined;
+    return { ...p, color: (p.color as number | undefined) ?? (cs ? cs[0] : 0) } as ScriptedPieceDef;
+  });
 }
 
 function validateObstacles(v: unknown, e: string[]): ObstacleDef[] {
@@ -132,11 +219,16 @@ function validateObstacles(v: unknown, e: string[]): ObstacleDef[] {
       e.push(`obstacles[${i}] needs integer x, y`);
       return;
     }
+    const type = o.type ?? 'shelf';
+    if (type !== 'shelf' && type !== 'sack') e.push(`obstacles[${i}].type must be shelf|sack`);
     const unit = o.unit ?? 'block';
     if (unit !== 'block' && unit !== 'grain') e.push(`obstacles[${i}].unit must be block|grain`);
     const k = unit === 'grain' ? 1 : BLOCK;
-    const w = isInt(o.w) ? o.w : 1;
-    const h = isInt(o.h) ? o.h : 1;
+    const defSize = type === 'sack' ? obstacleDefaultSize(unit as GeoUnit) : 1;
+    const w = isInt(o.w) ? o.w : defSize;
+    const h = isInt(o.h) ? o.h : defSize;
+    if (type === 'sack' && o.hp !== undefined && (!isInt(o.hp) || o.hp < 1 || o.hp > 3)) e.push(`obstacles[${i}].hp must be 1..3`);
+    if (type !== 'sack' && o.hp !== undefined) e.push(`obstacles[${i}].hp is only valid for sacks`);
     if (o.x < 0 || o.y < 0 || w < 1 || h < 1 || (o.x + w) * k > GRID_W || (o.y + h) * k > GRID_H)
       e.push(`obstacles[${i}] out of bounds`);
   });
@@ -169,9 +261,25 @@ export function validateLevel(raw: unknown): ValidateResult {
   const prefill = validatePrefill(r.prefill, colors, e);
   const obstacles = validateObstacles(r.obstacles, e);
 
-  const specials: SpecialsDef = { bombChance: 0, ...(isObj(r.specials) ? r.specials : {}) };
-  if (typeof specials.bombChance !== 'number' || specials.bombChance < 0 || specials.bombChance > 1)
-    e.push('specials.bombChance must be 0..1');
+  const specials: SpecialsDef = { bombChance: 0, jokerChance: 0, twoColorChance: 0, ...(isObj(r.specials) ? r.specials : {}) };
+  for (const k of ['bombChance', 'jokerChance', 'twoColorChance'] as const) {
+    const v = specials[k];
+    if (typeof v !== 'number' || v < 0 || v > 1) e.push(`specials.${k} must be 0..1`);
+  }
+  if (Array.isArray(r.goals)) {
+    const sacks = obstacles.filter((o) => isObj(o) && o.type === 'sack').length;
+    r.goals.forEach((g, i) => {
+      if (isObj(g) && g.type === 'clear_obstacles' && typeof g.count === 'number' && g.count > sacks)
+        e.push(`goals[${i}]: clear_obstacles count ${g.count} > sacks in level (${sacks})`);
+    });
+  }
+  const scriptedPieces = validateScripted(r.scriptedPieces, colors, pieceLimit, e);
+  if (r.tutorial !== undefined && r.tutorial !== null && !(TUTORIALS as readonly unknown[]).includes(r.tutorial))
+    e.push(`tutorial must be one of ${TUTORIALS.join(',')} or null`);
+  if (r.intro !== undefined && (!Array.isArray(r.intro) || r.intro.some((x) => typeof x !== 'string')))
+    e.push('intro must be an array of strings');
+  if (r.customer !== undefined && !(CUSTOMERS as readonly unknown[]).includes(r.customer))
+    e.push(`customer must be one of ${CUSTOMERS.join(',')}`);
 
   if (r.seed !== undefined && !isInt(r.seed)) e.push('seed must be an integer');
   if (r.pieces !== undefined) {
@@ -193,6 +301,10 @@ export function validateLevel(raw: unknown): ValidateResult {
     obstacles,
     specials,
     seed: isInt(r.seed) ? r.seed : (r.id as number) * 7919,
+    scriptedPieces,
+    tutorial: (r.tutorial as TutorialId | undefined) ?? null,
+    intro: (r.intro as string[] | undefined) ?? [],
+    customer: (r.customer as CustomerId | undefined) ?? 'ayse',
   };
   return { ok: true, level };
 }

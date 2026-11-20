@@ -1,7 +1,7 @@
 // Boot: theme, save data, services, scene stack, main loop.
 import './styles/main.css';
-import { NoopAudio } from './audio/audio';
-import { NoopHaptics } from './fx/haptics';
+import { createAudio } from './audio/webAudio';
+import { DeviceHaptics } from './fx/haptics';
 import { LEVEL_ERRORS } from './levels/levels';
 import { SaveStore } from './platform/storage';
 import { applyCssVars } from './render/theme';
@@ -17,9 +17,10 @@ async function boot(): Promise<void> {
 
   const params = new URLSearchParams(location.search);
   const save = await SaveStore.load();
-  const audio = new NoopAudio();
-  const haptics = new NoopHaptics();
+  const audio = createAudio(); // WebAudio synth; unlocks itself on the first tap
+  const haptics = new DeviceHaptics(); // Capacitor Haptics on native, navigator.vibrate on web
   audio.setEnabled(save.settings.sound);
+  audio.setVolume(save.settings.volume);
   haptics.setEnabled(save.settings.haptics);
 
   const app: App = {

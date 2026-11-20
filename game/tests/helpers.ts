@@ -10,8 +10,12 @@ export function makeLevel(over: Partial<LevelDef> = {}): LevelDef {
     stars: [10, 20, 30],
     prefill: { type: 'none' },
     obstacles: [],
-    specials: { bombChance: 0 },
+    specials: { bombChance: 0, jokerChance: 0, twoColorChance: 0 },
     seed: 42,
+    scriptedPieces: [],
+    tutorial: null,
+    intro: [],
+    customer: 'ayse',
     ...over,
   };
 }

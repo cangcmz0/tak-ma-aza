@@ -17,7 +17,13 @@ export interface ClearColorGrainsGoalDef {
   color: number;
   count: number;
 }
-export type GoalDef = ClearPathsGoalDef | ScoreGoalDef | ClearColorGrainsGoalDef;
+export interface ClearObstaclesGoalDef {
+  type: 'clear_obstacles';
+  count: number;
+  /** Obstacle kind (only "sack" exists). */
+  kind?: 'sack';
+}
+export type GoalDef = ClearPathsGoalDef | ScoreGoalDef | ClearColorGrainsGoalDef | ClearObstaclesGoalDef;
 export type GoalType = GoalDef['type'];
 
 /** Runtime goal instance. */
@@ -29,6 +35,8 @@ export interface Goal {
   onClear(res: ClearResult): void;
   /** Called whenever the score changes. */
   onScore(score: number): void;
+  /** Called when a breakable obstacle is destroyed (optional). */
+  onObstacle?(kind: 'sack'): void;
 }
 
 interface GoalTypeDef<D extends GoalDef> {
@@ -105,10 +113,34 @@ const clearColorGrains: GoalTypeDef<ClearColorGrainsGoalDef> = {
   },
 };
 
+const clearObstacles: GoalTypeDef<ClearObstaclesGoalDef> = {
+  validate(raw) {
+    const e: string[] = [];
+    if (!isPosInt(raw.count)) e.push('count must be a positive integer');
+    if (raw.kind !== undefined && raw.kind !== 'sack') e.push('kind must be "sack"');
+    // "count <= sacks in level" is checked by validateLevel (needs the obstacle list).
+    return e;
+  },
+  create(def) {
+    const kind = def.kind ?? 'sack';
+    return {
+      def,
+      target: def.count,
+      current: 0,
+      onClear() {},
+      onScore() {},
+      onObstacle(k) {
+        if (k === kind) this.current++;
+      },
+    };
+  },
+};
+
 export const GOAL_TYPES: { [K in GoalType]: GoalTypeDef<Extract<GoalDef, { type: K }>> } = {
   clear_paths: clearPaths,
   score,
   clear_color_grains: clearColorGrains,
+  clear_obstacles: clearObstacles,
 };
 
 export function isGoalType(t: unknown): t is GoalType {
@@ -145,6 +177,10 @@ export class GoalTracker {
 
   onScore(s: number): void {
     for (const g of this.goals) g.onScore(s);
+  }
+
+  onObstacle(kind: 'sack'): void {
+    for (const g of this.goals) g.onObstacle?.(kind);
   }
 
   allDone(): boolean {

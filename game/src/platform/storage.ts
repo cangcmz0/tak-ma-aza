@@ -58,6 +58,8 @@ export interface LevelProgress {
 export interface Settings {
   sound: boolean;
   haptics: boolean;
+  /** Master sound volume 0..1 (sound effects). */
+  volume: number;
 }
 
 export interface SaveData {
@@ -69,7 +71,7 @@ export interface SaveData {
 const KEY = 'kumakisi.save.v1';
 
 function defaults(): SaveData {
-  return { version: 1, levels: {}, settings: { sound: true, haptics: true } };
+  return { version: 1, levels: {}, settings: { sound: true, haptics: true, volume: 1 } };
 }
 
 function sanitize(raw: unknown): SaveData {
@@ -91,6 +93,8 @@ function sanitize(raw: unknown): SaveData {
   if (r.settings && typeof r.settings === 'object') {
     d.settings.sound = r.settings.sound !== false;
     d.settings.haptics = r.settings.haptics !== false;
+    const vol = Number(r.settings.volume);
+    if (r.settings.volume !== undefined && Number.isFinite(vol)) d.settings.volume = Math.max(0, Math.min(1, vol));
   }
   return d;
 }

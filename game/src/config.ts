@@ -36,10 +36,23 @@ export const CHAIN_MAX = 5;
 export const END_BONUS_PER_PIECE = 100;
 /**
  * true  = chain resets on every drop (prototype rule).
- * false = chain resets only when the board settles without a path (GDD proposal, open question #7).
+ * false = chain resets only when the board settles without a path (GDD §4.7; producer approved).
  */
-export const CHAIN_RESET_ON_DROP = true;
+export const CHAIN_RESET_ON_DROP = false;
 /** Show a separate rotate button in the tray (GDD §4.3 says tap-to-rotate only). */
 export const SHOW_ROTATE_BUTTON = false;
 /** Seed offset per attempt for piece/physics streams (GDD §4.2); the board stays the same. */
 export const ATTEMPT_SEED_STEP = 7919;
+
+/** Points for breaking a sack (GDD §4.7; no chain multiplier). */
+export const SACK_BREAK_POINTS = 200;
+/** Danger warning when the highest settled grain is within this many rows of the top (GDD §4.8). */
+export const DANGER_ROWS = 8;
+/** Help rule (GDD §4.2): after this many consecutive losses the next attempt gets help. */
+export const HELP_LOSS_STREAK = 3;
+/** Help rule: colour-bag weight of goal colours during a helped attempt. */
+export const HELP_COLOR_WEIGHT = 1.5;
+/** The dragged piece is drawn this many CSS px (≈dp) above the finger (GDD §4.4). */
+export const DRAG_LIFT_PX = 64;
+/** Endless mode unlocks when this level is won (GDD §6). */
+export const ENDLESS_UNLOCK_LEVEL = 8;

@@ -1,7 +1,7 @@
 // Tetromino definitions, rotation and stamping into the sand grid.
 import { BLOCK, SHADES } from '../config';
 import type { Rng } from '../core/rng';
-import { EMPTY, type SandGrid } from './grid';
+import { EMPTY, JOKER, type SandGrid } from './grid';
 import { specialById, type SpecialId } from './specials';
 
 /** Block coordinate [x, y] inside a piece (y down). */
@@ -65,17 +65,35 @@ export interface Piece {
   kind: PieceKind;
   /** Rotation index 0..3 (clockwise quarter turns). */
   rot: number;
-  /** Sand colour id. */
+  /** Sand colour id (colour A for a two-colour piece). */
   color: number;
   /** Optional special grain type carried by one block of the piece. */
   special: SpecialId | null;
   /** Index into shape cells that carries the special (kept across rotations). */
   specialCell: number;
+  /**
+   * "İkili Kese" (GDD §5.5): colour of shape cells 2 and 3. Cell order of every shape is
+   * chosen so cells 0-1 / 2-3 are I left/right, O top/bottom, others first/last two.
+   * Rotation keeps the split (cell order is preserved by rotateShape).
+   */
+  color2?: number | null;
+  /** Shape cell index made of joker grains ("Karışık Baharat"), -1 / undefined = none. */
+  jokerCell?: number;
 }
 
 export function pieceShape(p: Piece): Shape {
   return ROTATIONS[p.kind][p.rot & 3];
 }
+
+/** Grain colour of shape cell `cell` (joker block, colour B of a two-colour piece, else colour). */
+export function blockColor(p: Piece, cell: number): number {
+  if (p.jokerCell !== undefined && p.jokerCell >= 0 && cell === p.jokerCell) return JOKER;
+  if (p.color2 && cell >= 2) return p.color2;
+  return p.color;
+}
+
+/** Number of blocks per piece (all tetrominoes). */
+export const PIECE_BLOCKS = 4;
 
 /** Rotate a piece clockwise in place. */
 export function rotatePiece(p: Piece): Piece {
@@ -116,12 +134,13 @@ export function stamp(g: SandGrid, p: Piece, x0: number, y0: number, shadeRng: R
   for (let c = 0; c < s.cells.length; c++) {
     const [bx, by] = s.cells[c];
     const f = c === p.specialCell ? specialFlag : 0;
+    const col = blockColor(p, c);
     const ox = x0 + bx * BLOCK;
     const oy = y0 + by * BLOCK;
     for (let dy = 0; dy < BLOCK; dy++) {
       for (let dx = 0; dx < BLOCK; dx++) {
         const i = (oy + dy) * w + ox + dx;
-        g.color[i] = p.color;
+        g.color[i] = col;
         g.shade[i] = shadeRng.int(SHADES);
         g.flags[i] = f;
       }
@@ -145,21 +164,62 @@ export function fitsAnywhere(g: SandGrid, p: Piece): boolean {
 export interface PieceGenOptions {
   colors: readonly number[];
   kinds?: readonly PieceKind[];
+  /** Chance (0..1) that a dealt piece carries a bomb block. */
   bombChance?: number;
+  /** Chance (0..1) that a dealt piece carries one joker block (GDD §5.2). */
+  jokerChance?: number;
+  /** Chance (0..1) that a dealt piece is two-coloured (GDD §5.5). */
+  twoColorChance?: number;
+  /**
+   * Weight per colour id in the colour bag (default 1 = two copies per bag).
+   * The help rule (GDD §4.2) uses 1.5 for goal colours => three copies.
+   */
+  colorWeights?: Readonly<Record<number, number>>;
+}
+
+/** Copies of a colour in one colour bag for a given weight (base: 2 copies). */
+export function colorCopies(weight: number): number {
+  return Math.max(1, Math.round(2 * weight));
 }
 
 /**
  * Fair dealing (GDD §4.2): shapes come from a shuffled bag of the allowed kinds,
- * colours from a shuffled bag holding every colour twice. Bags refill when empty.
+ * colours from a shuffled bag holding every colour twice (×weight). Bags refill when empty.
+ * Scripted pieces (level `scriptedPieces`) are dealt first, in order.
+ * Options can be changed between deals (endless mode raises colours / chances with score).
  */
 export class PieceBag {
   private shapes: PieceKind[] = [];
   private colors: number[] = [];
+  private scripted: Piece[] = [];
+  private o: PieceGenOptions;
 
   constructor(
     private readonly rng: Rng,
-    private readonly o: PieceGenOptions,
-  ) {}
+    o: PieceGenOptions,
+    scripted: readonly Piece[] = [],
+  ) {
+    this.o = { ...o };
+    this.scripted = scripted.map((p) => ({ ...p }));
+  }
+
+  get options(): Readonly<PieceGenOptions> {
+    return this.o;
+  }
+
+  /** Change dealing options; the colour bag is rebuilt if colours/weights changed. */
+  setOptions(patch: Partial<PieceGenOptions>): void {
+    const recolor = (patch.colors && patch.colors.join() !== this.o.colors.join()) || patch.colorWeights !== undefined;
+    const reshape = patch.kinds !== undefined;
+    this.o = { ...this.o, ...patch };
+    if (recolor) this.colors = [];
+    if (reshape) this.shapes = [];
+  }
+
+  /** Scripted pieces still waiting to be dealt. */
+  get scriptedLeft(): number {
+    return this.scripted.length;
+  }
 
   private shuffle<T>(a: T[]): T[] {
     for (let i = a.length - 1; i > 0; i--) {
@@ -171,15 +231,48 @@ export class PieceBag {
     return a;
   }
 
+  private nextColor(): number {
+    if (!this.colors.length) {
+      const bag: number[] = [];
+      for (const c of this.o.colors) {
+        const n = colorCopies(this.o.colorWeights?.[c] ?? 1);
+        for (let k = 0; k < n; k++) bag.push(c);
+      }
+      this.colors = this.shuffle(bag);
+    }
+    return this.colors.pop() as number;
+  }
+
   next(): Piece {
+    const s = this.scripted.shift();
+    if (s) return s;
     if (!this.shapes.length) this.shapes = this.shuffle([...(this.o.kinds && this.o.kinds.length ? this.o.kinds : PIECE_KINDS)]);
-    if (!this.colors.length) this.colors = this.shuffle([...this.o.colors, ...this.o.colors]);
     const kind = this.shapes.pop() as PieceKind;
-    const color = this.colors.pop() as number;
+    const color = this.nextColor();
     const rot = this.rng.int(4);
-    const chance = this.o.bombChance ?? 0;
-    const bomb = chance > 0 && this.rng.chance(chance);
-    return { kind, rot, color, special: bomb ? 'bomb' : null, specialCell: bomb ? this.rng.int(4) : -1 };
+    const piece: Piece = { kind, rot, color, special: null, specialCell: -1 };
+    const bombChance = this.o.bombChance ?? 0;
+    if (bombChance > 0 && this.rng.chance(bombChance)) {
+      piece.special = 'bomb';
+      piece.specialCell = this.rng.int(PIECE_BLOCKS);
+    }
+    const twoChance = this.o.twoColorChance ?? 0;
+    if (twoChance > 0 && this.o.colors.length > 1 && this.rng.chance(twoChance)) {
+      let c2 = this.nextColor();
+      if (c2 === color) {
+        const others = this.o.colors.filter((c) => c !== color);
+        c2 = others[this.rng.int(others.length)];
+      }
+      piece.color2 = c2;
+    }
+    const jokerChance = this.o.jokerChance ?? 0;
+    if (jokerChance > 0 && this.rng.chance(jokerChance)) {
+      // Never on the bomb block (keeps both readable).
+      let cell = this.rng.int(PIECE_BLOCKS);
+      if (cell === piece.specialCell) cell = (cell + 1) % PIECE_BLOCKS;
+      piece.jokerCell = cell;
+    }
+    return piece;
   }
 }
 

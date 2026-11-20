@@ -2,14 +2,17 @@
 import { BLOCK, SHADES } from '../config';
 import type { Rng } from '../core/rng';
 import { ClearResult, findClears, removeMarked } from '../engine/clear';
-import { EMPTY, FLAG_STATIC, STONE, type SandGrid } from '../engine/grid';
+import { EMPTY, FLAG_STATIC, JOKER, STONE, type SandGrid } from '../engine/grid';
+import { Sacks } from '../engine/sacks';
 import { settle } from '../engine/sim';
-import type { LevelDef, PrefillDef } from '../levels/schema';
+import { obstacleRect, type LevelDef, type PrefillDef } from '../levels/schema';
 
-function fillRect(g: SandGrid, x0: number, y0: number, w: number, h: number, color: number, rng: Rng): void {
+/** Fill a rectangle. With keep = true, occupied cells (obstacles) are left untouched. */
+function fillRect(g: SandGrid, x0: number, y0: number, w: number, h: number, color: number, rng: Rng, keep = false): void {
   for (let y = Math.max(0, y0); y < Math.min(g.h, y0 + h); y++) {
     for (let x = Math.max(0, x0); x < Math.min(g.w, x0 + w); x++) {
       const i = y * g.w + x;
+      if (keep && g.color[i] !== EMPTY) continue;
       if (color === STONE) {
         g.color[i] = STONE;
         g.shade[i] = rng.int(SHADES);
@@ -24,10 +27,11 @@ function fillRect(g: SandGrid, x0: number, y0: number, w: number, h: number, col
   g.version++;
 }
 
-function applyObstacles(g: SandGrid, level: LevelDef, rng: Rng): void {
+function applyObstacles(g: SandGrid, level: LevelDef, rng: Rng, sacks: Sacks): void {
   for (const o of level.obstacles) {
-    const k = o.unit === 'grain' ? 1 : BLOCK;
-    fillRect(g, o.x * k, o.y * k, (o.w ?? 1) * k, (o.h ?? 1) * k, STONE, rng);
+    const r = obstacleRect(o);
+    if (o.type === 'sack') sacks.add(g, r.x, r.y, r.w, r.h, o.hp ?? 1);
+    else fillRect(g, r.x, r.y, r.w, r.h, STONE, rng);
   }
 }
 
@@ -86,18 +90,23 @@ function applyPattern(g: SandGrid, p: Extract<PrefillDef, { type: 'pattern' }>, 
       const ch = row[cx];
       if (ch === '.') continue;
       const lv = legend[ch];
-      const color = ch === '#' || lv === 'stone' ? STONE : lv !== undefined ? lv : Number(ch);
-      fillRect(g, cx * unit, top + ry * unit, unit, unit, color, rng);
+      const color = ch === '#' || lv === 'stone' ? STONE : lv === 'joker' ? JOKER : lv !== undefined ? lv : Number(ch);
+      // Obstacles are placed first; the pattern never overwrites them (GDD §18.2).
+      fillRect(g, cx * unit, top + ry * unit, unit, unit, color, rng, true);
     }
   });
 }
 
-/** Reset the grid and lay out the level's starting board. Deterministic for a given rng. */
-export function buildBoard(g: SandGrid, level: LevelDef, rng: Rng, clear: ClearResult = ClearResult.for(g)): void {
+/**
+ * Reset the grid and lay out the level's starting board. Deterministic for a given rng.
+ * Sacks are registered into `sacks` (pass a fresh instance).
+ */
+export function buildBoard(g: SandGrid, level: LevelDef, rng: Rng, clear: ClearResult = ClearResult.for(g), sacks: Sacks = new Sacks()): Sacks {
   g.reset();
-  applyObstacles(g, level, rng);
+  applyObstacles(g, level, rng, sacks);
   const p = level.prefill;
   if (p.type === 'random') applyRandom(g, p, level.colors, rng, clear);
   else if (p.type === 'pattern') applyPattern(g, p, rng);
   settle(g, rng);
+  return sacks;
 }

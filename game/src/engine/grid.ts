@@ -4,6 +4,15 @@
 export const EMPTY = 0;
 /** Highest colour id usable for sand. Colours 1..MAX_SAND_COLOR take part in path clears. */
 export const MAX_SAND_COLOR = 15;
+/**
+ * "Karışık Baharat" joker grain (GDD §5.2). It is sand (falls, clears) and joins the
+ * region of every colour during path search. Level colours must be < JOKER.
+ */
+export const JOKER = 15;
+/** Highest colour id a level may use for plain sand. */
+export const MAX_PLAIN_COLOR = JOKER - 1;
+/** Colour id of sack obstacle cells (static, breakable; see engine/sacks.ts). */
+export const SACK = 254;
 /** Colour id used for stone / obstacle cells (never cleared, never moves). */
 export const STONE = 255;
 
@@ -91,6 +100,7 @@ export class SandGrid {
   }
 }
 
+/** True for grains that fall and can be cleared (plain colours and joker). */
 export function isSandColor(c: number): boolean {
   return c !== EMPTY && c <= MAX_SAND_COLOR;
 }

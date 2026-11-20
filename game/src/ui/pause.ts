@@ -1,3 +1,4 @@
+import { feedbackToggles } from '../fx/settingsToggle';
 import { strings } from '../i18n';
 import type { App, Scene } from './app';
 import { h } from './dom';
@@ -32,8 +33,13 @@ export class PauseScene implements Scene {
           onclick: tap(() => app.scenes.replace(new PlayScene(app, levelId))),
         }),
         h('button', { class: 'btn btn-ghost', type: 'button', text: s.levels, onclick: tap(() => app.scenes.replace(new LevelSelectScene(app))) }),
+        feedbackToggles(app),
       ),
     );
+  }
+
+  enter(): void {
+    this.app.audio.stopLoops(); // sand hiss / danger loop must not run while paused
   }
 
   back(): void {
