@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Oyunun koyu arka planı: src/render/theme.ts (css bg) ve capacitor.config.ts (android.backgroundColor) ile aynı. -->
+    <color name="kum_bg">#14112B</color>
+    <!-- Panel ve vurgu renkleri (theme.ts: panel, accent). -->
+    <color name="kum_panel">#221E45</color>
+    <color name="kum_accent">#FFB547</color>
+
+    <!-- capacitor-android kütüphanesindeki varsayılan mavi/pembe renkleri ezer. -->
+    <color name="colorPrimary">#14112B</color>
+    <color name="colorPrimaryDark">#14112B</color>
+    <color name="colorAccent">#FFB547</color>
+</resources>
