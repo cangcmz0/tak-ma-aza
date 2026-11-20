@@ -1,0 +1,73 @@
+// All player-facing Turkish strings. Add an en.ts with the same shape later.
+export const tr = {
+  appName: 'Kum Akışı',
+  tagline: 'Baharat Çarşısı',
+  menu: {
+    play: 'Oyna',
+    levels: 'Bölümler',
+    continueLevel: 'Bölüm {n}',
+    sound: 'Ses',
+    haptics: 'Titreşim',
+    on: 'Açık',
+    off: 'Kapalı',
+    version: 'Sürüm {v}',
+  },
+  levelSelect: {
+    title: 'Bölümler',
+    back: 'Geri',
+    locked: 'Kilitli',
+    levelAria: 'Bölüm {n}, {stars} yıldız',
+  },
+  hud: {
+    pause: 'Duraklat',
+    score: 'Puan',
+    pieces: 'Parça',
+    unlimited: '∞',
+    level: 'Bölüm {n}',
+    rotate: 'Döndür',
+    chain: 'Zincir ×{n}!',
+    plus: '+{n}',
+    wait: 'Kum akıyor…',
+    noRoom: 'Buraya sığmıyor',
+    goals: 'Hedefler',
+    traySlot: 'Parça {n}',
+    boardAria: 'Kum tahtası',
+  },
+  goals: {
+    clear_paths: '{n} yol patlat',
+    clear_paths_color: '{n} {color} yolu patlat',
+    score: '{n} puan topla',
+    clear_color_grains: '{n} tane {color} temizle',
+  },
+  pause: {
+    title: 'Duraklatıldı',
+    resume: 'Devam et',
+    restart: 'Yeniden başla',
+    levels: 'Bölümler',
+    menu: 'Ana menü',
+  },
+  result: {
+    won: 'Tebrikler!',
+    lost: 'Olmadı!',
+    score: 'Puan: {n}',
+    best: 'En iyi: {n}',
+    next: 'Sonraki bölüm',
+    retry: 'Tekrar dene',
+    levels: 'Bölümler',
+    outOfPieces: 'Parçalar bitti.',
+    noSpace: 'Yeni parça sığmıyor.',
+    starsAria: '{n} yıldız',
+    allDone: 'Tüm bölümler bitti! Yenileri yolda.',
+  },
+  /** Spice names per sand colour id (theme "Baharat Çarşısı"). */
+  colors: {
+    1: 'pul biber',
+    2: 'nane',
+    3: 'zerdeçal',
+    4: 'sumak',
+    5: 'lavanta',
+    6: 'karabiber',
+  } as Record<number, string>,
+};
+
+export type Strings = typeof tr;

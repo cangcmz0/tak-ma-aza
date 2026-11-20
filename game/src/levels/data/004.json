@@ -1,0 +1,16 @@
+{
+  "id": 4,
+  "name": "Taşlı Han",
+  "colors": [1, 2, 3],
+  "pieceLimit": 26,
+  "goals": [{ "type": "clear_paths", "count": 3 }],
+  "stars": [400, 800, 1200],
+  "prefill": { "type": "none" },
+  "obstacles": [
+    { "x": 0, "y": 10, "w": 3, "h": 1 },
+    { "x": 9, "y": 10, "w": 3, "h": 1 },
+    { "x": 5, "y": 14, "w": 2, "h": 1 }
+  ],
+  "specials": { "bombChance": 0 },
+  "seed": 40404
+}
