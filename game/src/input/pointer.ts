@@ -15,6 +15,10 @@ export interface PointerTarget {
   /** Drop the selected piece at the current aim. */
   drop(): void;
   enabled(): boolean;
+  /** A tray piece is being dragged: finger position (draw the piece lifted above it). */
+  drag?(clientX: number, clientY: number): void;
+  /** The tray drag ended (dropped, cancelled or released elsewhere). */
+  dragEnd?(): void;
 }
 
 /** Vertical slack above the board that still counts as "over the board" (CSS px). */
@@ -59,6 +63,7 @@ export class PointerInput {
   }
 
   destroy(): void {
+    if (this.g?.source === 'tray') this.target.dragEnd?.();
     this.offs.forEach((f) => f());
     this.offs.length = 0;
     this.g = null;
@@ -95,6 +100,7 @@ export class PointerInput {
     const g = this.g;
     if (!g || e.pointerId !== g.id) return;
     if (!g.moved && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > TAP_SLOP) g.moved = true;
+    if (g.source === 'tray' && g.moved) this.target.drag?.(e.clientX, e.clientY);
     if (g.source === 'board' || this.overBoard(e.clientX, e.clientY)) this.target.aim(e.clientX);
     else if (g.moved) this.target.aim(null);
   }
@@ -103,6 +109,7 @@ export class PointerInput {
     const g = this.g;
     if (!g || e.pointerId !== g.id) return;
     this.g = null;
+    if (g.source === 'tray') this.target.dragEnd?.();
     if (!this.target.enabled()) return;
     if (g.source === 'tray' && !g.moved) {
       if (g.wasSelected) this.target.rotate(g.slot);
@@ -115,6 +122,9 @@ export class PointerInput {
   }
 
   private cancel(e: PointerEvent): void {
-    if (this.g && e.pointerId === this.g.id) this.g = null;
+    if (this.g && e.pointerId === this.g.id) {
+      if (this.g.source === 'tray') this.target.dragEnd?.();
+      this.g = null;
+    }
   }
 }

@@ -68,8 +68,20 @@ export class SceneManager {
     for (const s of this.stack) s.resize?.();
   }
 
-  back(): void {
-    this.top?.back?.();
+  /**
+   * Hardware back / Escape. @returns false when the top scene has no back action
+   * (main menu): the native shell then exits the app.
+   */
+  back(): boolean {
+    const t = this.top;
+    if (!t?.back) return false;
+    t.back();
+    return true;
+  }
+
+  /** Number of scenes on the stack. */
+  get depth(): number {
+    return this.stack.length;
   }
 
   suspend(): void {

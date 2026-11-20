@@ -136,7 +136,14 @@ export function packedPalette(): PackedPalette {
   return paletteCache;
 }
 
-/** CSS colour for a sand colour id (tray previews, HUD swatches). */
+/** CSS colour for a sand colour id (tray previews, HUD swatches). Joker uses its cycle colours. */
 export function sandCss(id: number, shade = 0): string {
+  if (id === JOKER) return active.joker[shade % active.joker.length];
   return active.sand[id]?.shades[shade] ?? '#999999';
+}
+
+/** Joker cycle phase for a timestamp (ms): one full loop every 0.8 s (GDD §3.2). */
+export function jokerPhase(nowMs: number): number {
+  const n = active.joker.length;
+  return Math.floor((nowMs / 800) * n) % n;
 }
