@@ -1,13 +1,29 @@
 {
   "id": 1,
   "name": "İlk Tutam",
-  "colors": [1, 2],
+  "colors": [
+    1,
+    2
+  ],
   "pieceLimit": 20,
-  "goals": [{ "type": "clear_paths", "count": 1 }],
-  "stars": [150, 300, 500],
-  "prefill": { "type": "none" },
+  "goals": [
+    {
+      "type": "clear_paths",
+      "count": 1
+    }
+  ],
+  "stars": [
+    300,
+    800,
+    1400
+  ],
+  "prefill": {
+    "type": "none"
+  },
   "obstacles": [],
-  "specials": { "bombChance": 0 },
+  "specials": {
+    "bombChance": 0
+  },
   "seed": 12345,
   "hint": "Aynı renk baharatı soldan sağa uzat!"
 }

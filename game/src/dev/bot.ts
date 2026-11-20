@@ -1,7 +1,6 @@
 // Greedy auto-player for level QA / balancing (not part of the shipped UI).
 // For every candidate drop it simulates the landing on a scratch grid and scores
 // the result by how wide same-colour regions get (wall-to-wall = path).
-import { BLOCK } from '../config';
 import { Rng } from '../core/rng';
 import { EMPTY, MAX_SAND_COLOR, SandGrid } from '../engine/grid';
 import { canStamp, maxX, ROTATIONS, stamp, type Piece } from '../engine/pieces';
@@ -66,9 +65,13 @@ class Evaluator {
     s.copyFrom(g);
     const r0 = p.rot;
     p.rot = rot;
-    stamp(s, p, x, 0, this.rng);
+    // Shortcut: drop the piece rigidly to where it would first touch, then let it spread.
+    const shape = ROTATIONS[p.kind][rot];
+    let y = 0;
+    while (canStamp(s, shape, x, y + 1)) y++;
+    stamp(s, p, x, y, this.rng);
     p.rot = r0;
-    settle(s, this.rng, 400);
+    settle(s, this.rng, 200);
     return this.score(s);
   }
 }
@@ -125,6 +128,3 @@ export function autoplay(level: LevelDef, seed?: number, maxMoves = 500): BotRes
   }
   return { state: s.state, score: s.score, placed: s.placed, stars: s.stars, ticks: s.ticks };
 }
-
-// Keep BLOCK referenced for readers: candidate x positions are in grains (BLOCK = grains per block).
-export const BOT_GRAIN_STEP_HINT = BLOCK;

@@ -1,11 +1,23 @@
 // One play-through of a level: board, tray, score, chain, goals, win/lose.
 // Driven by fixed ticks (tick()) so it is deterministic and testable headless.
-import { CLEAR_FLASH_TICKS, GRID_H, GRID_W, SCORE_PER_GRAIN, SIM_STEPS_PER_TICK, TRAY_SIZE } from '../config';
+import {
+  ATTEMPT_SEED_STEP,
+  CHAIN_MAX,
+  CHAIN_RESET_ON_DROP,
+  CLEAR_FLASH_TICKS,
+  END_BONUS_PER_PIECE,
+  GRID_H,
+  GRID_W,
+  PATH_BONUS,
+  SCORE_PER_GRAIN,
+  SIM_STEPS_PER_TICK,
+  TRAY_SIZE,
+} from '../config';
 import { Emitter } from '../core/events';
 import { Rng, deriveSeed } from '../core/rng';
 import { ClearResult, findClears, removeMarked } from '../engine/clear';
 import { SandGrid } from '../engine/grid';
-import { canStamp, fitsAnywhere, pieceShape, randomPiece, rotatePiece, stamp, type Piece } from '../engine/pieces';
+import { canStamp, fitsAnywhere, PieceBag, pieceShape, rotatePiece, stamp, type Piece } from '../engine/pieces';
 import { step } from '../engine/sim';
 import type { LevelDef } from '../levels/schema';
 import { computeStars, goalDone, GoalTracker } from './goals';
@@ -23,7 +35,7 @@ export type SessionEvent =
   | { type: 'cleared'; paths: number; grains: number; chain: number; points: number }
   | { type: 'goalComplete'; index: number }
   | { type: 'settled' }
-  | { type: 'won'; score: number; stars: number }
+  | { type: 'won'; score: number; stars: number; bonus: number }
   | { type: 'lost'; reason: LoseReason; score: number };
 
 /** RNG stream ids (see deriveSeed). */
@@ -33,8 +45,13 @@ const STREAM_SIM = 3;
 const STREAM_COSMETIC = 4;
 
 export interface SessionOptions {
-  /** Override the level seed (e.g. for replays / daily challenge). */
+  /** Override the level seed for all streams (e.g. replays / daily challenge). */
   seed?: number;
+  /**
+   * Attempt number (0-based). The board always uses the base seed; pieces and physics
+   * use base + attempt * ATTEMPT_SEED_STEP so every retry deals differently (GDD §4.2).
+   */
+  attempt?: number;
   gridW?: number;
   gridH?: number;
 }
@@ -67,20 +84,29 @@ export class Session {
   settled = false;
   private needsCheck = true;
 
-  private readonly rngPieces: Rng;
+  private readonly bag: PieceBag;
   private readonly rngSim: Rng;
   private readonly rngCosmetic: Rng;
   private readonly goalDoneFlags: boolean[];
+  private readonly regionOrder: Int32Array;
+  /** Points from the end-of-level bonus (included in score after a win). */
+  endBonus = 0;
 
   constructor(level: LevelDef, opts: SessionOptions = {}) {
     this.level = level;
-    const seed = opts.seed ?? level.seed;
+    const base = opts.seed ?? level.seed;
+    const seed = (base + (opts.attempt ?? 0) * ATTEMPT_SEED_STEP) >>> 0;
     this.grid = new SandGrid(opts.gridW ?? GRID_W, opts.gridH ?? GRID_H);
     this.clear = ClearResult.for(this.grid);
-    this.rngPieces = new Rng(deriveSeed(seed, STREAM_PIECES));
+    this.bag = new PieceBag(new Rng(deriveSeed(seed, STREAM_PIECES)), {
+      colors: level.colors,
+      kinds: level.pieces,
+      bombChance: level.specials.bombChance,
+    });
     this.rngSim = new Rng(deriveSeed(seed, STREAM_SIM));
     this.rngCosmetic = new Rng(deriveSeed(seed, STREAM_COSMETIC));
-    buildBoard(this.grid, level, new Rng(deriveSeed(seed, STREAM_BOARD)), this.clear);
+    buildBoard(this.grid, level, new Rng(deriveSeed(base, STREAM_BOARD)), this.clear);
+    this.regionOrder = new Int32Array(this.grid.h);
     this.goals = new GoalTracker(level.goals);
     this.goalDoneFlags = this.goals.goals.map(() => false);
     for (let i = 0; i < TRAY_SIZE; i++) this.tray.push(null);
@@ -104,9 +130,8 @@ export class Session {
     const limit = this.level.pieceLimit;
     const toDeal = limit === null ? TRAY_SIZE : Math.min(TRAY_SIZE, limit - this.dealt);
     if (toDeal <= 0) return;
-    const opts = { colors: this.level.colors, kinds: this.level.pieces, bombChance: this.level.specials.bombChance };
     for (let i = 0; i < toDeal; i++) {
-      this.tray[i] = randomPiece(this.rngPieces, opts);
+      this.tray[i] = this.bag.next();
       this.dealt++;
     }
     this.events.emit({ type: 'trayRefill' });
@@ -139,7 +164,7 @@ export class Session {
     }
     this.tray[slot] = null;
     this.placed++;
-    this.chain = 0;
+    if (CHAIN_RESET_ON_DROP) this.chain = 0;
     this.settled = false;
     this.needsCheck = true;
     this.events.emit({ type: 'placed', slot, piece: p, x });
@@ -171,6 +196,7 @@ export class Session {
       return;
     }
     this.settled = true;
+    this.chain = 0;
     this.events.emit({ type: 'settled' });
     this.evaluateEnd();
   }
@@ -187,9 +213,28 @@ export class Session {
   private resolveClear(): void {
     const res = this.clear;
     removeMarked(this.grid, res);
-    this.chain++;
+    // Paths of one check are separate chain steps, largest first (GDD §4.6/4.7).
+    const order = this.regionOrder;
+    const n = res.regionCount;
+    for (let r = 0; r < n; r++) order[r] = r;
+    for (let a = 1; a < n; a++) {
+      const v = order[a];
+      let b = a - 1;
+      while (b >= 0 && res.regionLen[order[b]] < res.regionLen[v]) {
+        order[b + 1] = order[b];
+        b--;
+      }
+      order[b + 1] = v;
+    }
+    let points = 0;
+    for (let k = 0; k < n; k++) {
+      this.chain++;
+      const z = Math.min(this.chain, CHAIN_MAX);
+      points += (res.regionLen[order[k]] * SCORE_PER_GRAIN + PATH_BONUS) * z;
+    }
+    // Grains removed by specials (bombs): per grain at the current multiplier, no path bonus.
+    points += (res.cellCount - res.pathCellCount) * SCORE_PER_GRAIN * Math.min(this.chain, CHAIN_MAX);
     if (this.chain > this.bestChain) this.bestChain = this.chain;
-    const points = res.cellCount * SCORE_PER_GRAIN * this.chain;
     this.score += points;
     this.goals.onClear(res);
     this.goals.onScore(this.score);
@@ -208,8 +253,11 @@ export class Session {
   private evaluateEnd(): void {
     if (this.goals.allDone()) {
       this.state = 'won';
+      // End bonus for unused pieces; added after goal checks so it never completes a score goal.
+      this.endBonus = Number.isFinite(this.piecesLeft) ? this.piecesLeft * END_BONUS_PER_PIECE : 0;
+      this.score += this.endBonus;
       this.stars = computeStars(this.score, this.level.stars, true);
-      this.events.emit({ type: 'won', score: this.score, stars: this.stars });
+      this.events.emit({ type: 'won', score: this.score, stars: this.stars, bonus: this.endBonus });
       return;
     }
     const hasPiece = this.tray.some((t) => t !== null);

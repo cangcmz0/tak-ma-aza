@@ -34,6 +34,7 @@ export class ResultScene implements Scene {
         won ? h('div', { class: 'result-stars', 'aria-label': fmt(s.starsAria, { n: session.stars }), text: starText(session.stars) }) : null,
         !won && reason ? h('p', { class: 'muted', text: reason }) : null,
         h('p', { class: 'result-score', text: fmt(s.score, { n: session.score }) }),
+        won && session.endBonus > 0 ? h('p', { class: 'muted', text: fmt(s.bonus, { n: session.endBonus }) }) : null,
         h('p', { class: 'muted', text: fmt(s.best, { n: best }) }),
         won && next !== undefined
           ? h('button', {

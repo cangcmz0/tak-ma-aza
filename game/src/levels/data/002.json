@@ -1,12 +1,30 @@
 {
   "id": 2,
   "name": "Çarşıya Giriş",
-  "colors": [1, 2, 3],
+  "colors": [
+    1,
+    2,
+    3
+  ],
   "pieceLimit": 22,
-  "goals": [{ "type": "clear_paths", "count": 2 }],
-  "stars": [300, 600, 900],
-  "prefill": { "type": "random", "rows": 8 },
+  "goals": [
+    {
+      "type": "clear_paths",
+      "count": 2
+    }
+  ],
+  "stars": [
+    600,
+    1500,
+    2600
+  ],
+  "prefill": {
+    "type": "random",
+    "rows": 8
+  },
   "obstacles": [],
-  "specials": { "bombChance": 0 },
+  "specials": {
+    "bombChance": 0
+  },
   "seed": 20202
 }

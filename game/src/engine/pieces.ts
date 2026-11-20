@@ -148,6 +148,42 @@ export interface PieceGenOptions {
   bombChance?: number;
 }
 
+/**
+ * Fair dealing (GDD §4.2): shapes come from a shuffled bag of the allowed kinds,
+ * colours from a shuffled bag holding every colour twice. Bags refill when empty.
+ */
+export class PieceBag {
+  private shapes: PieceKind[] = [];
+  private colors: number[] = [];
+
+  constructor(
+    private readonly rng: Rng,
+    private readonly o: PieceGenOptions,
+  ) {}
+
+  private shuffle<T>(a: T[]): T[] {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = this.rng.int(i + 1);
+      const t = a[i];
+      a[i] = a[j];
+      a[j] = t;
+    }
+    return a;
+  }
+
+  next(): Piece {
+    if (!this.shapes.length) this.shapes = this.shuffle([...(this.o.kinds && this.o.kinds.length ? this.o.kinds : PIECE_KINDS)]);
+    if (!this.colors.length) this.colors = this.shuffle([...this.o.colors, ...this.o.colors]);
+    const kind = this.shapes.pop() as PieceKind;
+    const color = this.colors.pop() as number;
+    const rot = this.rng.int(4);
+    const chance = this.o.bombChance ?? 0;
+    const bomb = chance > 0 && this.rng.chance(chance);
+    return { kind, rot, color, special: bomb ? 'bomb' : null, specialCell: bomb ? this.rng.int(4) : -1 };
+  }
+}
+
+/** Independent random piece (no bag). */
 export function randomPiece(rng: Rng, o: PieceGenOptions): Piece {
   const kinds = o.kinds && o.kinds.length ? o.kinds : PIECE_KINDS;
   const kind = rng.pick(kinds);

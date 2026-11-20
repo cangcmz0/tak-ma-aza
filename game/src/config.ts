@@ -27,3 +27,19 @@ export const BOMB_RADIUS = 8;
 
 /** Shade variants per colour (cosmetic grain texture). */
 export const SHADES = 3;
+
+/** Bonus added to every cleared path before the chain multiplier (GDD §4.7). */
+export const PATH_BONUS = 100;
+/** Chain multiplier cap (GDD §4.7). */
+export const CHAIN_MAX = 5;
+/** Bonus per unused piece when a level is won ("Tezgâh Bonusu"); not counted for score goals. */
+export const END_BONUS_PER_PIECE = 100;
+/**
+ * true  = chain resets on every drop (prototype rule).
+ * false = chain resets only when the board settles without a path (GDD proposal, open question #7).
+ */
+export const CHAIN_RESET_ON_DROP = true;
+/** Show a separate rotate button in the tray (GDD §4.3 says tap-to-rotate only). */
+export const SHOW_ROTATE_BUTTON = false;
+/** Seed offset per attempt for piece/physics streams (GDD §4.2); the board stays the same. */
+export const ATTEMPT_SEED_STEP = 7919;

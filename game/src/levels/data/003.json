@@ -1,13 +1,28 @@
 {
   "id": 3,
   "name": "Pul Biber Avı",
-  "colors": [1, 2, 3],
+  "colors": [
+    1,
+    2,
+    3
+  ],
   "pieceLimit": 24,
   "goals": [
-    { "type": "clear_color_grains", "color": 1, "count": 300 },
-    { "type": "score", "value": 500 }
+    {
+      "type": "clear_color_grains",
+      "color": 1,
+      "count": 300
+    },
+    {
+      "type": "score",
+      "value": 800
+    }
   ],
-  "stars": [500, 900, 1300],
+  "stars": [
+    800,
+    1600,
+    2400
+  ],
   "prefill": {
     "type": "pattern",
     "rows": [
@@ -17,6 +32,8 @@
     ]
   },
   "obstacles": [],
-  "specials": { "bombChance": 0 },
+  "specials": {
+    "bombChance": 0
+  },
   "seed": 30303
 }

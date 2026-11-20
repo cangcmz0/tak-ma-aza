@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { Rng } from '../src/core/rng';
+import { PieceBag } from '../src/engine/pieces';
 import { Session, type SessionEvent } from '../src/game/session';
 import { makeLevel } from './helpers';
 
@@ -60,7 +62,9 @@ describe('Session', () => {
     s.runUntilSettled();
     expect(s.state).toBe('won');
     expect(s.goals.allDone()).toBe(true);
-    expect(s.score).toBe(4 * 16); // 4 blocks × 16 grains
+    // (4 blocks × 16 grains + path bonus) × chain 1, plus 4 unused pieces × end bonus.
+    expect(s.score).toBe(64 + 100 + 4 * 100);
+    expect(s.endBonus).toBe(400);
     expect(s.stars).toBeGreaterThanOrEqual(1);
     const types = ev.map((e) => e.type);
     expect(types.indexOf('clearStart')).toBeLessThan(types.indexOf('cleared'));
@@ -84,17 +88,36 @@ describe('Session', () => {
     expect(s.loseReason).toBe('no_space');
   });
 
-  it('chain multiplies points and resets on drop', () => {
+  it('chain resets once the board settles without a path', () => {
     const s = new Session(makeLevel({ colors: [1], pieces: ['I'], pieceLimit: 5, goals: [{ type: 'clear_paths', count: 5 }] }), small);
     s.tray[0]!.rot = 0;
     s.drop(0, 0);
     s.runUntilSettled();
-    expect(s.chain).toBe(1);
-    expect(s.score).toBe(64);
-    const slot = s.tray.findIndex((t) => t);
-    s.tray[slot]!.rot = 0;
-    s.drop(slot, 0);
+    expect(s.bestChain).toBe(1);
     expect(s.chain).toBe(0);
+    expect(s.score).toBe(64 + 100);
+  });
+
+  it('several paths in one check are separate chain steps, largest first', () => {
+    const s = new Session(makeLevel({ colors: [1, 2], goals: [{ type: 'clear_paths', count: 5 }] }), small);
+    const g = s.grid;
+    for (let x = 0; x < g.w; x++) g.set(x, g.h - 1, 1);
+    for (let x = 0; x < g.w; x++) g.set(x, g.h - 2, 2);
+    g.set(0, g.h - 3, 2); // makes the colour-2 path bigger (17 grains)
+    const ev = collect(s);
+    s.runUntilSettled();
+    const c = ev.find((e) => e.type === 'cleared');
+    expect(c && c.type === 'cleared' && c.paths).toBe(2);
+    expect(s.score).toBe((17 + 100) * 1 + (16 + 100) * 2);
+  });
+
+  it('chain multiplier is capped', () => {
+    const s = new Session(makeLevel({ colors: [1, 2, 3], goals: [{ type: 'clear_paths', count: 9 }] }), small);
+    const g = s.grid;
+    for (let y = 0; y < 7; y++) for (let x = 0; x < g.w; x++) g.set(x, g.h - 1 - y * 2, 1 + (y % 3));
+    s.runUntilSettled();
+    // 7 equal paths: multipliers 1,2,3,4,5,5,5
+    expect(s.score).toBe((16 + 100) * (1 + 2 + 3 + 4 + 5 + 5 + 5));
   });
 
   it('a cascade of clears raises the chain multiplier', () => {
@@ -109,9 +132,29 @@ describe('Session', () => {
     s.runUntilSettled();
     const cleared = ev.filter((e) => e.type === 'cleared');
     expect(cleared.map((e) => (e.type === 'cleared' ? e.chain : 0))).toEqual([1, 2]);
-    expect(s.score).toBe(17 * 1 + 16 * 2);
+    expect(s.score).toBe((17 + 100) * 1 + (16 + 100) * 2);
     expect(s.bestChain).toBe(2);
     expect(s.goals.goals[0].current).toBe(2);
+  });
+
+  it('deals shapes from a fair bag and colours twice each', () => {
+    const bag = new PieceBag(new Rng(5), { colors: [1, 2, 3] });
+    for (let round = 0; round < 3; round++) {
+      const kinds = new Set<string>();
+      for (let i = 0; i < 7; i++) kinds.add(bag.next().kind);
+      expect(kinds.size).toBe(7);
+    }
+    const cbag = new PieceBag(new Rng(9), { colors: [1, 2, 3], kinds: ['O'] });
+    const colors = Array.from({ length: 6 }, () => cbag.next().color).sort();
+    expect(colors).toEqual([1, 1, 2, 2, 3, 3]);
+  });
+
+  it('retries keep the board but change the deal', () => {
+    const lvl = makeLevel({ prefill: { type: 'random', rows: 8 }, colors: [1, 2, 3] });
+    const a = new Session(lvl, { attempt: 0 });
+    const b = new Session(lvl, { attempt: 1 });
+    expect(Array.from(a.grid.color)).toEqual(Array.from(b.grid.color));
+    expect(a.tray).not.toEqual(b.tray);
   });
 
   it('pieces left counts down', () => {

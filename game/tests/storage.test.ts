@@ -10,7 +10,7 @@ describe('SaveStore', () => {
     expect(s.isUnlocked(2, ids)).toBe(false);
     s.recordResult(1, true, 500, 2);
     s.recordResult(1, false, 100, 0);
-    expect(s.level(1)).toEqual({ stars: 2, best: 500, completed: true });
+    expect(s.level(1)).toEqual({ stars: 2, best: 500, completed: true, attempts: 2, lossStreak: 1 });
     expect(s.isUnlocked(2, ids)).toBe(true);
     expect(s.currentLevel(ids)).toBe(2);
     await Promise.resolve();

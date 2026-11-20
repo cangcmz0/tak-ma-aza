@@ -30,12 +30,13 @@ export const defaultTheme: Theme = {
   boardBg: '#1b1839',
   stone: ['#5d5873', '#6e6985', '#4c4862'],
   sand: {
+    // Ids match GDD §18.1: 1 Pul Biber, 2 Zerdeçal, 3 Nane, 4 Sumak, 5 Çivit, 6 Tarçın.
     1: { shades: ['#e8553f', '#f27a5f', '#c9412e'] }, // pul biber
-    2: { shades: ['#4fb874', '#6fcf8f', '#3a9a5c'] }, // nane
-    3: { shades: ['#f2c230', '#f7d65e', '#d9a816'] }, // zerdeçal
+    2: { shades: ['#f2c230', '#f7d65e', '#d9a816'] }, // zerdeçal
+    3: { shades: ['#4fb874', '#6fcf8f', '#3a9a5c'] }, // nane
     4: { shades: ['#9b3d63', '#b4587d', '#7f2c4f'] }, // sumak
-    5: { shades: ['#8f7bea', '#a998f2', '#7562d2'] }, // lavanta
-    6: { shades: ['#6b5a4a', '#857261', '#54453a'] }, // karabiber
+    5: { shades: ['#4f6fe0', '#7189ec', '#3a56c2'] }, // çivit
+    6: { shades: ['#b0703c', '#c78a55', '#8f5a2e'] }, // tarçın
   },
   flash: '#ffffff',
   bomb: '#1a1a1a',

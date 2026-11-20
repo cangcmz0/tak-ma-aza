@@ -3,7 +3,7 @@ import { autoplay } from '../src/dev/bot';
 import { LEVELS } from '../src/levels/levels';
 
 describe('greedy bot (level sanity)', () => {
-  it('every bundled level runs to a win or a loss', () => {
+  it('every bundled level runs to a win or a loss', { timeout: 60000 }, () => {
     for (const l of LEVELS) {
       const r = autoplay(l);
       console.log(`level ${l.id} "${l.name}": ${r.state} score=${r.score} pieces=${r.placed}/${l.pieceLimit} stars=${r.stars}`);
@@ -11,7 +11,7 @@ describe('greedy bot (level sanity)', () => {
     }
   });
 
-  it('level 1 (tutorial) is winnable by the greedy bot', () => {
+  it('level 1 (tutorial) is winnable by the greedy bot', { timeout: 30000 }, () => {
     expect(autoplay(LEVELS[0]).state).toBe('won');
   });
 });

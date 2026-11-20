@@ -1,17 +1,41 @@
 {
   "id": 5,
   "name": "Patlayan Baharat",
-  "colors": [1, 2, 3, 4],
-  "pieceLimit": 28,
-  "goals": [
-    { "type": "clear_paths", "count": 2 },
-    { "type": "clear_paths", "count": 1, "color": 4 },
-    { "type": "score", "value": 700 }
+  "colors": [
+    1,
+    2,
+    4
   ],
-  "stars": [700, 1200, 1800],
-  "prefill": { "type": "random", "rows": 12, "density": 0.9 },
+  "pieceLimit": 30,
+  "goals": [
+    {
+      "type": "clear_paths",
+      "count": 2
+    },
+    {
+      "type": "clear_paths",
+      "count": 1,
+      "color": 4
+    },
+    {
+      "type": "score",
+      "value": 900
+    }
+  ],
+  "stars": [
+    900,
+    1800,
+    2700
+  ],
+  "prefill": {
+    "type": "random",
+    "rows": 8,
+    "density": 0.9
+  },
   "obstacles": [],
-  "specials": { "bombChance": 0.15 },
+  "specials": {
+    "bombChance": 0.15
+  },
   "seed": 50505,
   "hint": "Siyah benekli blok patlayınca çevresini de temizler."
 }

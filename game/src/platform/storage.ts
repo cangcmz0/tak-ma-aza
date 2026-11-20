@@ -49,6 +49,10 @@ export interface LevelProgress {
   stars: number;
   best: number;
   completed: boolean;
+  /** Finished attempts (used as the attempt seed index). */
+  attempts: number;
+  /** Consecutive losses (for the GDD "help rule"). */
+  lossStreak: number;
 }
 
 export interface Settings {
@@ -75,7 +79,13 @@ function sanitize(raw: unknown): SaveData {
   if (r.levels && typeof r.levels === 'object') {
     for (const [id, p] of Object.entries(r.levels)) {
       if (p && typeof p === 'object')
-        d.levels[id] = { stars: Number(p.stars) || 0, best: Number(p.best) || 0, completed: !!p.completed };
+        d.levels[id] = {
+          stars: Number(p.stars) || 0,
+          best: Number(p.best) || 0,
+          completed: !!p.completed,
+          attempts: Number(p.attempts) || 0,
+          lossStreak: Number(p.lossStreak) || 0,
+        };
     }
   }
   if (r.settings && typeof r.settings === 'object') {
@@ -122,11 +132,13 @@ export class SaveStore {
 
   /** Record a finished attempt; keeps the best stars / score. */
   recordResult(id: number, won: boolean, score: number, stars: number): void {
-    const prev = this.data.levels[String(id)] ?? { stars: 0, best: 0, completed: false };
+    const prev = this.data.levels[String(id)] ?? { stars: 0, best: 0, completed: false, attempts: 0, lossStreak: 0 };
     this.data.levels[String(id)] = {
       stars: Math.max(prev.stars, stars),
       best: Math.max(prev.best, score),
       completed: prev.completed || won,
+      attempts: prev.attempts + 1,
+      lossStreak: won ? 0 : prev.lossStreak + 1,
     };
     this.persist();
   }

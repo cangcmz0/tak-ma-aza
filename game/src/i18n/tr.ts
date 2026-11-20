@@ -28,7 +28,7 @@ export const tr = {
     chain: 'Zincir ×{n}!',
     plus: '+{n}',
     wait: 'Kum akıyor…',
-    noRoom: 'Buraya sığmıyor',
+    noRoom: 'Burası dolu!',
     goals: 'Hedefler',
     traySlot: 'Parça {n}',
     boardAria: 'Kum tahtası',
@@ -58,15 +58,16 @@ export const tr = {
     noSpace: 'Yeni parça sığmıyor.',
     starsAria: '{n} yıldız',
     allDone: 'Tüm bölümler bitti! Yenileri yolda.',
+    bonus: 'Tezgâh bonusu: +{n}',
   },
   /** Spice names per sand colour id (theme "Baharat Çarşısı"). */
   colors: {
     1: 'pul biber',
-    2: 'nane',
-    3: 'zerdeçal',
+    2: 'zerdeçal',
+    3: 'nane',
     4: 'sumak',
-    5: 'lavanta',
-    6: 'karabiber',
+    5: 'çivit',
+    6: 'tarçın',
   } as Record<number, string>,
 };
 

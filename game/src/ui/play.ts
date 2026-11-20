@@ -1,5 +1,5 @@
 // Gameplay scene: HUD + board canvas + tray. Owns the Session for one attempt.
-import { BLOCK, MAX_TICKS_PER_FRAME, SIM_TICK_HZ, TRAY_SIZE } from '../config';
+import { BLOCK, MAX_TICKS_PER_FRAME, SHOW_ROTATE_BUTTON, SIM_TICK_HZ, TRAY_SIZE } from '../config';
 import { maxX, pieceShape } from '../engine/pieces';
 import { feedbackFor } from '../fx/feedback';
 import { goalDone } from '../game/goals';
@@ -56,7 +56,7 @@ export class PlayScene implements Scene {
     const level = getLevel(levelId);
     if (!level) throw new Error(`Level ${levelId} not found`);
     const s = strings().hud;
-    this.session = new Session(level);
+    this.session = new Session(level, { attempt: app.save.level(levelId)?.attempts ?? 0 });
     const g = this.session.grid;
 
     this.canvas = h('canvas', { class: 'board', 'aria-label': s.boardAria, 'data-testid': 'board' });
@@ -82,7 +82,7 @@ export class PlayScene implements Scene {
       goalsEl.append(root);
     }
 
-    const tray = h('div', { class: 'tray' });
+    const tray = h('div', { class: SHOW_ROTATE_BUTTON ? 'tray with-rotate' : 'tray' });
     for (let i = 0; i < TRAY_SIZE; i++) {
       const cv = h('canvas', { width: SLOT_CSS, height: SLOT_CSS });
       const btn = h('button', { class: 'slot', type: 'button', 'aria-label': fmt(s.traySlot, { n: i + 1 }), 'data-testid': `slot-${i}` }, cv);
@@ -90,7 +90,7 @@ export class PlayScene implements Scene {
       this.slotCanvases.push(cv);
       tray.append(btn);
     }
-    tray.append(
+    if (SHOW_ROTATE_BUTTON) tray.append(
       h('button', {
         class: 'btn rotate-btn',
         type: 'button',
