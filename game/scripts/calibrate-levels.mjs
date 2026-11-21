@@ -8,6 +8,8 @@
 //   node scripts/calibrate-levels.mjs --trials 50 --levels 1-10,15 --jobs 4
 //   node scripts/calibrate-levels.mjs --apply             # write suggested stars into the JSON files
 //   node scripts/calibrate-levels.mjs --json out.json --md out.md
+//   node scripts/calibrate-levels.mjs --bot greedy        # only src/dev/bot.ts (default: both bots)
+//   node scripts/calibrate-levels.mjs --sweep --trials 40 # piece-limit sweep (unlimited pieces, suggests limits)
 //   node scripts/calibrate-levels.mjs --show 3            # ASCII of the starting board
 //
 // --apply only touches levels with no pending mechanic and no proxy, and at least
@@ -78,14 +80,15 @@ async function workerMain() {
   parentPort.on('message', (msg) => {
     if (msg.type === 'stop') process.exit(0);
     const lv = levels.get(msg.id);
-    parentPort.postMessage({ type: 'result', trial: core.playTrial(lv, msg.attempt) });
+    const trial = msg.sweep ? core.playUnlimited(lv, msg.attempt, msg.bot) : core.playTrial(lv, msg.attempt, msg.bot);
+    parentPort.postMessage({ type: 'result', bot: msg.bot, trial });
   });
   parentPort.postMessage({ type: 'ready' });
 }
 
 // ---------- main ----------
 function parseArgs(argv) {
-  const o = { trials: 40, jobs: Math.max(1, Math.min(cpus().length, 8)), levels: null, apply: false, json: null, md: null, show: null, start: 0 };
+  const o = { trials: 40, jobs: Math.max(1, Math.min(cpus().length, 8)), levels: null, apply: false, json: null, md: null, show: null, start: 0, bot: 'both', primary: 'smart', sweep: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const val = () => argv[++i];
@@ -93,12 +96,15 @@ function parseArgs(argv) {
     else if (a === '--jobs') o.jobs = Number(val());
     else if (a === '--levels') o.levels = val();
     else if (a === '--start') o.start = Number(val());
+    else if (a === '--bot') o.bot = val();
+    else if (a === '--sweep') o.sweep = true;
+    else if (a === '--primary') o.primary = val();
     else if (a === '--apply') o.apply = true;
     else if (a === '--json') o.json = val();
     else if (a === '--md') o.md = val();
     else if (a === '--show') o.show = val();
     else if (a === '-h' || a === '--help') {
-      console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 16).join('\n'));
+      console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 19).join('\n'));
       process.exit(0);
     } else throw new Error(`unknown argument ${a}`);
   }
@@ -118,15 +124,17 @@ function parseIds(spec) {
 const pct = (x) => (Number.isFinite(x) ? `${Math.round(x * 100)}%` : '–');
 const num = (x) => (Number.isFinite(x) ? String(Math.round(x)) : '–');
 
-function table(summaries, labels) {
-  const head = '| No | İsim | Bot kazanma | Ort. puan | Medyan (kazanılan) | P80 (kazanılan) | Kayıp: parça/tahta | Yıldız (dosya) | Yıldız (öneri) | Not |';
-  const sep = '|---|---|---|---|---|---|---|---|---|---|';
+function table(summaries, labels, other) {
+  const head = '| No | İsim | Kazanma (yıldız botu) | Kazanma (diğer bot) | Ort. puan | Medyan (kazanılan) | P80 (kazanılan) | Kayıp: parça/tahta | Yıldız (dosya) | Yıldız (öneri) | Not |';
+  const sep = '|---|---|---|---|---|---|---|---|---|---|---|';
   const rows = summaries.map((s) => {
+    const o = other.find((x) => x.id === s.id);
+    const oc = o && o.trials ? `${pct(o.winRate)} (${o.wins}/${o.trials})` : '–';
     const note = [];
     if (s.pending.length) note.push(`mekanik bekleniyor: ${s.pending.map((f) => labels[f]).join(', ')}`);
     if (s.proxy) note.push(s.proxy);
     if (s.error) note.push(`HATA: ${s.error}`);
-    return `| ${s.id} | ${s.name} | ${s.trials ? `${pct(s.winRate)} (${s.wins}/${s.trials})` : '–'} | ${num(s.meanScore)} | ${num(s.median)} | ${num(s.p80)} | ${s.trials ? `${s.outOfPieces}/${s.noSpace}` : '–'} | ${s.currentStars.join('/')} | ${s.suggestedStars ? s.suggestedStars.join('/') : '–'} | ${note.join('; ')} |`;
+    return `| ${s.id} | ${s.name} | ${s.trials ? `${pct(s.winRate)} (${s.wins}/${s.trials})` : '–'} | ${oc} | ${num(s.meanScore)} | ${num(s.median)} | ${num(s.p80)} | ${s.trials ? `${s.outOfPieces}/${s.noSpace}` : '–'} | ${s.currentStars.join('/')} | ${s.suggestedStars ? s.suggestedStars.join('/') : '–'} | ${note.join('; ')} |`;
   });
   return [head, sep, ...rows].join('\n');
 }
@@ -150,11 +158,16 @@ async function main() {
   }
 
   console.log('Motor desteği:', Object.entries(features).map(([k, v]) => `${k}=${v ? 'var' : 'YOK'}`).join(', '));
+  if (o.sweep && o.bot === 'both') o.bot = 'smart';
+  const bots = o.bot === 'both' ? ['smart', 'greedy'] : [o.bot];
+  if (!bots.includes(o.primary)) o.primary = bots[0];
   const tasks = [];
-  for (const { prep } of preps) if (prep.level) for (let a = 0; a < o.trials; a++) tasks.push({ id: prep.id, attempt: o.start + a });
-  console.log(`${preps.length} bölüm, ${tasks.length} oyun, ${o.jobs} iş parçacığı…`);
+  for (const bot of bots)
+    for (const { prep } of preps) if (prep.level) for (let a = 0; a < o.trials; a++) tasks.push({ bot, id: prep.id, attempt: o.start + a, sweep: o.sweep });
+  console.log(`${preps.length} bölüm, ${tasks.length} oyun (botlar: ${bots.join(', ')}; yıldızlar: ${o.primary}), ${o.jobs} iş parçacığı…`);
 
-  const results = new Map(preps.map(({ prep }) => [prep.id, []]));
+  const results = new Map();
+  for (const bot of bots) for (const { prep } of preps) results.set(`${bot}:${prep.id}`, []);
   const t0 = Date.now();
   await new Promise((done, fail) => {
     let next = 0;
@@ -170,7 +183,7 @@ async function main() {
       };
       w.on('message', (m) => {
         if (m.type === 'result') {
-          results.get(m.trial.id).push(m.trial);
+          results.get(`${m.bot}:${m.trial.id}`).push(m.trial);
           finished++;
           if (finished % 50 === 0) process.stderr.write(`  ${finished}/${tasks.length} (${Math.round((Date.now() - t0) / 1000)} sn)\n`);
         }
@@ -184,15 +197,37 @@ async function main() {
   });
   console.log(`Süre: ${Math.round((Date.now() - t0) / 1000)} sn`);
 
-  const summaries = preps.map(({ prep }) => {
-    const s = core.summarize(prep, results.get(prep.id).sort((a, b) => a.attempt - b.attempt));
-    if (prep.errors.length && !prep.level) s.error = prep.errors.join('; ');
-    return s;
-  });
-  const md = table(summaries, core.FEATURE_LABEL);
+  if (o.sweep) {
+    const bot = bots[0];
+    console.log(`\nParça limiti taraması (${bot} bot, ${o.trials} deneme, sınırsız parça):\n`);
+    console.log('| No | İsim | Zorluk | Hedef oran | Limit (dosya) | Oran @ dosya limiti | Önerilen limit | Gereken parça P50/P80/P95 | Hiç kazanamadı |');
+    console.log('|---|---|---|---|---|---|---|---|---|');
+    for (const { prep } of preps) {
+      const sw = results.get(`${bot}:${prep.id}`);
+      if (!sw || !sw.length) continue;
+      const d = Number(prep.raw.difficulty ?? 5);
+      const target = core.TARGET_WIN_RATE[d] ?? 0.6;
+      const limit = prep.raw.pieceLimit;
+      const q = (r) => core.limitForRate(sw, r) ?? '∞';
+      const never = sw.filter((r) => r.needed === null).length;
+      console.log(`| ${prep.id} | ${prep.name} | ${d} | ${pct(target)} | ${limit} | ${pct(core.rateAtLimit(sw, limit))} | ${core.limitForRate(sw, target) ?? '–'} | ${q(0.5)}/${q(0.8)}/${q(0.95)} | ${never}/${sw.length} |`);
+    }
+    return;
+  }
+
+  const summarizeBot = (bot) =>
+    preps.map(({ prep }) => {
+      const s = core.summarize(prep, results.get(`${bot}:${prep.id}`).sort((a, b) => a.attempt - b.attempt));
+      if (prep.errors.length && !prep.level) s.error = prep.errors.join('; ');
+      return s;
+    });
+  const byBot = Object.fromEntries(bots.map((b) => [b, summarizeBot(b)]));
+  const summaries = byBot[o.primary];
+  const other = bots.length > 1 ? byBot[bots.find((b) => b !== o.primary)] : [];
+  const md = `Yıldız botu: ${o.primary}${other.length ? `, diğer bot: ${bots.find((b) => b !== o.primary)}` : ''}; ${o.trials} deneme/bölüm\n\n` + table(summaries, core.FEATURE_LABEL, other);
   console.log('\n' + md);
 
-  if (o.json) writeFileSync(o.json, JSON.stringify({ date: new Date().toISOString(), trials: o.trials, features, summaries }, null, 2));
+  if (o.json) writeFileSync(o.json, JSON.stringify({ date: new Date().toISOString(), trials: o.trials, primary: o.primary, features, byBot }, null, 2));
   if (o.md) writeFileSync(o.md, md + '\n');
   if (o.apply) {
     for (const { file, prep } of preps) {

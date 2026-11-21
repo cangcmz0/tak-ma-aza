@@ -5,6 +5,7 @@ import { maxX, pieceShape } from '../engine/pieces';
 import { feedbackFor } from '../fx/feedback';
 import { makeEndlessLevel } from '../game/endless';
 import { goalDone } from '../game/goals';
+import { findHintMove } from '../game/hintMove';
 import { Session, shouldHelp, type SessionEvent } from '../game/session';
 import { fmt, strings } from '../i18n';
 import { bindKeyboard } from '../input/keyboard';
@@ -220,7 +221,8 @@ export class PlayScene implements Scene {
     const showIntro = wantsIntro && (!tutorialOn || unseenIntros(this.app, level.intro).length > 0);
     if (showIntro) this.app.scenes.push(new LevelIntroScene(this.app, this.session, () => this.app.scenes.replace(new LevelSelectScene(this.app))));
     else if (level.hint && !tutorialOn) this.toast(level.hint, 3000);
-    if (this.app.debug) (window as unknown as { __kum: unknown }).__kum = { scene: this, session: this.session };
+    if (this.app.debug)
+      (window as unknown as { __kum: unknown }).__kum = { scene: this, session: this.session, hint: () => findHintMove(this.session) };
   }
 
   exit(): void {

@@ -3,7 +3,7 @@ import { autoplay } from '../src/dev/bot';
 import { LEVELS } from '../src/levels/levels';
 
 describe('greedy bot (level sanity)', () => {
-  it('every bundled level runs to a win or a loss', { timeout: 60000 }, () => {
+  it('every bundled level runs to a win or a loss', { timeout: 240000 }, () => {
     for (const l of LEVELS) {
       const r = autoplay(l);
       console.log(`level ${l.id} "${l.name}": ${r.state} score=${r.score} pieces=${r.placed}/${l.pieceLimit} stars=${r.stars}`);

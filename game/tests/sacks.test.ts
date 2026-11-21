@@ -3,7 +3,7 @@ import { BOMB_RADIUS, SACK_BREAK_POINTS } from '../src/config';
 import type { SessionEvent } from '../src/core/events';
 import { EMPTY, FLAG_BOMB, SACK, STONE } from '../src/engine/grid';
 import { Session } from '../src/game/session';
-import { obstacleRect, validateLevel } from '../src/levels/schema';
+import { obstacleRect, validateLevel, type LevelDef } from '../src/levels/schema';
 import { makeLevel } from './helpers';
 
 const small = { gridW: 16, gridH: 24 };
@@ -15,7 +15,7 @@ function collect(s: Session): SessionEvent[] {
 }
 
 /** Sack 4×4 grains at the bottom-left corner area, red path row directly above it. */
-function sackSession(hp: number, goals = [{ type: 'clear_obstacles' as const, count: 1 }]) {
+function sackSession(hp: number, goals: LevelDef['goals'] = [{ type: 'clear_obstacles', count: 1 }]) {
   const s = new Session(
     makeLevel({ colors: [1, 2], goals, obstacles: [{ type: 'sack', x: 6, y: 20, w: 4, h: 4, unit: 'grain', hp }] }),
     small,
