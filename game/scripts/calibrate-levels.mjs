@@ -23,7 +23,7 @@ import { isMainThread, parentPort, Worker, workerData } from 'node:worker_thread
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 const DATA_DIR = join(ROOT, 'src/levels/data');
-const CORE = join(HERE, 'calibrate-levels.ts');
+const CORE = join(HERE, 'calibrate-levels.core.ts');
 
 async function loadCore() {
   const { runnerImport } = await import('vite');

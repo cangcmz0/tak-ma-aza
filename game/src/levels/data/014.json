@@ -9,9 +9,9 @@
   "stars": [3000, 3800, 4800],
   "prefill": { "type": "random", "rows": 12, "density": 0.9 },
   "obstacles": [
-    { "type": "shelf", "x": 0, "y": 7, "w": 4, "h": 1 },
+    { "type": "shelf", "x": 1, "y": 7, "w": 4, "h": 1 },
     { "type": "shelf", "x": 4, "y": 10, "w": 4, "h": 1 },
-    { "type": "shelf", "x": 8, "y": 13, "w": 4, "h": 1 }
+    { "type": "shelf", "x": 7, "y": 13, "w": 4, "h": 1 }
   ],
   "specials": { "bombChance": 0, "jokerChance": 0.1, "twoColorChance": 0 },
   "seed": 14014,
