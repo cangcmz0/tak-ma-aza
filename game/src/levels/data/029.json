@@ -4,7 +4,7 @@
   "difficulty": 5,
   "customer": "anna",
   "colors": [1, 2, 3, 4],
-  "pieceLimit": 24,
+  "pieceLimit": 26,
   "goals": [{ "type": "score", "value": 6000 }],
   "stars": [6000, 7200, 8800],
   "prefill": {

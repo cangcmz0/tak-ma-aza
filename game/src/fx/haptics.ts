@@ -78,6 +78,7 @@ function isNative(): boolean {
 
 export class DeviceHaptics implements HapticsService {
   private enabled = true;
+  private hasVibrated = false;
   private readonly native: boolean;
   private nativeImpl: NativeHaptics | null = null;
   private nativeLoading: Promise<NativeHaptics | null> | null = null;
@@ -104,7 +105,9 @@ export class DeviceHaptics implements HapticsService {
 
   setEnabled(on: boolean): void {
     this.enabled = on;
-    if (!on && !this.native && this.vibrate) this.vibrate(0);
+    // Only cancel when we have actually vibrated; calling vibrate() before any user
+    // gesture logs a "Blocked call to navigator.vibrate" error in browsers.
+    if (!on && this.hasVibrated && !this.native && this.vibrate) this.vibrate(0);
   }
 
   haptic(type: HapticType): void {
@@ -118,6 +121,7 @@ export class DeviceHaptics implements HapticsService {
       void this.fireNative(type);
     } else if (this.vibrate) {
       this.sent++;
+      this.hasVibrated = true;
       this.vibrate(VIBRATE_PATTERNS[type] ?? 15);
     }
   }

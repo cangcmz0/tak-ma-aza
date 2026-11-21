@@ -1,3 +1,6 @@
+import { icon } from '../art/icons';
+import { zerde } from '../art/zerde';
+import { feedbackToggles } from '../fx/settingsToggle';
 import { strings } from '../i18n';
 import type { App, Scene } from './app';
 import { h } from './dom';
@@ -25,23 +28,34 @@ export class PauseScene implements Scene {
       { class: 'scene overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': s.title },
       h(
         'div',
-        { class: 'card' },
+        { class: 'card sign pause-card' },
+        h('i', { class: 'sign-rope', 'aria-hidden': 'true' }),
+        zerde('idle', 'card-zerde'),
         h('h2', { text: s.title }),
-        h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'pause-resume', text: s.resume, onclick: tap(() => this.back()) }),
-        h('button', {
-          class: 'btn',
-          type: 'button',
-          'data-testid': 'pause-restart',
-          text: s.restart,
-          onclick: tap(() => app.scenes.replace(new PlayScene(app, restartMode))),
-        }),
-        h('button', {
-          class: 'btn btn-ghost',
-          type: 'button',
-          'data-testid': 'pause-exit',
-          text: endless ? s.menu : s.levels,
-          onclick: tap(() => app.scenes.replace(endless ? new MenuScene(app) : new LevelSelectScene(app))),
-        }),
+        h('button', { class: 'btn btn-primary', type: 'button', 'data-testid': 'pause-resume', onclick: tap(() => this.back()) }, icon('play'), h('span', { text: s.resume })),
+        h(
+          'button',
+          {
+            class: 'btn',
+            type: 'button',
+            'data-testid': 'pause-restart',
+            onclick: tap(() => app.scenes.replace(new PlayScene(app, restartMode))),
+          },
+          icon('retry'),
+          h('span', { text: s.restart }),
+        ),
+        h(
+          'button',
+          {
+            class: 'btn btn-ghost',
+            type: 'button',
+            'data-testid': 'pause-exit',
+            onclick: tap(() => app.scenes.replace(endless ? new MenuScene(app) : new LevelSelectScene(app))),
+          },
+          icon(endless ? 'home' : 'map'),
+          h('span', { text: endless ? s.menu : s.levels }),
+        ),
+        feedbackToggles(app),
       ),
     );
   }

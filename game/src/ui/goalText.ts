@@ -24,3 +24,20 @@ export function goalColor(g: Goal): number | undefined {
   const d = g.def;
   return 'color' in d ? d.color : undefined;
 }
+
+/** Compact HUD label: the order card shows the numbers next to it ("Pul biber · 96/300 g"). */
+export function goalShortLabel(g: Goal): string {
+  const s = strings().hud.goalShort;
+  const d = g.def;
+  const cap = (t: string) => t.charAt(0).toLocaleUpperCase('tr-TR') + t.slice(1);
+  switch (d.type) {
+    case 'clear_paths':
+      return d.color === undefined ? s.paths : cap(fmt(s.pathsColor, { color: colorName(d.color) }));
+    case 'score':
+      return s.score;
+    case 'clear_color_grains':
+      return cap(colorName(d.color));
+    case 'clear_obstacles':
+      return s.obstacles;
+  }
+}

@@ -81,7 +81,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2-gameplay-${na
   await shot(page, '05-level1-result');
 
   // 3) Juice: force a double + chain on a fresh attempt (debug board edit) and capture the words.
-  await page.goto(`${BASE}?debug=1&unlockAll`);
+  await page.goto(`${BASE}?debug=1&unlockAll&nodaily`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await page.click('[data-testid=menu-levels]');
   await page.click('[data-testid=level-10]');

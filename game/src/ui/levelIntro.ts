@@ -1,20 +1,44 @@
-// Pre-level card (GDD §15 "Bölüm Öncesi" + §13 mechanic cards): level number and name,
-// the customer's order (goal lines), piece allowance, hint and unseen "Yeni!" mechanic cards.
+// Pre-level card (GDD §15 "Bölüm Öncesi" + §13 mechanic cards), styled as a parchment
+// order slip: level number and name, the customer's portrait and order lines (symbol
+// chips), the pouch allowance, hint and unseen "Yeni!" mechanic cards with a 2 s loop.
 // Shown as an overlay above the (frozen) play scene; "Başla" closes it.
+import { customerAvatar } from '../art/avatars';
+import { POUCH_SVG } from '../art/icons';
+import { iconEl } from '../art/svg';
 import type { Session } from '../game/session';
 import { fmt, strings } from '../i18n';
-import { sandCss } from '../render/theme';
 import type { App, Scene } from './app';
 import { h } from './dom';
-import { goalColor, goalLabel } from './goalText';
-
-/** Avatar tint per customer (placeholder until the Art agent draws avatars). */
-const CUSTOMER_TINT: Record<string, string> = { ayse: '#e8553f', mehmet: '#4f6fe0', selim: '#4fb874', anna: '#f2c230' };
+import { goalLabel } from './goalText';
+import { goalChip } from './hud';
 
 /** Mechanic intro ids from the level that this player has not seen yet. */
 export function unseenIntros(app: App, ids: readonly string[]): string[] {
   const known = strings().mechanics;
   return ids.filter((id) => known[id] && !app.save.hasSeenIntro(id));
+}
+
+/** Which looping mini scene a mechanic card plays (CSS: .mech-anim.anim-*). */
+const ANIM: Record<string, string> = {
+  bomb: 'bomb',
+  joker: 'joker',
+  sack: 'sack',
+  shelf: 'shelf',
+  twoColor: 'two',
+  newColorSumac: 'spice4',
+  newColorIndigo: 'spice5',
+  grains: 'grains',
+  colorPath: 'path',
+  scoreGoal: 'score',
+};
+
+function mechAnim(id: string): HTMLElement {
+  const kind = ANIM[id] ?? 'fall';
+  const el = h('div', { class: `mech-anim anim-${kind}`, 'aria-hidden': 'true' });
+  const n = kind === 'path' ? 6 : kind === 'grains' ? 4 : 3;
+  for (let k = 0; k < n; k++) el.append(h('i', { style: `--k:${k}` }));
+  if (kind === 'sack' || kind === 'shelf' || kind === 'grains' || kind === 'score' || kind === 'bomb') el.append(h('b'));
+  return el;
 }
 
 export class LevelIntroScene implements Scene {
@@ -31,36 +55,25 @@ export class LevelIntroScene implements Scene {
     const cards = unseenIntros(app, lvl.intro);
     const customer = s.customers[lvl.customer] ?? s.customers.ayse;
     const goals = h('ul', { class: 'intro-goals' });
-    for (const g of session.goals.goals) {
-      const c = goalColor(g);
-      goals.append(
-        h('li', {}, c !== undefined ? h('i', { class: 'swatch', style: `background:${sandCss(c)}` }) : h('i', { class: 'swatch swatch-none' }), goalLabel(g)),
-      );
-    }
+    for (const g of session.goals.goals) goals.append(h('li', {}, goalChip(g), h('span', { text: goalLabel(g) })));
     const pieces = lvl.pieceLimit === null ? s.intro.unlimited : fmt(s.intro.pieces, { n: lvl.pieceLimit });
     this.el = h(
       'section',
       { class: 'scene overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': lvl.name, 'data-testid': 'level-intro' },
       h(
         'div',
-        { class: 'card intro-card' },
-        h('small', { class: 'intro-level', text: fmt(s.intro.level, { n: lvl.id }) }),
-        h('h2', { text: lvl.name }),
-        h(
-          'div',
-          { class: 'intro-order' },
-          h('div', { class: 'avatar', style: `background:${CUSTOMER_TINT[lvl.customer] ?? CUSTOMER_TINT.ayse}`, 'aria-hidden': 'true', text: customer.charAt(0) }),
-          h('p', { text: fmt(s.intro.order, { customer }) }),
-        ),
+        { class: 'card intro-card slip' },
+        h('div', { class: 'slip-head' }, h('small', { class: 'intro-level', text: fmt(s.intro.level, { n: lvl.id }) }), h('h2', { text: lvl.name })),
+        h('div', { class: 'intro-order' }, customerAvatar(lvl.customer, 'avatar-lg'), h('p', { class: 'speech', text: fmt(s.intro.order, { customer }) })),
         goals,
-        h('p', { class: 'muted', text: pieces }),
+        h('p', { class: 'intro-pieces' }, iconEl(POUCH_SVG, 'pieces-pouch'), h('span', { text: pieces })),
         lvl.hint ? h('p', { class: 'intro-hint', text: lvl.hint }) : null,
         ...cards.map((id) => {
           const m = s.mechanics[id];
           return h(
             'div',
             { class: `mech-card mech-${id}`, 'data-testid': `intro-${id}` },
-            h('div', { class: 'mech-anim', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')),
+            mechAnim(id),
             h('div', { class: 'mech-text' }, h('span', { class: 'badge', text: s.intro.newBadge }), h('b', { text: m.title }), h('p', { text: m.text })),
           );
         }),

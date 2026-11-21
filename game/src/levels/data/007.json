@@ -4,7 +4,7 @@
   "difficulty": 3,
   "customer": "selim",
   "colors": [1, 2, 3],
-  "pieceLimit": 16,
+  "pieceLimit": 24,
   "goals": [{ "type": "clear_color_grains", "color": 2, "count": 400 }],
   "stars": [700, 1400, 2100],
   "prefill": { "type": "random", "rows": 12, "density": 0.9, "colors": [2, 2, 1, 3] },

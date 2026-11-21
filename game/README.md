@@ -20,6 +20,7 @@ Tarayıcı smoke testi (Playwright global kurulu olmalı; `playwright install` g
 npm run build && npx vite preview --port 4173 &
 NODE_PATH=$(npm root -g) node scripts/smoke.cjs /tmp/ekranlar
 NODE_PATH=$(npm root -g) node scripts/wave2-smoke.cjs /tmp/ekranlar   # öğretici, sürükleme, Çifte/zincir, tehlike, çuval/joker/ikili, sonsuz mod
+NODE_PATH=$(npm root -g) node scripts/economy-smoke.cjs /tmp/ekranlar # günlük ödül, mağaza, booster'lar, kaybet → devam (sahte reklam)
 ```
 
 Hata ayıklama: URL'ye `?debug=1` ekle → `window.__app`, oynarken `window.__kum.session` / `window.__kum.scene` / `window.__kum.hint()` (öğretici el işaretinin önerdiği hamle).
@@ -200,11 +201,62 @@ Ses dosyası yok: tüm efektler **Web Audio API ile sentezlenir** (`src/audio/`)
 | `danger` | `on` → tehlike döngüsü, `off` → durur | warning (yalnız `first`) |
 | `toolCleared`, `trayRerolled` | `booster` | medium |
 | `piecesAdded` | `coin` | — |
+| `revived` (Devam et) | — (`piecesAdded` çalar) | medium |
 | `won` | `win` (Hicaz motifi) + yıldız başına `star` (0,35 sn arayla) | success |
 | `lost` | `lose` (yumuşak; GDD gereği titreşim yok) | — |
 
 `double` ve `chainWord` olayları görsel içindir; sesleri zincir değerini taşıyan `cleared` çalar.
 **Yeni olaya ses eklemek:** `feedbackFor()` içine `case 'yeniOlay': audio.play('…'); haptics.haptic('…'); break;`. Yeni ses gerekiyorsa `SoundName` + `SOUND_NAMES`'e ad, `RECIPES`'e tarif ekle; `sound-lab.html`'de dene. Testler: `tests/audio.test.ts`, `tests/haptics.test.ts`.
+
+## Ekonomi, reklam ve satın alma
+
+Tek para birimi **altın** (GDD §9.3, §10–§12). Reklam ve satın alma şimdilik **sahte** (geliştirme yedeği); arayüzler gerçek eklentiye göre tasarlandı.
+
+```
+src/game/economy.ts      Altın + booster cüzdanı (Economy) ve saf kurallar: bölüm/sonsuz ödülü, bölge sandığı, devam teklifi, booster açılış/hediye
+src/game/daily.ts        Günlük ödül + seri (7 günlük döngü), saat enjekte edilebilir (core/clock.ts)
+src/game/meta.ts         App.meta: economy + daily + ads + iap; bölüm sonu muhasebesi (onSessionEnd), 2× altın, günlük ödül alma, satın alma teslimi
+src/core/clock.ts        Clock { now, tzOffsetMin } + fixedClock() (testler) + localDay() (yerel gün numarası)
+src/platform/ads.ts      AdPolicy (sıklık kuralları, kayıtlı sayaçlar) + AdProvider (SDK) + PolicyAdService; FakeAdProvider
+src/platform/iap.ts      PRODUCTS kataloğu + IapService arayüzü; FakeIap
+src/ui/createMeta.ts     App.meta'yı kurar: hangi reklam/IAP uygulaması kullanılacağı TEK yer
+src/ui/boosterBar.ts     Tepsinin altındaki booster çubuğu (+ altın göstergesi), Kepçe/Elek hedefleme katmanı
+src/ui/boosterOffer.ts   Booster bitti: "X altına al" / "İzle, 1 tane al ▶" / Mağaza
+src/ui/continueOffer.ts  Kaybettin kartındaki Devam teklifi
+src/ui/rewardPanel.ts    Kazandın kartı altın + sandık + "2 katına çıkar ▶"; leaveResult() = bölüm sonu sayacı + geçiş reklamı
+src/ui/shop.ts           Mağaza (overlay; menüden ve oyundan açılır)
+src/ui/dailyReward.ts    Günlük ödül penceresi (menüye girişte; bölüm 1 bitmeden çıkmaz; `?debug=1&nodaily` kapatır)
+src/ui/menuMeta.ts       Menü şeridi: altın (+ → mağaza), seri, Mağaza düğmesi
+src/ui/econWidgets.ts    Altın rozeti, altın/booster SVG ikonları, ödül metni, flash mesajı
+src/ui/adOverlay.ts      Sahte reklam katmanı ("Reklam (deneme)", 1,5 sn) ve sahte satın alma penceresi
+src/styles/economy.css   Bu ekranların stili (yalnızca tema CSS değişkenleri)
+```
+
+**Kurallar (GDD ile aynı; sabitler `economy.ts` / `ads.ts` başında):**
+- Başlangıç 200 altın. Bölüm ilk galibiyet 1★ 20 · 2★ 30 · 3★ 40; tekrar oynayıp yıldız artırınca fark; diğer tekrar galibiyetler 5. Bölge sonu (10/20/30) ilk galibiyet: +150 altın, +1 Kepçe, +1 Elek (sandık bir kez). Sonsuz mod `floor(puan/500)`, en fazla 30. Kazanç `won` olayında, `recordResult`'tan **önce** (`meta.onSessionEnd`) verilir.
+- Bakiye tam sayıdır, **asla negatife düşmez** (yetmeyen harcama hiçbir şey değiştirmeden `false` döner), NaN/negatif/kesirli miktarlar reddedilir, tavan `GOLD_CAP`.
+- Booster'lar: Tezgâhı Yenile 100 (bölüm 4), Kepçe 150 (bölüm 7; 4 tanelik sütun, seç → Onayla), Elek 250 (bölüm 12; taneye dokun, en yakın tane ±3 alınır, joker elenmez). Açıldıkları an 2'şer hediye (`grantUnlockGifts`, ilerlemeye göre; tekrar oynanan eski bölümde de görünür). Kilitli booster gizli. Bölüm başına her birinden en fazla 3. Kepçe/Elek tanesi 1 puan, renk/gram hedefine sayılır (Elek yol hedefine sayılmaz). Hedefleme sırasında tahta girişi kapalı; Vazgeç / geri tuşu iptal eder; booster ancak başarılı kullanımda düşer. Sayı 0 iken: fiyat rozeti (altın yetmiyor ve reklam hakkı varsa ▶).
+- Devam (+5 kese, `Session.revive`): 1.: reklam **veya** 300 altın; 2.: 600 altın; 3. yok. Bölüm 1–5'te ilki ücretsiz. "Tezgâh doldu" kaybında üstteki 20 tane satırı da boşalır (hedefe/puana sayılmaz). Devam edilen deneme aynı denemedir (`save.undoLastLoss` kaybı geri alır: tohum, yardım kuralı, reklam sayaçları bozulmaz). Altın yetmezse düğme Mağaza'yı açar (başka satış kutusu yok).
+- Günlük ödül: 25 · 50 · 1 Yenile · 75 · 1 Kepçe · 100 · 150+1 Elek. Dün alındıysa sonraki kutu ve seri +1; bir gün kaçarsa 1. gün, seri 1. 7'den sonra 1. kutuya döner, seri artmaya devam eder. Gün değişimi cihaz yerel saatiyle 00:00 (`localDay`; saat dilimi/DST `Clock.tzOffsetMin`'den). Saat geri alınırsa takılmaz, 1. günden başlar (GDD: hile MVP'de engellenmez). "2 katı ▶" günde 1.
+- Ödüllü reklam sınırları (yerel gün): bedava altın 3 (30 altın), booster 3, günlük ×2 1, toplam 12. Devam reklamı deneme başına 1, 2× altın yalnızca ilk galibiyette (akış sınırlar).
+- Geçiş reklamı (`AdPolicy.decideInterstitial`, nedeni `ads.lastDecision.reason`): yalnızca sonuç kartından **haritaya / sonraki bölüme** geçişte (Tekrar dene, duraklat, menü: asla); bölüm 8 bu bölüm bitmeden önce kazanılmış olmalı (ilki en erken 9'un sonunda); son geçiş reklamından beri ≥ 3 bölüm sonu; son reklamdan (ödüllü dahil) ≥ 90 sn; uygulama oturumu ≥ 3 dk; bu bölümde art arda 3 kayıp varsa yok; son 1 saatte ≤ 4, son 24 saatte ≤ 20; "Reklamları Kaldır" varsa hiç.
+- IAP: `remove_ads` (kalıcı, $2,99, geçiş reklamları kapanır + 500 altın), `gold_small` (1.000, $0,99), `gold_large` (6.000, $4,99). Teslim `Economy.deliverProduct` (kalıcı ürün bir kez; geri yükleme tekrar altın vermez).
+
+**Kayıt alanları** (`SaveData`, `kumakisi.save.v1`; eski kayıtlar varsayılanlarla dolar, `sanitize*` bozuk değerleri onarır):
+- `economy`: `gold`, `boosters {shuffle, scoop, sieve}`, `gifts` (hediyesi verilmiş booster'lar), `chests` (açılmış sandık bölümleri), `noAds`, `owned` (kalıcı ürünler), `earned`, `spent`.
+- `daily`: `lastDay` (son alınan yerel gün numarası), `index` (0–6), `streak`, `best`.
+- `ads`: `levelEnds` (son geçişten beri bölüm sonu), `lastAdAt`, `interstitials` (son 24 saatin zamanları), `rewardDay`, `rewarded {yer: sayı}`, `rewardedTotal`.
+
+**Olaylar:** `SessionEvent` + `revived {pieces, rows, grains}` (ardından `piecesAdded`); Elek/Kepçe `toolCleared`, Yenile `trayRerolled` (sesleri `fx/feedback.ts`'de). Cüzdan olayları `app.meta.economy.events`: `gold {delta, balance, reason}`, `booster {id, delta, count, reason}`, `noAds` — analitik (`booster_use`, `continue_use`, `iap_purchase`) buraya bağlanabilir; `reason` alanı kaynağı söyler (`level_win`, `level_chest`, `daily`, `daily_x2`, `endless`, `double_win`, `ad_free_gold`, `ad_booster`, `continue_1/2`, `buy_<id>`, `use_<id>`, `gift`, `iap_<id>`).
+
+**Gerçek reklam / satın alma takmak** (paket eklemek gerekir; bu dalgada `package.json`'a dokunulmadı):
+1. Reklam: `@capacitor-community/admob` kur, `npx cap sync`. `AdProvider`'ı uygulayan `AdMobProvider` yaz: `init()` → `AdMob.initialize()` + UMP onayı (`AdMob.requestConsentInfo()` / `showConsentForm()`; GDD §15: bölüm 1 bittikten sonra, ilk reklam isteğinden önce) + ödüllü/geçiş reklamı önyükleme; `showRewarded()` → `prepareRewardVideoAd` + `showRewardVideoAd`, ödül olayı geldiyse `true`; `showInterstitial()` → `prepareInterstitial` + `showInterstitial`. Hata/doluluk yoksa `false` döndür (asla fırlatma). Sıklık kuralları `AdPolicy`'de kalır, eklentiye taşınmaz. Android `AndroidManifest.xml`'e AdMob uygulama kimliği (`com.google.android.gms.ads.APPLICATION_ID`), test reklam kimlikleriyle başla.
+2. Satın alma: RevenueCat (`@revenuecat/purchases-capacitor`, önerilen: makbuz doğrulama + geri yükleme hazır) ya da bir Google Play Billing eklentisi (ör. `cordova-plugin-purchase`). `IapService`'i uygula: `init()` → yapılandır + ürünleri getir; `price()` → mağazanın yerelleştirilmiş fiyatı; `purchase()` → satın al, tüketilebilirleri tüket / kalıcıyı onayla (acknowledge), sonucu `{ok}` döndür; `restore()` → sahip olunan kalıcı ürün kimlikleri. Play Console'da ürün kimlikleri `PRODUCTS` ile aynı olmalı (`remove_ads`, `gold_small`, `gold_large`).
+3. `src/ui/createMeta.ts`'te `Capacitor.isNativePlatform()` ise gerçek sağlayıcıları, değilse sahteleri seç. Sahte/gerçek ayrımı UI'da `ads.fake` / `iap.fake` ile görünür (mağazadaki "Deneme sürümü" notu yalnızca sahtede çıkar).
+
+Testler: `tests/economy.test.ts`, `tests/daily.test.ts`, `tests/ads.test.ts` (sıklık kuralları, sahte sağlayıcı), `tests/meta.test.ts` (revive, Elek, ödüller, günlük ödül kalıcılığı, sahte satın alma).
+Tarayıcı: `NODE_PATH=$(npm root -g) node scripts/economy-smoke.cjs /tmp/ekranlar` (günlük ödül, mağaza, sahte reklam/satın alma, üç booster, booster teklifi, kaybet → reklamla devam, 600 altınla 2. devam).
+Debug: `window.__app.meta` (ör. `__app.meta.economy.earn(1000, 'debug')`, `__app.meta.ads.lastDecision`).
 
 ## Diğer ajanlar için genişleme noktaları
 
@@ -219,7 +271,7 @@ Ses dosyası yok: tüm efektler **Web Audio API ile sentezlenir** (`src/audio/`)
 | **Oturum olayları** (efekt, analitik) | `session.events.on(e => …)` — tam liste `src/core/events.ts` (`SessionEvent`). Patlama sırasında işaretli hücreler `session.clear.marked`/`cells` içinde (parçacık efekti için). |
 | **Metinler / İngilizce** | `src/i18n/tr.ts` (`Strings` tipi). `en.ts` aynı şekilde yazılıp `setStrings()` ile seçilir. |
 | **Android geri tuşu** | Yapıldı (`platform/native.ts`): `backButton` → `app.scenes.back()`; `back()` `false` dönerse (ana menü) `App.exitApp()`. Oyun → Duraklat, Duraklat → devam, Bölümler → menü, bölüm kartı → bölümler. Web'de no-op. |
-| **Ekonomi / booster** (sonraki dalga) | `Session.addPieces(n)` ("Devam et +5"), `rerollTray()` (Tezgâhı Yenile; hak harcamaz), `scoopColumns(x0, w)` (Kepçe; 1 puan/tane, renk hedeflerine sayılır). Olaylar: `piecesAdded`, `trayRerolled`, `toolCleared`. Elek için aynı desen: `clear.markCell()` + `goals.onClear()`. |
+| **Ekonomi / booster** | Yapıldı — bkz. **Ekonomi, reklam ve satın alma**. Oturum API'si: `addPieces(n)`, `rerollTray()`, `scoopColumns(x0, w)`, `sieveColor(color)`, `revive(pieces, clearRows)`. Yeni booster: `BOOSTERS` + `BoosterId` (`economy.ts`), akış `ui/boosterBar.ts`, metin `tr.ts` → `boosters`. |
 | **Oyun hissi** (Sanat) | `ui/play.ts`: `showWord()` (zincir/Çifte yazısı), `floatText()` (+puan), `flyGrains()` (sipariş kesesine uçan taneler — sade yer tutucu), sürüklenen kese `.drag-piece` (`DRAG_LIFT_PX` = 64). Tehlike: `.board-frame.danger .danger-edge`. Öğretici eli `.tut-hand`, balon `.tut-bubble`. Joker renk döngüsü `theme.joker` (0,8 sn), çuval `theme.sack` / `sackKnot`. |
 | **Hız / his / puan ayarı** | `src/config.ts` (`SIM_STEPS_PER_TICK`, `CLEAR_FLASH_TICKS`, `SCORE_PER_GRAIN`, `PATH_BONUS`, `CHAIN_MAX`, `END_BONUS_PER_PIECE`, `CHAIN_RESET_ON_DROP`, `SHOW_ROTATE_BUTTON`, `GRID_W/H`, `BLOCK`). |
 
@@ -230,8 +282,8 @@ Dalga 2 (Oynanış Mühendisi) **yapılanlar**: çuval + `clear_obstacles`, joke
 
 - Görseller placeholder (Sanat): el işareti düz daire, müşteri avatarı baş harf, mekanik kartı animasyonu genel "düşen tane" döngüsü, çuval yırtılma/sallanma efekti yok, ekran sarsıntısı yok.
 - Öğretici t2 adım 2 yalnızca sayaç nabzı + dokunma işareti; ekranı karartma (GDD §13 %60) yok. İlk açılışta doğrudan bölüm 1'e girme (GDD §15) yok; menüden "Oyna".
-- Sonsuz mod altın ödülü ve "Günün bulmacası" yok (ekonomi dalgası).
+- "Günün bulmacası" yok (GDD v1.1).
 - Müzik yok (GDD: MVP sonrası). Ana ses seviyesi kayıtta (`settings.volume`) ama oyunda kaydırıcısı yok (Ayarlar ekranı gelince eklenmeli).
-- Kalan parça bonusu, ödüllü reklam, "devam et" mekanikleri yok.
+- Reklam ve satın alma sahte (geliştirme yedeği); gerçek AdMob / Play Billing eklentisi takılmadı, UMP onayı yok. Analitik (Firebase) yok. Ayarlar ekranında "Satın alımları geri yükle" yok (Mağaza'da var). Başlangıç/Esnaf paketleri (GDD "Sonra") yok. Harita ekranında altın göstergesi yok (menü ve oyunda var).
 - Örnek 5 bölüm yalnızca teknik örnek; denge Bölüm Tasarımcısının işi.
 - Android platformu eklendi (debug APK CI'da). Release imzalama yok (bkz. `docs/release.md`).

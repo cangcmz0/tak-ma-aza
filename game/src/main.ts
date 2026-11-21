@@ -1,7 +1,9 @@
 // Boot: theme, save data, services, scene stack, main loop.
 import './styles/main.css';
+import './styles/economy.css';
 import { createAudio } from './audio/webAudio';
 import { DeviceHaptics } from './fx/haptics';
+import { createMeta } from './ui/createMeta';
 import { LEVEL_ERRORS } from './levels/levels';
 import { bindNativeShell } from './platform/native';
 import { createStorageBackend } from './platform/preferencesBackend';
@@ -30,6 +32,7 @@ async function boot(): Promise<void> {
     save,
     audio,
     haptics,
+    meta: createMeta(save), // gold, boosters, daily reward, ads + purchases (fake on web for now)
     scenes: new SceneManager(root),
     debug: import.meta.env.DEV || params.has('debug'),
     version: __APP_VERSION__,

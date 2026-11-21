@@ -4,7 +4,7 @@
   "difficulty": 7,
   "customer": "mehmet",
   "colors": [1, 2, 3, 4, 5],
-  "pieceLimit": 28,
+  "pieceLimit": 32,
   "goals": [
     { "type": "clear_paths", "count": 5 },
     { "type": "clear_paths", "count": 2, "color": 5 },

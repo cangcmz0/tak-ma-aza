@@ -8,7 +8,15 @@ import { findHintMove } from '../game/hintMove';
 import type { Session } from '../game/session';
 import { colorName, fmt, strings } from '../i18n';
 import type { TutorialId } from '../levels/schema';
+import { svgEl } from '../art/svg';
+import { zerde } from '../art/zerde';
 import { h } from './dom';
+
+/** Pointing hand; the fingertip sits at the element's origin (see .tut-hand). */
+const HAND_SVG = `<svg viewBox="0 0 48 56" aria-hidden="true">
+  <path d="M17 6 C17 2 23 2 23 6 V24 L24 15 C24 11 30 11 30 15 V25 L31 18 C31 14 37 14 37 18 V27 L38 22 C38 18 44 18 44 22 V36 C44 47 37 53 28 53 H24 C16 53 12 48 8 41 L3 31 C1 27 6 24 9 27 L17 35 Z" fill="#fff8ec" stroke="#3b2414" stroke-width="2.6" stroke-linejoin="round"/>
+  <path d="M23 24 V30 M30 25 V31 M37 27 V32" stroke="#3b2414" stroke-width="2" stroke-linecap="round" opacity=".45"/>
+</svg>`;
 
 export interface TutorialHost {
   readonly session: Session;
@@ -34,6 +42,8 @@ interface Step {
   slot?: number;
   /** Only `slot` can be used during this step. */
   focus?: boolean;
+  /** Darken the screen 60 % except the board (+ active pouch) or the pieces counter (GDD §13). */
+  dim?: 'board' | 'pieces';
   /** Advance on this event, or after `ms` when 'timer'. */
   until: SessionEventType | 'timer';
   /** Timer length, or max wait for an event. */
@@ -49,14 +59,14 @@ function pieceColorName(s: Session, slot: number): string {
 
 export const TUTORIAL_STEPS: Record<TutorialId, Step[]> = {
   t1: [
-    { text: () => T().t1_drag, hand: 'move', slot: 0, focus: true, until: 'cleared' },
+    { text: () => T().t1_drag, hand: 'move', slot: 0, focus: true, dim: 'board', until: 'cleared' },
     { text: () => T().t1_great, until: 'timer', ms: 2600 },
-    { text: (s) => fmt(T().t1_next, { color: pieceColorName(s, 1) }), hand: 'move', slot: 1, focus: true, until: 'cleared' },
+    { text: (s) => fmt(T().t1_next, { color: pieceColorName(s, 1) }), hand: 'move', slot: 1, focus: true, dim: 'board', until: 'cleared' },
     { text: () => T().t1_done, until: 'timer', ms: 2200 },
   ],
   t2: [
     { text: () => T().t2_color, hand: 'move', until: 'placed' },
-    { text: () => T().t2_counter, hand: 'pieces', until: 'timer', ms: 3200 },
+    { text: () => T().t2_counter, hand: 'pieces', dim: 'pieces', until: 'timer', ms: 3200 },
     { text: () => T().t2_order, hand: 'tapSlots', until: 'placed' },
     { text: () => T().t2_refill, hand: 'move', until: 'trayRefill', ms: 20000 },
   ],
@@ -75,6 +85,8 @@ export class Tutorial {
   private handDirty = true;
   private readonly hand: HTMLElement;
   private readonly bubble: HTMLElement;
+  private readonly bubbleText: HTMLElement;
+  private readonly dim: SVGSVGElement;
   private anim: Animation | null = null;
   private pulsed: HTMLElement | null = null;
   private finished = false;
@@ -87,8 +99,11 @@ export class Tutorial {
   ) {
     this.steps = TUTORIAL_STEPS[id];
     this.hand = h('div', { class: 'tut-hand', 'aria-hidden': 'true', 'data-testid': 'tutorial-hand' });
-    this.bubble = h('div', { class: 'tut-bubble', role: 'status', 'data-testid': 'tutorial-text' });
-    host.overlayRoot.append(this.hand);
+    this.hand.innerHTML = HAND_SVG;
+    this.bubbleText = h('span', { class: 'tut-text' });
+    this.bubble = h('div', { class: 'tut-bubble', role: 'status', 'data-testid': 'tutorial-text' }, zerde('happy', 'tut-zerde'), this.bubbleText);
+    this.dim = svgEl('<svg class="tut-dim" aria-hidden="true" data-testid="tutorial-dim"><path fill-rule="evenodd"/></svg>');
+    host.overlayRoot.append(this.dim, this.hand);
     host.bubbleRoot.append(this.bubble);
     this.goto(0);
   }
@@ -112,9 +127,10 @@ export class Tutorial {
     const st = this.step;
     if (!st) return this.finish(true);
     const text = st.text?.(this.host.session) ?? '';
-    this.bubble.textContent = text;
+    this.bubbleText.textContent = text;
     this.bubble.classList.toggle('show', !!text);
     this.updateFocus();
+    this.updateDim();
     this.setPulse(st.hand === 'pieces' ? this.host.piecesEl : null);
   }
 
@@ -122,6 +138,39 @@ export class Tutorial {
     const st = this.step;
     const slot = st?.focus && st.slot !== undefined && this.host.session.tray[st.slot] ? st.slot : null;
     this.host.setFocusSlot(slot);
+  }
+
+  /** Spotlight: a 60 % dark sheet with holes over the board (+ focused pouch) or the counter. */
+  private updateDim(): void {
+    const st = this.step;
+    const path = this.dim.firstElementChild as SVGPathElement | null;
+    if (!st?.dim || !path || this.finished) {
+      this.dim.classList.remove('show');
+      return;
+    }
+    const root = this.host.overlayRoot.getBoundingClientRect();
+    if (root.width < 10) return;
+    this.dim.setAttribute('viewBox', `0 0 ${root.width} ${root.height}`);
+    const holes: HTMLElement[] = [];
+    if (st.dim === 'pieces') holes.push(this.host.piecesEl);
+    else {
+      const frame = this.host.bubbleRoot.querySelector<HTMLElement>('.board-frame');
+      if (frame) holes.push(frame);
+      const slot = st.slot !== undefined && this.host.session.tray[st.slot] ? st.slot : this.host.session.tray.findIndex((t) => t);
+      if (slot >= 0) holes.push(this.host.slotEl(slot));
+    }
+    let d = `M0 0 H${root.width} V${root.height} H0 Z`;
+    for (const el of holes) {
+      const r = el.getBoundingClientRect();
+      const x = r.left - root.left - 4;
+      const y = r.top - root.top - 4;
+      const w = r.width + 8;
+      const hh = r.height + 8;
+      const k = 12;
+      d += ` M${x + k} ${y} H${x + w - k} Q${x + w} ${y} ${x + w} ${y + k} V${y + hh - k} Q${x + w} ${y + hh} ${x + w - k} ${y + hh} H${x + k} Q${x} ${y + hh} ${x} ${y + hh - k} V${y + k} Q${x} ${y} ${x + k} ${y} Z`;
+    }
+    path.setAttribute('d', d);
+    this.dim.classList.add('show');
   }
 
   private setPulse(el: HTMLElement | null): void {
@@ -136,6 +185,7 @@ export class Tutorial {
     if (e.type === 'settled' || e.type === 'trayRefill' || e.type === 'rotated' || e.type === 'placed') {
       this.handDirty = true;
       this.updateFocus();
+      this.updateDim();
     }
     const st = this.step;
     if (st && st.until === e.type) this.goto(this.index + 1);
@@ -162,6 +212,7 @@ export class Tutorial {
   /** Layout changed: rebuild the hand animation. */
   relayout(): void {
     this.handDirty = true;
+    this.updateDim();
   }
 
   private local(p: { x: number; y: number }): { x: number; y: number } {
@@ -275,5 +326,6 @@ export class Tutorial {
     this.host.setFocusSlot(null);
     this.hand.remove();
     this.bubble.remove();
+    this.dim.remove();
   }
 }

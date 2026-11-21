@@ -82,6 +82,10 @@ export function feedbackFor(e: SessionEvent, audio: AudioService, haptics: Hapti
     case 'piecesAdded':
       audio.play('coin');
       break;
+    case 'revived':
+      // "Devam et +5" (economy): the coin comes with the following piecesAdded.
+      haptics.haptic('medium');
+      break;
     case 'won': {
       audio.stopLoops();
       audio.play('win');

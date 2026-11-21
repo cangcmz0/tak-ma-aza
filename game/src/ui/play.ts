@@ -3,32 +3,32 @@
 import { BLOCK, DRAG_LIFT_PX, MAX_TICKS_PER_FRAME, SHOW_ROTATE_BUTTON, SIM_TICK_HZ, TRAY_SIZE } from '../config';
 import { maxX, pieceShape } from '../engine/pieces';
 import { feedbackFor } from '../fx/feedback';
+import { CONTINUE_CLEAR_ROWS, CONTINUE_PIECES } from '../game/economy';
+import type { SessionEndInfo } from '../game/meta';
 import { makeEndlessLevel } from '../game/endless';
-import { goalDone } from '../game/goals';
 import { findHintMove } from '../game/hintMove';
 import { Session, shouldHelp, type SessionEvent } from '../game/session';
 import { fmt, strings } from '../i18n';
 import { bindKeyboard } from '../input/keyboard';
 import { PointerInput } from '../input/pointer';
-import { getLevel } from '../levels/levels';
+import { getLevel, LEVELS } from '../levels/levels';
 import { BoardRenderer, type Ghost } from '../render/boardRenderer';
 import { drawPieceBlocks, drawPiecePreview } from '../render/piecePreview';
-import { sandCss } from '../render/theme';
 import type { App, Scene } from './app';
+import { BoosterBar } from './boosterBar';
 import { h } from './dom';
-import { goalColor, goalLabel } from './goalText';
+import { PlayHud } from './hud';
 import { LevelIntroScene, unseenIntros } from './levelIntro';
 import { LevelSelectScene } from './levelSelect';
 import { PauseScene } from './pause';
+import { PlayFx } from './playFx';
 import { ResultScene } from './result';
 import { Tutorial } from './tutorial';
 
 const TICK_MS = 1000 / SIM_TICK_HZ;
-const SLOT_CSS = 64;
+const SLOT_CSS = 72;
 /** Delay between game end and the result card (ms). */
 const END_DELAY_MS = 700;
-/** Max flying grain dots per grainsToGoal event (simple placeholder effect). */
-const FLY_DOTS = 10;
 
 /** What a PlayScene plays. `intro: false` skips the pre-level card (retries). */
 export type PlayMode = { kind: 'level'; id: number; intro?: boolean } | { kind: 'endless' };
@@ -43,10 +43,10 @@ export class PlayScene implements Scene {
   private readonly canvas: HTMLCanvasElement;
   private readonly slotEls: HTMLButtonElement[] = [];
   private readonly slotCanvases: HTMLCanvasElement[] = [];
-  private readonly goalEls: { root: HTMLElement; value: HTMLElement }[] = [];
-  private readonly scoreEl: HTMLElement;
-  private readonly piecesEl: HTMLElement;
-  private readonly piecesStat: HTMLElement;
+  /** HUD: order card, pieces counter, score bar (ui/hud.ts). */
+  private readonly hud: PlayHud;
+  /** Juice: particles, shake, Zerde's sneeze (ui/playFx.ts). */
+  private readonly fx: PlayFx;
   private readonly toastEl: HTMLElement;
   private readonly wordEl: HTMLElement;
   private readonly dragEl: HTMLElement;
@@ -59,6 +59,10 @@ export class PlayScene implements Scene {
   private focusSlot: number | null = null;
   private dragging = false;
   private newBest = false;
+  /** Economy: booster bar + gold (ui/boosterBar.ts). */
+  private readonly boosters: BoosterBar;
+  private endInfo: SessionEndInfo | undefined;
+  private gifts: string[] = [];
 
   private sel = 0;
   private ghostX = 0;
@@ -66,8 +70,6 @@ export class PlayScene implements Scene {
   private endTimer = -1;
   private toastTimer = 0;
   private trayDirty = true;
-  private hudCache = { score: -1, pieces: -1 };
-  private goalCache: number[] = [];
   private readonly ghost: Ghost;
 
   constructor(
@@ -94,27 +96,8 @@ export class PlayScene implements Scene {
     this.toastEl = h('div', { class: 'toast', 'aria-live': 'polite' });
     this.wordEl = h('div', { class: 'fx-word', 'aria-live': 'polite', 'data-testid': 'fx-word' });
     this.boardFrame = h('div', { class: 'board-frame' }, this.canvas, h('div', { class: 'danger-edge', 'aria-hidden': 'true' }));
+    this.hud = new PlayHud(this.session, () => this.pause());
     this.boardArea = h('div', { class: 'board-area' }, this.boardFrame, this.toastEl, this.wordEl);
-
-    this.scoreEl = h('b', { class: 'hud-value', 'data-testid': 'hud-score', text: '0' });
-    this.piecesEl = h('b', { class: 'hud-value', 'data-testid': 'hud-pieces' });
-    this.piecesStat = h('div', { class: 'hud-stat' }, this.piecesEl, h('small', { text: endless ? s.best : s.pieces }));
-
-    const goalsEl = h('ul', { class: 'goals', 'aria-label': s.goals });
-    for (const goal of this.session.goals.goals) {
-      const color = goalColor(goal);
-      const value = h('span', { class: 'goal-value' });
-      const root = h(
-        'li',
-        { class: 'goal' },
-        color !== undefined ? h('i', { class: 'swatch', style: `background:${sandCss(color)}` }) : null,
-        h('span', { class: 'goal-label', text: goalLabel(goal) }),
-        value,
-      );
-      this.goalEls.push({ root, value });
-      goalsEl.append(root);
-    }
-    if (endless) goalsEl.append(h('li', { class: 'goal', text: s.endlessSub }));
 
     const tray = h('div', { class: SHOW_ROTATE_BUTTON ? 'tray with-rotate' : 'tray' });
     for (let i = 0; i < TRAY_SIZE; i++) {
@@ -140,30 +123,42 @@ export class PlayScene implements Scene {
         ),
       );
 
+    // Economy: boosters unlock by level / progress; first unlock gifts 2 (GDD §10.2).
+    const progress = app.save.currentLevel(LEVELS.map((l) => l.id)) ?? 1;
+    const unlockLevel = endless ? progress : Math.max(level.id, progress);
+    this.gifts = app.meta.economy.grantUnlockGifts(unlockLevel);
+    this.boosters = new BoosterBar(app, {
+      session: this.session,
+      unlockLevel,
+      boardArea: this.boardArea,
+      canvas: this.canvas,
+      isActive: () => this.session.isPlaying && this.app.scenes.top === this,
+      toast: (t, ms) => this.toast(t, ms),
+      trayChanged: () => (this.trayDirty = true),
+    });
+
     this.dragCanvas = h('canvas');
     this.dragEl = h('div', { class: 'drag-piece', 'aria-hidden': 'true', 'data-testid': 'drag-piece' }, this.dragCanvas);
 
     this.el = h(
       'section',
       { class: 'scene play' },
-      h(
-        'header',
-        { class: 'hud' },
-        h('button', { class: 'btn btn-icon', type: 'button', 'aria-label': s.pause, 'data-testid': 'pause', text: '❚❚', onclick: () => this.pause() }),
-        h(
-          'div',
-          { class: 'hud-title' },
-          h('small', { text: endless ? s.endlessSub : fmt(s.level, { n: level.id }) }),
-          h('span', { text: endless ? s.endlessTitle : level.name }),
-        ),
-        h('div', { class: 'hud-stats' }, this.piecesStat, h('div', { class: 'hud-stat' }, this.scoreEl, h('small', { text: s.score }))),
-      ),
-      goalsEl,
+      this.hud.header,
+      this.hud.scoreBar,
       this.boardArea,
       tray,
+      this.boosters.el,
       this.dragEl,
     );
 
+    this.fx = new PlayFx({
+      session: this.session,
+      sceneEl: this.el,
+      boardArea: this.boardArea,
+      boardFrame: this.boardFrame,
+      renderer: this.renderer,
+      goalTarget: (i) => this.hud.goalEls[i]?.chip ?? null,
+    });
     this.ghost = { piece: this.session.tray[0] ?? { kind: 'O', rot: 0, color: 1, special: null, specialCell: -1 }, x: 0, ok: true };
     this.centerGhost();
   }
@@ -178,7 +173,7 @@ export class PlayScene implements Scene {
         if (cx !== null) this.aimAt(cx);
       },
       drop: () => this.dropSelected(),
-      enabled: () => this.session.isPlaying && this.app.scenes.top === this,
+      enabled: () => this.session.isPlaying && this.app.scenes.top === this && !this.boosters.busy,
       drag: (x, y) => this.dragAt(x, y),
       dragEnd: () => this.endDrag(),
     });
@@ -207,7 +202,7 @@ export class PlayScene implements Scene {
           overlayRoot: this.el,
           bubbleRoot: this.boardArea,
           slotEl: (i) => this.slotEls[i],
-          piecesEl: this.piecesStat,
+          piecesEl: this.hud.piecesStat,
           grainToClient: (x, y) => this.renderer.grainToClient(x, y),
           setFocusSlot: (slot) => this.setFocusSlot(slot),
         },
@@ -221,6 +216,10 @@ export class PlayScene implements Scene {
     const showIntro = wantsIntro && (!tutorialOn || unseenIntros(this.app, level.intro).length > 0);
     if (showIntro) this.app.scenes.push(new LevelIntroScene(this.app, this.session, () => this.app.scenes.replace(new LevelSelectScene(this.app))));
     else if (level.hint && !tutorialOn) this.toast(level.hint, 3000);
+    if (this.gifts.length) {
+      const e = strings();
+      this.toast(fmt(e.economy.giftToast, { list: this.gifts.map((id) => e.boosters.names[id]).join(', ') }), 2200);
+    }
     if (this.app.debug)
       (window as unknown as { __kum: unknown }).__kum = { scene: this, session: this.session, hint: () => findHintMove(this.session) };
   }
@@ -231,19 +230,23 @@ export class PlayScene implements Scene {
     this.unbindSession?.();
     this.resizeObs?.disconnect();
     this.tutorial?.destroy();
+    this.boosters.destroy();
+    this.fx.destroy();
     window.clearTimeout(this.toastTimer);
   }
 
   resize(): void {
     const r = this.boardArea.getBoundingClientRect();
     if (r.width < 10 || r.height < 10) return;
-    this.renderer.fit(r.width - 6, r.height - 6, window.devicePixelRatio || 1);
+    this.renderer.fit(r.width - 14, r.height - 14, window.devicePixelRatio || 1);
+    this.fx.resize();
     this.trayDirty = true;
     this.tutorial?.relayout();
     this.draw();
   }
 
   back(): void {
+    if (this.boosters.cancel()) return; // leave booster targeting first
     this.pause();
   }
 
@@ -254,6 +257,7 @@ export class PlayScene implements Scene {
   private pause(): void {
     if (this.app.scenes.top !== this) return;
     this.endDrag();
+    this.boosters.cancel();
     this.app.audio.play('ui_tap');
     this.app.scenes.push(new PauseScene(this.app, this.mode));
   }
@@ -367,6 +371,7 @@ export class PlayScene implements Scene {
     const s = strings().hud;
     feedbackFor(e, this.app.audio, this.app.haptics);
     this.tutorial?.onEvent(e);
+    this.fx.onEvent(e);
     switch (e.type) {
       case 'blocked':
         this.toast(this.session.settled ? s.noRoom : s.wait, 900);
@@ -384,12 +389,6 @@ export class PlayScene implements Scene {
       case 'double':
         this.showWord();
         break;
-      case 'grainsToGoal':
-        this.flyGrains(e.goal, e.color, e.cells);
-        break;
-      case 'sackHit':
-        this.restartAnim(this.boardArea, 'shake');
-        break;
       case 'sackBreak':
         this.floatText(`+${e.points}`, e.x + e.w / 2, e.y + e.h / 2);
         this.toast(s.sackTorn, 900);
@@ -401,6 +400,8 @@ export class PlayScene implements Scene {
       case 'won':
       case 'lost':
         this.endDrag();
+        this.boosters.cancel();
+        this.endInfo = this.app.meta.onSessionEnd(this.session); // gold; before recordResult (needs old progress)
         if (this.session.endless) this.newBest = this.app.save.recordEndless(this.session.score);
         else this.app.save.recordResult(this.session.level.id, e.type === 'won', this.session.score, this.session.stars);
         this.endTimer = END_DELAY_MS;
@@ -408,6 +409,19 @@ export class PlayScene implements Scene {
       default:
         break;
     }
+  }
+
+  /** "Devam et +5" was paid (ui/continueOffer.ts): close the result card and resume. */
+  private continueRun(): void {
+    if (this.session.state !== 'lost' || this.session.endless || !(this.app.scenes.top instanceof ResultScene)) return;
+    this.app.scenes.pop();
+    this.app.save.undoLastLoss(this.session.level.id); // still the same attempt
+    this.session.revive(CONTINUE_PIECES, CONTINUE_CLEAR_ROWS);
+    this.endInfo = undefined;
+    this.sel = Math.max(0, this.session.tray.findIndex((_, i) => this.slotUsable(i)));
+    this.setGhostX(this.ghostX);
+    this.trayDirty = true;
+    this.boosters.paint();
   }
 
   /** Chain word / "Çifte!" in the middle of the board (one element, restarted per clear). */
@@ -421,7 +435,7 @@ export class PlayScene implements Scene {
     if (this.session.clear.regionCount >= 2) lines.push(s.double);
     if (last >= 2) lines.push(s.chainWords[Math.min(last, 5)] ?? fmt(s.chain, { n: last }));
     if (!lines.length) return;
-    this.wordEl.replaceChildren(...lines.map((t) => h('span', { text: t })));
+    this.wordEl.replaceChildren(...lines.map((t, li) => wordLine(t, li === 0 && lines.length > 1)));
     this.wordEl.dataset.chain = String(last);
     this.restartAnim(this.wordEl, 'show');
   }
@@ -446,37 +460,6 @@ export class PlayScene implements Scene {
     window.setTimeout(() => el.remove(), 1000);
   }
 
-  /** Placeholder for "grains fly into the order bag" (the Art agent replaces this). */
-  private flyGrains(goal: number, color: number, cells: readonly number[]): void {
-    const target = this.goalEls[goal]?.root;
-    if (!target || typeof this.el.animate !== 'function') return;
-    const root = this.el.getBoundingClientRect();
-    const tr = target.getBoundingClientRect();
-    const tx = tr.left + tr.width / 2 - root.left;
-    const ty = tr.top + tr.height / 2 - root.top;
-    const w = this.session.grid.w;
-    const step = Math.max(1, Math.floor(cells.length / FLY_DOTS));
-    for (let k = 0, n = 0; k < cells.length && n < FLY_DOTS; k += step, n++) {
-      const i = cells[k];
-      const p = this.renderer.grainToClient((i % w) + 0.5, Math.floor(i / w) + 0.5);
-      const x = p.x - root.left;
-      const y = p.y - root.top;
-      const dot = h('i', { class: 'fx-grain', style: `background:${sandCss(color)}` });
-      this.el.append(dot);
-      const a = dot.animate(
-        [
-          { transform: `translate(${x}px, ${y}px) scale(1)`, opacity: 1 },
-          { transform: `translate(${x + (n % 2 ? 18 : -18)}px, ${y - 30}px) scale(1.2)`, opacity: 1, offset: 0.3 },
-          { transform: `translate(${tx}px, ${ty}px) scale(0.6)`, opacity: 0.9 },
-        ],
-        { duration: 500 + n * 30, easing: 'ease-in', delay: n * 15 },
-      );
-      a.onfinish = () => dot.remove();
-      a.oncancel = () => dot.remove();
-    }
-    window.setTimeout(() => this.restartAnim(target, 'bump'), 520);
-  }
-
   private toast(text: string, ms: number): void {
     this.toastEl.textContent = text;
     this.toastEl.classList.add('show');
@@ -496,11 +479,19 @@ export class PlayScene implements Scene {
     }
     if (n === MAX_TICKS_PER_FRAME) this.acc = 0;
     this.tutorial?.frame(dtMs);
+    this.fx.frame(dtMs);
     if (this.endTimer > 0) {
       this.endTimer -= dtMs;
       if (this.endTimer <= 0) {
         this.endTimer = -1;
-        this.app.scenes.push(new ResultScene(this.app, this.session, { mode: this.mode, newBest: this.newBest }));
+        this.app.scenes.push(
+          new ResultScene(this.app, this.session, {
+            mode: this.mode,
+            newBest: this.newBest,
+            endInfo: this.endInfo,
+            onContinue: () => this.continueRun(),
+          }),
+        );
       }
     }
     this.draw();
@@ -534,28 +525,17 @@ export class PlayScene implements Scene {
   }
 
   private updateHud(): void {
-    const s = this.session;
-    if (s.score !== this.hudCache.score) {
-      this.hudCache.score = s.score;
-      this.scoreEl.textContent = String(s.score);
-    }
-    const pieceStat = s.endless ? Math.max(this.app.save.endlessBest, s.score) : s.piecesLeft;
-    if (pieceStat !== this.hudCache.pieces) {
-      this.hudCache.pieces = pieceStat;
-      this.piecesEl.textContent = Number.isFinite(pieceStat) ? String(pieceStat) : strings().hud.unlimited;
-      this.piecesEl.classList.toggle('low', !s.endless && Number.isFinite(pieceStat) && pieceStat <= 3);
-    }
-    let changed = false;
-    for (let i = 0; i < s.goals.goals.length; i++) {
-      const g = s.goals.goals[i];
-      if (this.goalCache[i] === g.current) continue;
-      this.goalCache[i] = g.current;
-      changed = true;
-      const el = this.goalEls[i];
-      const done = goalDone(g);
-      el.value.textContent = done ? '✓' : `${Math.min(g.current, g.target)}/${g.target}`;
-      el.root.classList.toggle('done', done);
-    }
-    if (changed) this.el.dataset.goals = String(s.goals.progress());
+    if (this.hud.update(this.app.save.endlessBest)) this.el.dataset.goals = String(this.session.goals.progress());
   }
+}
+
+/** One line of the chain word, split into letters for the staggered pop (CSS --i). */
+function wordLine(text: string, small: boolean): HTMLElement {
+  const line = h('span', { class: small ? 'fx-line fx-double' : 'fx-line', 'aria-label': text });
+  [...text].forEach((ch, i) => {
+    const l = h('i', { text: ch, 'aria-hidden': 'true' });
+    l.style.setProperty('--i', String(i));
+    line.append(l);
+  });
+  return line;
 }

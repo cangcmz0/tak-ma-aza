@@ -68,6 +68,11 @@ export type SessionEvent =
   | { type: 'piecesAdded'; n: number }
   /** Tray pieces were replaced (shuffle booster). */
   | { type: 'trayRerolled' }
+  /**
+   * A lost attempt was resumed ("Devam et +5", economy). `pieces` extra pieces were granted
+   * (a `piecesAdded` follows); `rows` top grain rows were emptied (lost with no space).
+   */
+  | { type: 'revived'; pieces: number; rows: number; grains: number }
   | { type: 'won'; score: number; stars: number; bonus: number }
   | { type: 'lost'; reason: LoseReason; score: number };
 

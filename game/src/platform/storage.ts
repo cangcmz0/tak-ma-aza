@@ -2,6 +2,9 @@
 // Capacitor Preferences on native (platform/preferencesBackend.ts, chosen in main.ts).
 // Pattern: load once at boot, keep a synchronous in-memory view, write in the background
 // (coalesced: many changes in one tick = one write; flush() on app pause).
+import { defaultDaily, sanitizeDaily, type DailyData } from '../game/daily';
+import { defaultEconomy, sanitizeEconomy, type EconomyData } from '../game/economy';
+import { defaultAds, sanitizeAds, type AdData } from './ads';
 
 export interface KeyValueBackend {
   get(key: string): Promise<string | null>;
@@ -75,6 +78,12 @@ export interface SaveData {
   seenIntros: string[];
   /** Tutorials completed (t1..t3). */
   tutorialsDone: string[];
+  /** Gold, boosters, chests, purchases (game/economy.ts). */
+  economy: EconomyData;
+  /** Daily reward / streak (game/daily.ts). */
+  daily: DailyData;
+  /** Ad frequency counters (platform/ads.ts). */
+  ads: AdData;
 }
 
 const KEY = 'kumakisi.save.v1';
@@ -88,6 +97,9 @@ function defaults(): SaveData {
     endlessGames: 0,
     seenIntros: [],
     tutorialsDone: [],
+    economy: defaultEconomy(),
+    daily: defaultDaily(),
+    ads: defaultAds(),
   };
 }
 
@@ -119,6 +131,9 @@ function sanitize(raw: unknown): SaveData {
   d.endlessGames = Math.max(0, Number(r.endlessGames) || 0);
   d.seenIntros = strList(r.seenIntros);
   d.tutorialsDone = strList(r.tutorialsDone);
+  d.economy = sanitizeEconomy(r.economy);
+  d.daily = sanitizeDaily(r.daily);
+  d.ads = sanitizeAds(r.ads);
   return d;
 }
 
@@ -172,6 +187,18 @@ export class SaveStore {
     this.persist();
   }
 
+  /**
+   * The last recorded loss of a level was resumed ("Devam et", economy): take the attempt
+   * back so the continued run is still the same attempt for seeds / help rule / ads.
+   */
+  undoLastLoss(id: number): void {
+    const p = this.data.levels[String(id)];
+    if (!p || p.lossStreak <= 0) return;
+    p.lossStreak--;
+    p.attempts = Math.max(0, p.attempts - 1);
+    this.persist();
+  }
+
   /** A level is unlocked if it is the first one or the previous one is completed. */
   isUnlocked(id: number, orderedIds: readonly number[]): boolean {
     const i = orderedIds.indexOf(id);
@@ -215,6 +242,27 @@ export class SaveStore {
   markTutorialDone(id: string): void {
     if (this.isTutorialDone(id)) return;
     this.data.tutorialsDone.push(id);
+    this.persist();
+  }
+
+  /**
+   * Live economy / daily / ad objects. Their modules mutate them and call commit().
+   * Look them up on every use (reset() replaces them).
+   */
+  get economy(): EconomyData {
+    return this.data.economy;
+  }
+
+  get daily(): DailyData {
+    return this.data.daily;
+  }
+
+  get ads(): AdData {
+    return this.data.ads;
+  }
+
+  /** Persist after an outside module changed one of the live objects above. */
+  commit(): void {
     this.persist();
   }
 

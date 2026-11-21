@@ -20,7 +20,7 @@ import {
 import { Emitter, type LoseReason, type SessionEvent } from '../core/events';
 import { Rng, deriveSeed } from '../core/rng';
 import { ClearResult, findClears, removeMarked } from '../engine/clear';
-import { FLAG_BOMB, FLAG_STATIC, MAX_SAND_COLOR, SandGrid } from '../engine/grid';
+import { FLAG_BOMB, FLAG_STATIC, JOKER, MAX_SAND_COLOR, SandGrid } from '../engine/grid';
 import { canStamp, fitsAnywhere, PieceBag, pieceShape, rotatePiece, stamp, type Piece } from '../engine/pieces';
 import { Sacks } from '../engine/sacks';
 import { step } from '../engine/sim';
@@ -107,6 +107,8 @@ export class Session {
   dealt = 0;
   /** Extra pieces granted on top of the level limit (continue / booster). */
   extraPieces = 0;
+  /** Times this attempt was resumed after a loss (revive()). */
+  continues = 0;
   /** Total ticks run (for stats / replays). */
   ticks = 0;
   stars = 0;
@@ -276,9 +278,29 @@ export class Session {
         const c = g.color[i];
         if (c !== 0 && c <= MAX_SAND_COLOR && !(g.flags[i] & FLAG_STATIC)) res.markCell(g, i);
       }
+    return this.removeToolMarks();
+  }
+
+  /**
+   * Remove every grain of one sand colour ("Elek"). Counts for grain goals (not path goals),
+   * 1 point per grain without multiplier (GDD §4.7). Jokers / obstacles cannot be sieved.
+   * Refused while a clear is blinking. @returns grains removed
+   */
+  sieveColor(color: number): number {
+    if (!this.isPlaying || this.clearPending || color <= 0 || color >= JOKER) return 0;
+    const g = this.grid;
+    const res = this.clear;
+    res.reset();
+    for (let i = 0; i < g.size; i++) if (g.color[i] === color && !(g.flags[i] & FLAG_STATIC)) res.markCell(g, i);
+    return this.removeToolMarks();
+  }
+
+  /** Shared tail of the tool clears: remove marked cells, score, goals, events. */
+  private removeToolMarks(): number {
+    const res = this.clear;
     const n = res.cellCount;
     if (n > 0) {
-      removeMarked(g, res);
+      removeMarked(this.grid, res);
       this.score += n;
       this.goals.onClear(res);
       this.goals.onScore(this.score);
@@ -288,6 +310,34 @@ export class Session {
     }
     res.reset();
     return n;
+  }
+
+  /**
+   * Resume a lost attempt ("Devam et", GDD §10.1): +`pieces` pieces and, when the loss was
+   * "no space", the top `clearRows` grain rows are emptied (grains do not count for goals or
+   * score). @returns false if the attempt is not lost
+   */
+  revive(pieces: number, clearRows: number): boolean {
+    if (this.state !== 'lost') return false;
+    const noSpace = this.loseReason === 'no_space';
+    let grains = 0;
+    const rows = noSpace ? Math.max(0, Math.min(this.grid.h, clearRows)) : 0;
+    const g = this.grid;
+    for (let i = 0; i < rows * g.w; i++) {
+      if (g.color[i] !== 0 && !(g.flags[i] & FLAG_STATIC)) {
+        g.clearCell(i);
+        grains++;
+      }
+    }
+    if (grains > 0) g.version++;
+    this.state = 'playing';
+    this.loseReason = null;
+    this.continues++;
+    this.chain = 0;
+    this.events.emit({ type: 'revived', pieces, rows, grains });
+    this.addPieces(pieces);
+    this.wake();
+    return true;
   }
 
   /** The grid changed outside of tick() (tools, debug edits): re-run physics and path checks. */

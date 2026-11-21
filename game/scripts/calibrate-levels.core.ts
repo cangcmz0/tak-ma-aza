@@ -1,18 +1,20 @@
 // Level calibration core (Level Designer tool; not shipped with the game).
 //
-// Plays every level many times with the greedy QA bot (src/dev/bot.ts) using the
-// real attempt rule (GDD §4.2: same board, different pieces/physics per attempt)
-// and reports win rate + score distribution. Star suggestion follows GDD §8:
+// Plays every level many times with a QA bot using the real attempt rule
+// (GDD §4.2: same board, different pieces/physics per attempt) and reports win rate
+// and score distribution. Star suggestion follows GDD §8:
 // 2★ = median score of won games, 3★ = 80th percentile of won games.
+//
+// Two bots: "greedy" = the shipped QA bot (src/dev/bot.ts, goal-agnostic) and
+// "smart" = a goal-aware variant defined below (same one-ply search).
 //
 // Pure TypeScript (no node imports) so it runs both from the CLI wrapper
 // (scripts/calibrate-levels.mjs, via Vite's runnerImport) and from vitest
 // (tests/calibrate.test.ts).
 //
-// Mechanics the engine does not support yet (scripted pieces, joker, two-colour
-// pieces, sacks / clear_obstacles) are detected at runtime: levels using them are
-// flagged "pending" and, where possible, calibrated with a proxy so piece limits
-// can still be sanity-checked. Re-run once the gameplay engineer lands them.
+// Wave-2 mechanics (scripted pieces, joker, two-colour pieces, sacks /
+// clear_obstacles) are detected at runtime; a level using one the engine lacks is
+// flagged "pending" and, where possible, calibrated with a proxy.
 import { Rng } from '../src/core/rng';
 import { chooseMove, type BotMove } from '../src/dev/bot';
 import { ClearResult, findClears, removeMarked } from '../src/engine/clear';
@@ -555,6 +557,8 @@ export function boardAscii(level: LevelDef): string {
       const c = g.color[i];
       if (c === EMPTY) line += '.';
       else if (c === STONE) line += '#';
+      else if (c === SACK) line += 'S';
+      else if (c === JOKER) line += 'J';
       else if (g.flags[i] & FLAG_BOMB) line += '*';
       else if (c <= 9) line += String(c);
       else line += '?';
