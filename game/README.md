@@ -19,9 +19,11 @@ Tarayıcı smoke testi (Playwright global kurulu olmalı; `playwright install` g
 ```bash
 npm run build && npx vite preview --port 4173 &
 NODE_PATH=$(npm root -g) node scripts/smoke.cjs /tmp/ekranlar
+NODE_PATH=$(npm root -g) node scripts/wave2-smoke.cjs /tmp/ekranlar   # öğretici, sürükleme, Çifte/zincir, tehlike, çuval/joker/ikili, sonsuz mod
 ```
 
-Hata ayıklama: URL'ye `?debug=1` ekle → `window.__app`, oynarken `window.__kum.session` / `window.__kum.scene`.
+Hata ayıklama: URL'ye `?debug=1` ekle → `window.__app`, oynarken `window.__kum.session` / `window.__kum.scene` / `window.__kum.hint()` (öğretici el işaretinin önerdiği hamle).
+Tahtayı elle değiştirdikten sonra `session.wake()` çağır (fizik + yol kontrolü yeniden çalışır).
 `?debug=1&unlockAll` tüm bölümleri açar. Masaüstü tuşları: ←/→ kaydır, ↑ veya R döndür, Boşluk/↓ bırak, 1–3 parça seç, Esc duraklat.
 
 ### Android
@@ -47,26 +49,33 @@ src/
   config.ts               Sabitler: ızgara 48×80 tane, blok 4×4, sim tick hızı, adım/tick, flaş süresi, puan
   main.ts                 Açılış: tema, kayıt, servisler, sahne yığını, rAF döngüsü, resize, arka plana geçince duraklat
   core/rng.ts             mulberry32 seed'li RNG + deriveSeed (bağımsız akışlar)
-  core/events.ts          Tipli event emitter
-  engine/grid.ts          SandGrid: Uint8Array color / shade / flags (FLAG_STATIC, FLAG_BOMB), STONE=255
+  core/events.ts          Tipli event emitter + tüm oyun olayları (`SessionEvent`, `LoseReason`)
+  engine/grid.ts          SandGrid: Uint8Array color / shade / flags (FLAG_STATIC, FLAG_BOMB); JOKER=15, SACK=254, STONE=255
   engine/sim.ts           step(): kum fiziği (aşağı, sonra çapraz); statik hücreler düşmez; hareket sayısı döner (0 = duruldu)
-  engine/clear.ts         findClears(): 4-komşuluk, sol duvar↔sağ duvar aynı renk bölgeleri; ClearResult önceden ayrılmış tamponlar
-  engine/specials.ts      Özel tane kaydı (bomba). Patlama temizliğe dahil olunca onClear() ek hücre işaretler
-  engine/pieces.ts        Tetrominolar (I O T L J S Z), önceden hesaplanmış dönüşler, canStamp/stamp, fitsAnywhere
-  game/session.ts         Bir bölüm denemesi: tepsi, skor, zincir, hamle sayısı, hedefler, kazan/kaybet; sabit tick ile deterministik
+  engine/clear.ts         findClears(): 4-komşuluk, sol duvar↔sağ duvar aynı renk bölgeleri, joker desteği; ClearResult önceden ayrılmış tamponlar
+  engine/specials.ts      Özel tane kaydı (bomba). Patlama temizliğe dahil olunca onClear() ek kum işaretler, engelleri "hit" eder
+  engine/pieces.ts        Tetrominolar, dönüşler, blok başına renk (ikili kese / joker blok), PieceBag (adil torba, ağırlık, sabit parçalar)
+  engine/sacks.ts         Çuval engelleri: can, temas/bomba hasarı, yırtılma
+  game/session.ts         Bir bölüm denemesi / sonsuz oyun: tepsi, skor, zincir, hedefler, çuvallar, tehlike, kazan/kaybet; dış eylemler (addPieces, rerollTray, scoopColumns)
+  game/endless.ts         Sonsuz mod ("Serbest Tezgâh"): puana göre renk/özel tane rampası, 9 keselik başlangıç tahtası
+  game/hintMove.ts        Öğretici el işareti için en iyi hamle (karalama ızgarada deneme)
   game/goals.ts           Hedef türleri kaydı (GOAL_TYPES), GoalTracker, yıldız hesabı
   game/setup.ts           Başlangıç tahtası: engeller + prefill (none/random/pattern), durultma, kazara yolları bozma
   levels/schema.ts        LevelDef tipi + validateLevel() (okunur hata mesajları, bilinmeyen alanlar korunur)
   levels/levels.ts        levels/data/*.json otomatik yüklenir (import.meta.glob), doğrulanır, id'ye göre sıralanır
-  levels/data/001..005    5 örnek bölüm
+  levels/data/*.json      Bölümler (Bölüm Tasarımcısı)
   render/theme.ts         Tüm renkler + CSS değişkenleri tek yerde; ImageData için paketlenmiş palet
   render/boardRenderer.ts 1:1 ImageData → en yakın komşu büyütme (tam sayı cihaz pikseli/tane), hayalet parça, patlama yanıp sönmesi
-  render/piecePreview.ts  Tepsi önizlemesi
+  render/piecePreview.ts  Tepsi önizlemesi + drawPieceBlocks (sürüklenen kese de bunu kullanır)
   input/pointer.ts        Tepsiden sürükle-bırak, tahtaya dokun-kaydır-bırak, seçili parçaya tekrar dokun = döndür; tek parmak takibi
   input/keyboard.ts       Masaüstü tuşları
   ui/app.ts               App bağlamı + SceneManager (replace/push/pop, overlay)
   ui/menu.ts, levelSelect.ts, play.ts, pause.ts, result.ts, goalText.ts, dom.ts
-  platform/storage.ts     SaveStore (bellek içi görünüm, asenkron kalıcılık); KeyValueBackend: LocalStorage / Memory
+  ui/levelIntro.ts        Bölüm başı kartı: müşteri, sipariş satırları, kese hakkı, ipucu, "Yeni!" mekanik kartları
+  ui/tutorial.ts          Öğretici t1–t3: konuşma balonu, el işareti animasyonu, tek yuvaya odak
+  platform/storage.ts     SaveStore (bellek içi görünüm, birleştirilmiş arka plan yazımı, flush()); KeyValueBackend: LocalStorage / Memory
+  platform/preferencesBackend.ts  Capacitor Preferences arka ucu + createStorageBackend() (native: Preferences, web: localStorage)
+  platform/native.ts      Android geri tuşu + arka plana geçince duraklat/kaydet (web'de no-op)
   audio/audio.ts          AudioService arayüzü, SoundName/SOUND_NAMES, NoopAudio
   audio/webAudio.ts       WebAudioService: tek AudioContext, ilk dokunuşta açılır, ana ses/sessiz, döngüler (akış, tehlike)
   audio/sounds.ts         Her sesin sentez tarifi (GDD §14.4) + cooldown/polifoni kuralı
@@ -81,6 +90,7 @@ src/
   styles/main.css         Sade koyu tema, güvenli alanlar, min 44–48px dokunma hedefleri
 tests/                    vitest
 scripts/smoke.cjs         Playwright smoke testi
+scripts/wave2-smoke.cjs   Dalga 2 oynanış smoke testi
 ```
 
 ### Oyun döngüsü kuralları
@@ -92,7 +102,13 @@ scripts/smoke.cjs         Playwright smoke testi
 - Kum durulunca `findClears` çalışır → yol varsa `CLEAR_FLASH_TICKS` yanıp söner → silinir.
   Puan (GDD §4.7): aynı kontroldeki yollar **büyükten küçüğe** ayrı zincir adımıdır; her yol `(tane × SCORE_PER_GRAIN + PATH_BONUS) × min(Z, CHAIN_MAX)` (100, tavan 5).
   Bombayla silinen her tane `1 × Z` (yol bonusu yok). Kazanınca kalan her parça için `END_BONUS_PER_PIECE` (100) eklenir (puan hedefine sayılmaz).
-- Zincir (Z): tahta durulup yol bulunmayınca sıfırlanır; `CHAIN_RESET_ON_DROP` (şu an `true`, prototip kuralı) her bırakışta da sıfırlar. GDD açık soru #7 onaylanırsa `false` yapın.
+- Zincir (Z): tahta durulup yol bulunmayınca sıfırlanır (`CHAIN_RESET_ON_DROP = false`, yapımcı onayı; `true` = prototipteki gibi her bırakışta sıfırla).
+- **Joker** (`JOKER` = renk 15): yol ararken her rengin bölgesine katılır. Renkler 1→14 sırayla aranır; bir yolun kullandığı joker sonraki renkte yoktur. Yalnız-joker duvar-duvar bölge de yoldur (`regionColor = JOKER`; yalnızca renksiz `clear_paths`'e sayılır). Jokerler `clear_color_grains`'e sayılmaz.
+- **Çuval** (`SACK` = 254, statik): bir temizleme olayında (bir kontrol) en fazla 1 hasar alır — temizlenen bir taneye 4-komşuysa ya da bomba dairesi çuvala değerse. Can 0 → hücreler boşalır, kum akar, `SACK_BREAK_POINTS` (200, çarpansız) ve `clear_obstacles` +1. Bomba artık engelleri (raf/çuval) silmez.
+- **İkili kese**: blok 0–1 renk A, 2–3 renk B (I sol/sağ, O üst/alt, diğerleri ilk/son iki); döndürme dağılımı korur.
+- **Yardım kuralı**: `lossStreak` 3'ün katıysa (3, 6, …) o deneme hedef renklerinin torba ağırlığı ×1,5 (torbada 2 yerine 3 kopya). Oyuncuya gösterilmez (`session.helped`).
+- **Tehlike**: kum durulduğunda en üstteki (statik olmayan) tane üstten `DANGER_ROWS` (8) satır içindeyse `danger {on, first}`; tahta çerçevesinin üstü kırmızı nabız atar, ilk seferde "Tezgâh doluyor!".
+- **Sonsuz mod**: `new Session(makeEndlessLevel(seed), { endless: true })`. Hedef yok, kazanılmaz, yalnızca `no_space` ile biter; renk sayısı 3/4/5 (0/3000/8000 puan), bomba 0,05 (2000+), joker 0,03 (5000+). Rekor `save.endlessBest`. Menüde bölüm `ENDLESS_UNLOCK_LEVEL` (8) kazanılınca açılır (`?debug=1&unlockAll` hep açık).
 - Tepsi: 3 yuva, üçü de bitince yeniden dolar (limit < 3 kaldıysa kalan kadar). Parçalar **adil torbadan** gelir: şekiller karıştırılmış torba (izinli şekiller), renkler her renk 2 kez olan torba (`PieceBag`).
 - Döndürme: seçili tepsi parçasına tekrar dokun. Ayrı "Döndür" düğmesi `SHOW_ROTATE_BUTTON` ile açılır (GDD §4.3 gereği varsayılan kapalı).
 - **Kazanma:** kum durulmuş ve bekleyen patlama yokken tüm hedefler tamam.
@@ -122,8 +138,17 @@ scripts/smoke.cjs         Playwright smoke testi
   "obstacles": [],
   "specials": { "bombChance": 0 },
   "seed": 12345,                 // yoksa id*7919
-  "pieces": ["I", "O", "T"],     // EKLENDİ, opsiyonel: parça havuzu (varsayılan 7 tetromino)
-  "hint": "Kısa ipucu"           // EKLENDİ, opsiyonel: bölüm başında gösterilen Türkçe ipucu
+  "pieces": ["I", "O", "T"],     // opsiyonel: parça havuzu (varsayılan 7 tetromino)
+  "hint": "Kısa ipucu",          // opsiyonel: bölüm başı kartında (tekrar denemede toast) gösterilen Türkçe ipucu
+  "scriptedPieces": [            // opsiyonel: ilk keseler sırayla bunlar (her denemede aynı), sonra torba
+    { "shape": "O", "color": 2, "rot": 0 },
+    { "shape": "I", "color": 1, "bomb": 2 },          // bomb / joker: blok indeksi 0..3
+    { "shape": "T", "colors": [1, 3] }                // ikili kese
+  ],
+  "tutorial": "t1",              // opsiyonel: "t1" | "t2" | "t3" | null (GDD §13); bitince kayda işlenir, bir daha oynatılmaz
+  "intro": ["sack"],             // opsiyonel: mekanik kartı kimlikleri (GDD §13 tablosu; metinler i18n `mechanics`), her biri bir kez
+  "customer": "mehmet",          // opsiyonel: "ayse" (vars.) | "mehmet" | "selim" | "anna"
+  "difficulty": 4                // opsiyonel meta veri (korunur, kullanılmaz)
 }
 ```
 
@@ -131,13 +156,17 @@ scripts/smoke.cjs         Playwright smoke testi
 - `{ "type": "none" }`
 - `{ "type": "random", "rows": 12, "density": 0.9, "colors": [1,2] }` — alttan `rows` **tane satırı** (4 = bir blok satırı) 4×4 renk öbekleriyle doldurulur. `density` (0..1, vars. 1) ve `colors` (vars. bölüm renkleri) opsiyonel. Kazara oluşan duvar-duvar yollar otomatik bozulur.
 - `{ "type": "pattern", "rows": ["1..........3", "232313213232"], "legend": { "R": 1, "X": "stone" } }` — alta hizalı resim.
-  Satır genişliği **12** (1 karakter = 1 blok = 4×4 tane) ya da **48** (1 karakter = 1 tane). `.` boş, `#` taş, `1`–`9` renk id, diğerleri `legend` ile.
+  Satır genişliği **12** (1 karakter = 1 blok = 4×4 tane) ya da **48** (1 karakter = 1 tane). `.` boş, `#` taş, `1`–`9` renk id, diğerleri `legend` ile (değer: renk id, `"stone"` ya da `"joker"`).
+  Desen engellerin üstüne yazmaz (engeller önce yerleşir).
   Kum desenleri başlangıçta durulur (bloklar kenarlardan biraz yayılır). Desende hazır yol bırakma (testler kontrol eder).
 
-**obstacles** — taş dikdörtgenleri, sol üstten: `{ "x": 0, "y": 10, "w": 3, "h": 1, "unit": "block" }` (`unit` vars. `block`; `grain` da olur; `w`/`h` vars. 1).
-Taşlar düşmez, temizlenmez, kumu taşır.
+**obstacles** — dikdörtgenler, sol üstten: `{ "type": "shelf", "x": 0, "y": 10, "w": 3, "h": 1, "unit": "block" }` (`unit` vars. `block`; `grain` da olur).
+- `type: "shelf"` (varsayılan) = Raf/taş: düşmez, temizlenmez, kumu taşır. `w`/`h` vars. 1.
+- `type: "sack"` = Çuval: `hp` 1–3 (vars. 1), `w`/`h` vars. 2 blok (8×8 tane). Can düğümleri tahtada gösterilir.
+- Hedef `{ "type": "clear_obstacles", "count": 3, "kind": "sack" }` — `count` bölümdeki çuval sayısını aşamaz (doğrulayıcı reddeder).
 
-**specials** — `bombChance` (0..1): dağıtılan parçanın bir bloğu bomba olur. Bomba taneleri bir yolla temizlenince `BOMB_RADIUS` (8 tane) içindeki taş dışı her şeyi siler (zincirleme). Diğer anahtarlar korunur (ileride kullanmak için).
+**specials** — hepsi 0..1, vars. 0. `bombChance`: parçanın bir bloğu bomba (yol temizlenince `BOMB_RADIUS` = 8 tane içindeki tüm kum/joker silinir, çuvallara 1 hasar; zincirleme). `jokerChance`: bir blok joker. `twoColorChance`: ikili kese (bölümde ≥ 2 renk gerekir). Diğer anahtarlar korunur.
+Renk id'leri 1..14 (15 = joker ayrılmış).
 
 Doğrulama: `validateLevel()` hatalı bölümü atlar ve konsola yazar; `npm test` tüm bölümlerin geçerli olduğunu, hazır yol olmadığını ve botun her bölümü sonuçlandırdığını kontrol eder.
 Denge için: `tests/bot.test.ts` çıktısı her bölümde açgözlü botun sonucunu (kazandı/kaybetti, puan, kullanılan parça) yazar — `npx vitest run tests/bot.test.ts --silent=false`.
@@ -183,23 +212,26 @@ Ses dosyası yok: tüm efektler **Web Audio API ile sentezlenir** (`src/audio/`)
 |---|---|
 | **Tema / renkler** (Sanat) | `src/render/theme.ts`: `defaultTheme` (kum gölgeleri, taş, arka plan, flaş, bomba tonu, hayalet, `css` değişkenleri). Başka tema: yeni `Theme` nesnesi + `setTheme()`. UI biçimi: `src/styles/main.css` (yalnızca CSS değişkenlerini kullanır). Renk adları: `src/i18n/tr.ts` → `colors`. Tane dokusu gölge sayısı `config.ts` → `SHADES`. |
 | **Ses / titreşim** | Bkz. yukarıdaki **Ses ve titreşim** bölümü. Yeni olay → `src/fx/feedback.ts`'e `case`; yeni ses → `SoundName` + `src/audio/sounds.ts` tarifi. |
-| **Kayıt → Capacitor Preferences** | `KeyValueBackend` uygula (`get/set/remove`, async) ve `SaveStore.load(backend)`'e ver (`main.ts`). |
+| **Kayıt** | Yapıldı: `createStorageBackend()` native'de `PreferencesBackend` (eski localStorage kaydını okuyup taşır), web'de localStorage. `SaveStore` açılışta yükler, bellekte senkron çalışır, değişiklikleri arka planda birleştirerek yazar; `save.flush()` arka plana geçişte çağrılır. Yeni alanlar: `endlessBest`, `endlessGames`, `seenIntros`, `tutorialsDone`. |
 | **Yeni hedef türü** (Oynanış) | `src/game/goals.ts`: `GoalDef` birleşimine tip ekle, `GOAL_TYPES`'a `{ validate, create }` kaydet (create → `onClear(res)` / `onScore(score)` ile `current` güncelle). HUD metni: `src/ui/goalText.ts` + `src/i18n/tr.ts` → `goals`. Test ekle. |
-| **Yeni özel tane** (Oynanış) | `src/engine/grid.ts`'de boş bir `FLAG_*` biti (2..7) ayır; `src/engine/specials.ts`'de `SPECIALS` listesine `{ id, flag, onClear(g, i, mark) }` ekle (`SpecialId` tipini genişlet). Parçaya dağıtma: `randomPiece()` (`pieces.ts`) + şemada şans alanı (`specials`). Görünüm: `boardRenderer.upload()` şu an tüm özel taneleri bomba tonuyla boyar — türe göre palet eklenebilir. Temizlenmeyen/taş benzeri davranış için `FLAG_STATIC` kullan. |
+| **Yeni özel tane** (Oynanış) | `src/engine/grid.ts`'de boş bir `FLAG_*` biti (2..7) ayır; `src/engine/specials.ts`'de `SPECIALS` listesine `{ id, flag, onClear(g, i, mark, hit) }` ekle (`SpecialId` tipini genişlet). Parçaya dağıtma: `randomPiece()` (`pieces.ts`) + şemada şans alanı (`specials`). Görünüm: `boardRenderer.upload()` şu an tüm özel taneleri bomba tonuyla boyar — türe göre palet eklenebilir. Temizlenmeyen/taş benzeri davranış için `FLAG_STATIC` kullan. |
 | **Yeni prefill / engel türü** | `levels/schema.ts` (`PrefillDef` + `validatePrefill`) ve `game/setup.ts` (`buildBoard`). |
 | **Oturum olayları** (efekt, analitik) | `session.events.on(e => …)` — tam liste `src/core/events.ts` (`SessionEvent`). Patlama sırasında işaretli hücreler `session.clear.marked`/`cells` içinde (parçacık efekti için). |
 | **Metinler / İngilizce** | `src/i18n/tr.ts` (`Strings` tipi). `en.ts` aynı şekilde yazılıp `setStrings()` ile seçilir. |
-| **Android geri tuşu** | `@capacitor/app` `backButton` → `app.scenes.back()` (Esc ile aynı yol). |
+| **Android geri tuşu** | Yapıldı (`platform/native.ts`): `backButton` → `app.scenes.back()`; `back()` `false` dönerse (ana menü) `App.exitApp()`. Oyun → Duraklat, Duraklat → devam, Bölümler → menü, bölüm kartı → bölümler. Web'de no-op. |
+| **Ekonomi / booster** (sonraki dalga) | `Session.addPieces(n)` ("Devam et +5"), `rerollTray()` (Tezgâhı Yenile; hak harcamaz), `scoopColumns(x0, w)` (Kepçe; 1 puan/tane, renk hedeflerine sayılır). Olaylar: `piecesAdded`, `trayRerolled`, `toolCleared`. Elek için aynı desen: `clear.markCell()` + `goals.onClear()`. |
+| **Oyun hissi** (Sanat) | `ui/play.ts`: `showWord()` (zincir/Çifte yazısı), `floatText()` (+puan), `flyGrains()` (sipariş kesesine uçan taneler — sade yer tutucu), sürüklenen kese `.drag-piece` (`DRAG_LIFT_PX` = 64). Tehlike: `.board-frame.danger .danger-edge`. Öğretici eli `.tut-hand`, balon `.tut-bubble`. Joker renk döngüsü `theme.joker` (0,8 sn), çuval `theme.sack` / `sackKnot`. |
 | **Hız / his / puan ayarı** | `src/config.ts` (`SIM_STEPS_PER_TICK`, `CLEAR_FLASH_TICKS`, `SCORE_PER_GRAIN`, `PATH_BONUS`, `CHAIN_MAX`, `END_BONUS_PER_PIECE`, `CHAIN_RESET_ON_DROP`, `SHOW_ROTATE_BUTTON`, `GRID_W/H`, `BLOCK`). |
 
 ## Bilinen eksikler / sonraki adımlar
 
 GDD §18.6'daki farklardan **yapılanlar**: puan formülü + zincir tavanı + Tezgâh Bonusu, deneme başına tohum, adil torba, renk id eşlemesi, ayrı döndür düğmesi kaldırıldı, "Burası dolu!" metni.
-**Yapılmayanlar** (Oynanış Mühendisi, dalga 2): `clear_obstacles` hedefi ve çuval (`obstacles[].type: "sack"`, `hp`), joker tane (`specials.jokerChance`, legend `"joker"`), ikili kese (`twoColorChance`), `scriptedPieces`, `tutorial` / `intro` / `customer` (şimdilik korunur ama yok sayılır), yardım kuralı (×1,5 renk ağırlığı; `lossStreak` hazır), sürüklenen kesenin parmağın 64 dp üstünde çizilmesi, tehlike uyarısı (üst 8 satır), "Çifte!" yazısı, Sonsuz mod. `obstacles[].type` alanı yok sayılır (hepsi raf/taş).
+Dalga 2 (Oynanış Mühendisi) **yapılanlar**: çuval + `clear_obstacles`, joker, ikili kese, `scriptedPieces`, yardım kuralı, zincir kuralı (`CHAIN_RESET_ON_DROP = false`), sürüklenen kese 64 dp yukarıda, tehlike uyarısı, Çifte/zincir yazıları, taneler sipariş kesesine uçar (yer tutucu), bölüm başı kartı + mekanik kartları, öğretici t1–t3, Sonsuz mod + rekor, Android geri tuşu, Preferences kaydı.
 
-- Görseller placeholder; patlama parçacıkları, puan uçuşu, kum dokusu yok.
+- Görseller placeholder (Sanat): el işareti düz daire, müşteri avatarı baş harf, mekanik kartı animasyonu genel "düşen tane" döngüsü, çuval yırtılma/sallanma efekti yok, ekran sarsıntısı yok.
+- Öğretici t2 adım 2 yalnızca sayaç nabzı + dokunma işareti; ekranı karartma (GDD §13 %60) yok. İlk açılışta doğrudan bölüm 1'e girme (GDD §15) yok; menüden "Oyna".
+- Sonsuz mod altın ödülü ve "Günün bulmacası" yok (ekonomi dalgası).
 - Müzik yok (GDD: MVP sonrası). Ana ses seviyesi kayıtta (`settings.volume`) ama oyunda kaydırıcısı yok (Ayarlar ekranı gelince eklenmeli).
-- Öğretici (ilk açılış) yok; yalnızca bölüm `hint` metni.
 - Kalan parça bonusu, ödüllü reklam, "devam et" mekanikleri yok.
 - Örnek 5 bölüm yalnızca teknik örnek; denge Bölüm Tasarımcısının işi.
 - Android platformu eklendi (debug APK CI'da). Release imzalama yok (bkz. `docs/release.md`).

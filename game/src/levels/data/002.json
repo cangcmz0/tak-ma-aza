@@ -4,7 +4,7 @@
   "difficulty": 1,
   "customer": "mehmet",
   "colors": [1, 2, 3],
-  "pieceLimit": 12,
+  "pieceLimit": 15,
   "goals": [{ "type": "clear_paths", "count": 2 }],
   "stars": [500, 1100, 1600],
   "prefill": {

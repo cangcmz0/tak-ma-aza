@@ -10,7 +10,7 @@
     { "type": "clear_color_grains", "color": 1, "count": 500 }
   ],
   "stars": [1300, 2500, 3700],
-  "prefill": { "type": "random", "rows": 24, "density": 0.9 },
+  "prefill": { "type": "random", "rows": 24, "density": 0.9, "colors": [1, 1, 2, 2, 3, 4] },
   "obstacles": [],
   "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0.25 },
   "seed": 23023,

@@ -9,10 +9,10 @@
   "stars": [1200, 2300, 3400],
   "prefill": { "type": "random", "rows": 20, "density": 0.9 },
   "obstacles": [
-    { "type": "sack", "x": 1, "y": 18, "w": 2, "h": 2, "hp": 1 },
-    { "type": "sack", "x": 4, "y": 16, "w": 2, "h": 2, "hp": 2 },
-    { "type": "sack", "x": 7, "y": 18, "w": 2, "h": 2, "hp": 1 },
-    { "type": "sack", "x": 9, "y": 15, "w": 2, "h": 2, "hp": 2 }
+    { "type": "sack", "x": 1, "y": 14, "w": 2, "h": 2, "hp": 1 },
+    { "type": "sack", "x": 4, "y": 13, "w": 2, "h": 2, "hp": 2 },
+    { "type": "sack", "x": 7, "y": 14, "w": 2, "h": 2, "hp": 1 },
+    { "type": "sack", "x": 9, "y": 13, "w": 2, "h": 2, "hp": 2 }
   ],
   "specials": { "bombChance": 0.1, "jokerChance": 0, "twoColorChance": 0 },
   "seed": 17017,

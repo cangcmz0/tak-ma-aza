@@ -4,7 +4,7 @@
   "difficulty": 8,
   "customer": "anna",
   "colors": [1, 2, 3, 4, 5],
-  "pieceLimit": 26,
+  "pieceLimit": 28,
   "goals": [{ "type": "clear_paths", "count": 5 }],
   "stars": [1400, 2700, 4000],
   "prefill": { "type": "random", "rows": 24, "density": 0.9 },

@@ -7,7 +7,7 @@
   "pieceLimit": 16,
   "goals": [{ "type": "clear_color_grains", "color": 2, "count": 400 }],
   "stars": [700, 1400, 2100],
-  "prefill": { "type": "pattern", "rows": ["2..1..2..3.2", "12.3.212.312", "312132213123"] },
+  "prefill": { "type": "random", "rows": 12, "density": 0.9, "colors": [2, 2, 1, 3] },
   "obstacles": [],
   "specials": { "bombChance": 0.1, "jokerChance": 0, "twoColorChance": 0 },
   "seed": 7007,

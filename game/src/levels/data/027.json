@@ -11,12 +11,12 @@
   "obstacles": [
     { "type": "shelf", "x": 0, "y": 11, "w": 2, "h": 1 },
     { "type": "shelf", "x": 10, "y": 11, "w": 2, "h": 1 },
-    { "type": "sack", "x": 1, "y": 18, "w": 2, "h": 2, "hp": 1 },
-    { "type": "sack", "x": 5, "y": 18, "w": 2, "h": 2, "hp": 2 },
-    { "type": "sack", "x": 9, "y": 18, "w": 2, "h": 2, "hp": 1 },
-    { "type": "sack", "x": 3, "y": 14, "w": 2, "h": 2, "hp": 2 },
-    { "type": "sack", "x": 7, "y": 14, "w": 2, "h": 2, "hp": 1 },
-    { "type": "sack", "x": 5, "y": 10, "w": 2, "h": 2, "hp": 1 }
+    { "type": "sack", "x": 1, "y": 14, "w": 2, "h": 2, "hp": 1 },
+    { "type": "sack", "x": 5, "y": 14, "w": 2, "h": 2, "hp": 2 },
+    { "type": "sack", "x": 9, "y": 14, "w": 2, "h": 2, "hp": 1 },
+    { "type": "sack", "x": 3, "y": 11, "w": 2, "h": 2, "hp": 2 },
+    { "type": "sack", "x": 7, "y": 11, "w": 2, "h": 2, "hp": 1 },
+    { "type": "sack", "x": 5, "y": 8, "w": 2, "h": 2, "hp": 1 }
   ],
   "specials": { "bombChance": 0.15, "jokerChance": 0, "twoColorChance": 0 },
   "seed": 27027,
