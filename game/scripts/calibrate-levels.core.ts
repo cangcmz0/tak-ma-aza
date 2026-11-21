@@ -343,7 +343,9 @@ export function chooseSmartMove(s: Session, xStep = 4): BotMove | null {
   let sackBias = 1;
   for (const gl of open) {
     const d = gl.def;
-    if ((d.type === 'clear_paths' && d.color !== undefined) || d.type === 'clear_color_grains') weights[d.color] = 2.5;
+    if (d.type === 'clear_paths' || d.type === 'clear_color_grains') {
+      if (d.color !== undefined) weights[d.color] = 2.5;
+    }
     if (d.type === 'clear_obstacles') sackBias = 2;
   }
   const ctx: SmartContext = { open, weights, sackBias };
