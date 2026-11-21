@@ -102,8 +102,9 @@ export class ResultScene implements Scene {
       { class: 'scene overlay', role: 'dialog', 'aria-modal': 'true', 'data-testid': 'result-endless' },
       h(
         'div',
-        { class: 'card' },
-        h('h2', { text: s.endless.over }),
+        { class: 'card result-card' },
+        resultZerde(newBest),
+        h('h2', { class: 'result-title', text: s.endless.over }),
         newBest ? h('p', { class: 'new-best', 'data-testid': 'new-best', text: s.endless.newBest }) : null,
         h('p', { class: 'result-score', text: fmt(s.result.score, { n: session.score }) }),
         h('p', { class: 'muted', text: fmt(s.result.best, { n: app.save.endlessBest }) }),

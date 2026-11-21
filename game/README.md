@@ -21,6 +21,7 @@ npm run build && npx vite preview --port 4173 &
 NODE_PATH=$(npm root -g) node scripts/smoke.cjs /tmp/ekranlar
 NODE_PATH=$(npm root -g) node scripts/wave2-smoke.cjs /tmp/ekranlar   # öğretici, sürükleme, Çifte/zincir, tehlike, çuval/joker/ikili, sonsuz mod
 NODE_PATH=$(npm root -g) node scripts/economy-smoke.cjs /tmp/ekranlar # günlük ödül, mağaza, booster'lar, kaybet → devam (sahte reklam)
+NODE_PATH=$(npm root -g) node scripts/art-smoke.cjs /tmp/ekranlar     # tüm ekranlar 390×844 + 360×740, efektler, kare süresi ölçümü
 ```
 
 Hata ayıklama: URL'ye `?debug=1` ekle → `window.__app`, oynarken `window.__kum.session` / `window.__kum.scene` / `window.__kum.hint()` (öğretici el işaretinin önerdiği hamle).
@@ -30,7 +31,7 @@ Tahtayı elle değiştirdikten sonra `session.wake()` çağır (fizik + yol kont
 ### Android
 
 Android projesi `android/` klasöründe (Capacitor 8, appId `com.takmaaza.kumbulmaca`, ad "Kum Akışı",
-`versionCode 1` / `versionName "0.1.0"` → `android/app/build.gradle`). Sadece dikey ekran; arka plan koyu `#14112b`.
+`versionCode 1` / `versionName "0.1.0"` → `android/app/build.gradle`). Sadece dikey ekran; arka plan koyu `#1a120e` ("çarşı gecesi").
 
 - **APK'yı GitHub derler:** `game/**` değişen her push'ta (`main`, `ccr-*`) veya elle (Actions → *Android APK* → *Run workflow*)
   `.github/workflows/android-apk.yml` çalışır: `npm ci` → `npm test` → `npm run build` → `npx cap sync android` → `./gradlew assembleDebug`.
@@ -65,15 +66,26 @@ src/
   levels/schema.ts        LevelDef tipi + validateLevel() (okunur hata mesajları, bilinmeyen alanlar korunur)
   levels/levels.ts        levels/data/*.json otomatik yüklenir (import.meta.glob), doğrulanır, id'ye göre sıralanır
   levels/data/*.json      Bölümler (Bölüm Tasarımcısı)
-  render/theme.ts         Tüm renkler + CSS değişkenleri tek yerde; ImageData için paketlenmiş palet
-  render/boardRenderer.ts 1:1 ImageData → en yakın komşu büyütme (tam sayı cihaz pikseli/tane), hayalet parça, patlama yanıp sönmesi
-  render/piecePreview.ts  Tepsi önizlemesi + drawPieceBlocks (sürüklenen kese de bunu kullanır)
+  render/theme.ts         Tüm renkler + CSS değişkenleri (tasarım token'ları) tek yerde; ImageData için alt-tane varyantlı paket palet
+  render/boardRenderer.ts Tane başına 3×3 piksel ImageData (vurgu, gölge köşe, üst yüzey ışığı, renk sınırı dikişi) → en yakın komşu büyütme;
+                          ceviz tepsi zemini (boyutlanınca bir kez çizilir), raf ahşap damarı, çuval jüt dokusu + bağ/can düğümleri, hayalet
+  render/piecePreview.ts  Kese çizimi (dikişli kumaş silüet, benek, ip bağı, renk körü sembolü, acı biber, joker çizgileri) — tepsi + sürüklenen kese
+  render/symbols.ts       Renk körü sembolleri (▲ ● yaprak ◆ ■ ✚ ★): tek yol seti, canvas (Path2D) + SVG
+  art/zerde.ts            Maskot Zerde (inline SVG, pozlar: idle/happy/surprised/sneeze/sad; data-pose ile değişir)
+  art/avatars.ts          Müşteri portreleri (Ayşe Teyze, Mehmet Amca, Aşçı Selim, Gezgin Anna)
+  art/icons.ts            UI ikonları (SVG; emoji/ikon fontu yok), kese (POUCH_SVG), sandık
+  art/scenery.ts          Menü çarşı silüeti (kubbe, minare, dükkân kemerleri, lambalar), ay, logo (SVG harf katmanları)
+  fx/particles.ts         Sahne geneli parçacık katmanı (havuzlu, tavan 260): tane, kıvılcım, hedefe uçan tane, bez parçası, toz; halka/ışık bandı
+  ui/playFx.ts            Oyun olayları → efektler: patlama + ışık bandı, siparişe uçan taneler, bomba şok dalgası, çuval, puf, sarsıntı, Zerde hapşırığı
+  ui/hud.ts               Üst bar: duraklat, sipariş kartı (avatar + satırlar + ilerleme), kese sayacı, yıldızlı puan çubuğu
+  ui/resultArt.ts         Sonuç kartı görselleri: yıldız damgası, konfeti, Zerde, kaybedince sipariş ilerlemesi
   input/pointer.ts        Tepsiden sürükle-bırak, tahtaya dokun-kaydır-bırak, seçili parçaya tekrar dokun = döndür; tek parmak takibi
   input/keyboard.ts       Masaüstü tuşları
   ui/app.ts               App bağlamı + SceneManager (replace/push/pop, overlay)
-  ui/menu.ts, levelSelect.ts, play.ts, pause.ts, result.ts, goalText.ts, dom.ts
+  ui/menu.ts, play.ts, pause.ts, result.ts, goalText.ts, dom.ts
+  ui/levelSelect.ts       Çarşı haritası: yılan yol, dükkân tabelası düğümleri, bölge kemerleri (10 bölümde bir), Zerde mevcut bölümde
   ui/levelIntro.ts        Bölüm başı kartı: müşteri, sipariş satırları, kese hakkı, ipucu, "Yeni!" mekanik kartları
-  ui/tutorial.ts          Öğretici t1–t3: konuşma balonu, el işareti animasyonu, tek yuvaya odak
+  ui/tutorial.ts          Öğretici t1–t3: Zerde'li konuşma balonu, SVG el işareti, %60 karartma (spot ışığı), tek yuvaya odak
   platform/storage.ts     SaveStore (bellek içi görünüm, birleştirilmiş arka plan yazımı, flush()); KeyValueBackend: LocalStorage / Memory
   platform/preferencesBackend.ts  Capacitor Preferences arka ucu + createStorageBackend() (native: Preferences, web: localStorage)
   platform/native.ts      Android geri tuşu + arka plana geçince duraklat/kaydet (web'de no-op)
@@ -88,10 +100,11 @@ src/
   dev/soundLab.ts         Ses laboratuvarı (sound-lab.html, yalnızca dev sunucusunda)
   i18n/tr.ts, index.ts    Tüm oyuncu metinleri (Türkçe), fmt() yer tutucu doldurma
   dev/bot.ts              Açgözlü otomatik oyuncu (bölüm QA/denge; pakete girmez)
-  styles/main.css         Sade koyu tema, güvenli alanlar, min 44–48px dokunma hedefleri
+  styles/main.css         Tasarım dili (aşağıda "Tasarım dili"), güvenli alanlar, min 48px dokunma hedefleri, prefers-reduced-motion
 tests/                    vitest
 scripts/smoke.cjs         Playwright smoke testi
 scripts/wave2-smoke.cjs   Dalga 2 oynanış smoke testi
+scripts/art-smoke.cjs     Sanat geçişi: tüm ekranların iki telefon boyutunda görüntüsü + tahta kare süresi
 ```
 
 ### Oyun döngüsü kuralları
@@ -258,6 +271,33 @@ Testler: `tests/economy.test.ts`, `tests/daily.test.ts`, `tests/ads.test.ts` (s�
 Tarayıcı: `NODE_PATH=$(npm root -g) node scripts/economy-smoke.cjs /tmp/ekranlar` (günlük ödül, mağaza, sahte reklam/satın alma, üç booster, booster teklifi, kaybet → reklamla devam, 600 altınla 2. devam).
 Debug: `window.__app.meta` (ör. `__app.meta.economy.earn(1000, 'debug')`, `__app.meta.ads.lastDecision`).
 
+## Tasarım dili ("Baharat Çarşısı")
+
+Tek kaynak: `src/render/theme.ts` → `defaultTheme.css` (`:root`'a yazılır). Yeni bileşen (ekonomi dahil) **ham hex kullanmaz**, bu token'ları kullanır.
+
+**Malzemeler ve token'lar**
+
+| Malzeme | Kullanım | Token'lar |
+|---|---|---|
+| Çarşı gecesi | sayfa / sahne zemini | `--bg`, `--bg-sky`, `--bg-sky-2`, `--bg-horizon`, `--bg-deep` |
+| Ceviz ahşap | paneller, ikincil düğmeler, tabelalar, tepsi yuvaları | `--panel`, `--panel-2`, `--panel-3`, `--line`, `--line-soft`, `--wood`, `--wood-hi`, `--wood-lo`; tarif `--surface-wood` + `--edge-wood` |
+| Bakır | çerçeveler, yuvarlak ikon madalyonları, perçinler | `--copper`, `--copper-hi`, `--copper-lo`; tarif `--surface-copper` |
+| Safran pirinç | birincil eylem (tek ekranda bir tane) | `--accent`, `--accent-hi`, `--accent-lo`, `--on-accent`; tarif `--surface-brass` + `--edge-brass` |
+| Parşömen | sipariş fişleri, tost, bölge tabelası, öğretici balonu | `--parchment`, `--parchment-2`, `--parchment-ink`, `--parchment-muted`; tarif `--surface-paper` |
+| Baharatlar | renk id 1–6 (GDD §3.2) | `--spice-1` … `--spice-6`, `--jute` (çuval / kese bezi) |
+| Durum | | `--danger`, `--danger-glow`, `--success`, `--star`, `--star-empty` |
+| Metin | | `--fg` (sıcak beyaz), `--muted`, `--faint` |
+| Derinlik | | `--shadow-hard` (damga gibi 3 px alt kenar), `--shadow-soft` (yüzen kart) |
+
+**Kurallar**
+- Şekiller "damgalı": yumuşak bulanık gölge yerine 3 px sert alt kenar (`--edge-*`), basınca 2 px aşağı iner. Köşe yarıçapı malzemeye göre: ahşap 10–12 px (`--radius`), pirinç 14 px, parşömen 4 px (+ delikli/zımbalı kenar), ikon düğmesi tam daire (`.btn-icon` bakır madalyon). Her şeye aynı yuvarlak köşe + gölge verme; mor-mavi degrade yok.
+- Düğmeler: `.btn` (ahşap), `.btn-primary` (pirinç; ekranda bir tane), `.btn-ghost` (altı çizili metin), `.btn-icon` (bakır daire, yalnız ikon; etiketi `aria-label`'da). Dokunma hedefi ≥ 48 px (`--tap`).
+- Tipografi: font dosyası yok (WebView çevrimdışı). Başlık/sayı `--font-display` (yuvarlak yüz varsa o, yoksa Roboto 800–900), gövde `--font`. Küçük etiketler BÜYÜK HARF + `--tracking-label` (0,14em). Sayılar `font-variant-numeric: tabular-nums`, binlik ayırıcı `toLocaleString('tr-TR')`. Logo SVG `<text>` katmanları (`textLength` ile her fontta aynı genişlik).
+- İkonlar: `src/art/icons.ts` (`icon('star')`, `POUCH_SVG`, `CHEST_SVG`); emoji ve ikon fontu kullanma. Renk körü sembolleri `render/symbols.ts` (`symbolSvg(id)`, `drawSymbol`) — tepside ve hedef çiplerinde, tahtadaki tanelerde değil.
+- Katmanlar (play sahnesi içi z-index): tahta 0 · parçacık canvas 12 · zincir yazısı 13 · Zerde 14 · öğretici karartma 16 / balon 17 · sürüklenen kese 19 · el 20. Her `.scene` `isolation: isolate` — üstüne açılan sahne her zaman alttakinin efektlerini örter.
+- Hareket: tüm animasyonlar `@media (prefers-reduced-motion: reduce)` altında kapanır; JS tarafında `reducedMotion()` (theme.ts) sarsıntıyı kapatır, parçacığı azaltır.
+- Performans: tahta zemini ve tane tamponu yalnızca değişince yeniden çizilir; parçacık havuzu 260 ile sınırlı, boşta canvas'a dokunulmaz.
+
 ## Diğer ajanlar için genişleme noktaları
 
 | İş | Nereye |
@@ -272,7 +312,7 @@ Debug: `window.__app.meta` (ör. `__app.meta.economy.earn(1000, 'debug')`, `__ap
 | **Metinler / İngilizce** | `src/i18n/tr.ts` (`Strings` tipi). `en.ts` aynı şekilde yazılıp `setStrings()` ile seçilir. |
 | **Android geri tuşu** | Yapıldı (`platform/native.ts`): `backButton` → `app.scenes.back()`; `back()` `false` dönerse (ana menü) `App.exitApp()`. Oyun → Duraklat, Duraklat → devam, Bölümler → menü, bölüm kartı → bölümler. Web'de no-op. |
 | **Ekonomi / booster** | Yapıldı — bkz. **Ekonomi, reklam ve satın alma**. Oturum API'si: `addPieces(n)`, `rerollTray()`, `scoopColumns(x0, w)`, `sieveColor(color)`, `revive(pieces, clearRows)`. Yeni booster: `BOOSTERS` + `BoosterId` (`economy.ts`), akış `ui/boosterBar.ts`, metin `tr.ts` → `boosters`. |
-| **Oyun hissi** (Sanat) | `ui/play.ts`: `showWord()` (zincir/Çifte yazısı), `floatText()` (+puan), `flyGrains()` (sipariş kesesine uçan taneler — sade yer tutucu), sürüklenen kese `.drag-piece` (`DRAG_LIFT_PX` = 64). Tehlike: `.board-frame.danger .danger-edge`. Öğretici eli `.tut-hand`, balon `.tut-bubble`. Joker renk döngüsü `theme.joker` (0,8 sn), çuval `theme.sack` / `sackKnot`. |
+| **Oyun hissi** (Sanat) | Efektler `ui/playFx.ts` (`PlayFx.onEvent`; yeni olay → yeni `case`), parçacıklar `fx/particles.ts` (`spawn`, `spawnHome`, `ring`). Zincir yazısı `play.ts` `showWord()` (harf harf `.fx-line i`, renk `data-chain`), `floatText()` (+puan). Sarsıntı GDD §14.2 genlikleri, `prefers-reduced-motion`'da kapalı (Ayarlar ekranı gelince ayrıca anahtar eklenmeli). Hapşırık: `cleared` + zincir ≥ 3 + renk 1 (sesle aynı kural, `fx/feedback.ts`). |
 | **Hız / his / puan ayarı** | `src/config.ts` (`SIM_STEPS_PER_TICK`, `CLEAR_FLASH_TICKS`, `SCORE_PER_GRAIN`, `PATH_BONUS`, `CHAIN_MAX`, `END_BONUS_PER_PIECE`, `CHAIN_RESET_ON_DROP`, `SHOW_ROTATE_BUTTON`, `GRID_W/H`, `BLOCK`). |
 
 ## Bilinen eksikler / sonraki adımlar
@@ -280,8 +320,8 @@ Debug: `window.__app.meta` (ör. `__app.meta.economy.earn(1000, 'debug')`, `__ap
 GDD §18.6'daki farklardan **yapılanlar**: puan formülü + zincir tavanı + Tezgâh Bonusu, deneme başına tohum, adil torba, renk id eşlemesi, ayrı döndür düğmesi kaldırıldı, "Burası dolu!" metni.
 Dalga 2 (Oynanış Mühendisi) **yapılanlar**: çuval + `clear_obstacles`, joker, ikili kese, `scriptedPieces`, yardım kuralı, zincir kuralı (`CHAIN_RESET_ON_DROP = false`), sürüklenen kese 64 dp yukarıda, tehlike uyarısı, Çifte/zincir yazıları, taneler sipariş kesesine uçar (yer tutucu), bölüm başı kartı + mekanik kartları, öğretici t1–t3, Sonsuz mod + rekor, Android geri tuşu, Preferences kaydı.
 
-- Görseller placeholder (Sanat): el işareti düz daire, müşteri avatarı baş harf, mekanik kartı animasyonu genel "düşen tane" döngüsü, çuval yırtılma/sallanma efekti yok, ekran sarsıntısı yok.
-- Öğretici t2 adım 2 yalnızca sayaç nabzı + dokunma işareti; ekranı karartma (GDD §13 %60) yok. İlk açılışta doğrudan bölüm 1'e girme (GDD §15) yok; menüden "Oyna".
+- Sanat (dalga 2b) yapıldı: tema, tahta dokusu, keseler, HUD, Zerde, efektler, menü/harita/kartlar, öğretici karartması. Eksikler: Ayarlar'da "Ekran sarsıntısı" ve "Renk körü modu" anahtarı yok (semboller tepside/çiplerde hep açık; sarsıntı yalnızca OS "hareketi azalt" ile kapanır); uygulama ikonu / açılış görseli (`scripts/make-icons.cjs`) eski mor paletle — yeni palete göre yeniden üretilmeli; Zerde'nin harita düğümüne yürüme ve sandık açılma animasyonu yok; çuval hasarında hücreler değil yalnızca bağ/parlama sallanır.
+- İlk açılışta doğrudan bölüm 1'e girme (GDD §15) yok; menüden "Oyna".
 - "Günün bulmacası" yok (GDD v1.1).
 - Müzik yok (GDD: MVP sonrası). Ana ses seviyesi kayıtta (`settings.volume`) ama oyunda kaydırıcısı yok (Ayarlar ekranı gelince eklenmeli).
 - Reklam ve satın alma sahte (geliştirme yedeği); gerçek AdMob / Play Billing eklentisi takılmadı, UMP onayı yok. Analitik (Firebase) yok. Ayarlar ekranında "Satın alımları geri yükle" yok (Mağaza'da var). Başlangıç/Esnaf paketleri (GDD "Sonra") yok. Harita ekranında altın göstergesi yok (menü ve oyunda var).

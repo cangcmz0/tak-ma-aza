@@ -38,7 +38,6 @@ export function icon(name: IconName, cls = 'ico'): HTMLSpanElement {
 export const POUCH_SVG = `<svg class="pouch" viewBox="0 0 40 44" aria-hidden="true">
   <path d="M10 15 C3 23 4 41 20 41 C36 41 37 23 30 15 Z" fill="var(--jute)"/>
   <path d="M10 15 C3 23 4 41 20 41 C36 41 37 23 30 15 Z" fill="none" stroke="var(--wood-lo)" stroke-width="2"/>
-  <path d="M9 27 h22 M8.5 33 h23" stroke="var(--wood)" stroke-width="1.4" stroke-dasharray="2.4 2" opacity=".7"/>
   <path d="M11 15 C12 9 16 7 20 7 C24 7 28 9 29 15 Z" fill="var(--pouch-spice, var(--spice-1))"/>
   <path d="M9.5 15.5 Q20 19.5 30.5 15.5" fill="none" stroke="var(--twine, #7a5a32)" stroke-width="2.6" stroke-linecap="round"/>
   <path d="M20 17.5 l-4 5 M20 17.5 l4 5" stroke="var(--twine, #7a5a32)" stroke-width="2" stroke-linecap="round"/>

@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 // Oyunun koyu arka planı (src/render/theme.ts → css['--bg']). Android tarafında da
 // game/android/app/src/main/res/values/colors.xml → kum_bg ile aynı tutulmalı.
-const BG = '#14112b';
+const BG = '#1a120e';
 
 const config: CapacitorConfig = {
   appId: 'com.takmaaza.kumbulmaca',
