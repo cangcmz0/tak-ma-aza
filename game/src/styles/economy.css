@@ -1,0 +1,178 @@
+/* Economy UI: gold badge, booster bar + targeting, shop, daily reward, continue / reward panels,
+   fake ad + purchase layers. Colours only through the theme's CSS variables (render/theme.ts). */
+
+/* --- coin + gold badge --- */
+.coin { width: 1.1em; height: 1.1em; flex: none; fill: var(--star); vertical-align: -0.18em; }
+.coin .coin-inner { fill: none; stroke: color-mix(in srgb, var(--on-accent) 35%, transparent); stroke-width: 1.6; }
+.gold-badge {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 4px 12px 4px 8px;
+  border-radius: 999px; border: 2px solid var(--line); background: var(--panel-2); color: var(--fg);
+  font: 800 1rem/1 var(--font); font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+button.gold-badge { cursor: pointer; min-height: var(--tap); }
+.gold-plus {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; margin-left: 2px; border-radius: 50%;
+  background: var(--accent); color: var(--on-accent); font-weight: 900; font-size: 1rem;
+}
+.gold-badge.bump { animation: gold-bump 420ms ease; }
+@keyframes gold-bump { 40% { transform: scale(1.15); border-color: var(--star); } }
+
+/* --- menu strip --- */
+.menu-meta { display: flex; align-items: center; gap: 8px; flex: none; }
+.menu-meta .menu-shop { margin-left: auto; min-height: var(--tap); padding: 0 16px; }
+.streak-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--fg); font-weight: 700; font-size: 0.85rem;
+}
+/* Brazier (mangal) — vector-ish glyph built from CSS: bowl + flame. */
+.brazier { position: relative; display: inline-block; width: 16px; height: 16px; flex: none; }
+.brazier::before { content: ''; position: absolute; left: 1px; right: 1px; bottom: 1px; height: 6px; border-radius: 0 0 8px 8px; background: var(--muted); }
+.brazier::after {
+  content: ''; position: absolute; left: 4px; bottom: 6px; width: 8px; height: 10px;
+  border-radius: 50% 50% 40% 40% / 70% 70% 30% 30%; background: var(--accent);
+  box-shadow: 0 0 6px var(--danger);
+}
+
+/* --- booster bar --- */
+.booster-bar { display: flex; align-items: center; gap: 8px; min-height: 56px; }
+.booster-row { display: flex; gap: 8px; flex: 1; min-width: 0; }
+.booster-btn {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: var(--tap); height: 52px; padding: 0 12px; flex: 0 1 auto;
+  border-radius: 999px; border: 2px solid var(--line); background: var(--panel); color: var(--fg);
+  font: 700 0.85rem/1 var(--font); cursor: pointer;
+}
+.booster-btn:active { transform: scale(0.96); }
+.booster-btn.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+.booster-btn.capped { opacity: 0.45; }
+.booster-icon { width: 24px; height: 24px; fill: var(--accent); flex: none; }
+.booster-name { white-space: nowrap; }
+.booster-badge {
+  position: absolute; top: -6px; right: -4px; min-width: 22px; height: 22px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 2px;
+  border-radius: 999px; background: var(--accent); color: var(--on-accent);
+  font: 900 0.75rem/1 var(--font); font-variant-numeric: tabular-nums; border: 2px solid var(--bg);
+}
+.booster-badge.price { background: var(--panel-2); color: var(--fg); border-color: var(--line); }
+.booster-badge.price .coin { width: 12px; height: 12px; }
+.booster-badge.ad { background: var(--star); color: var(--on-accent); }
+.booster-bar .gold-badge { flex: none; }
+@media (max-width: 370px) { .booster-name { display: none; } }
+
+/* Targeting layer over the board (Kepçe column / Elek grain). */
+.booster-target { position: absolute; inset: 0; z-index: 12; }
+.target-surface {
+  position: absolute; inset: 0; touch-action: none; cursor: crosshair;
+  background: color-mix(in srgb, var(--bg) 22%, transparent);
+}
+.target-hint {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); pointer-events: none;
+  padding: 6px 14px; border-radius: 999px; white-space: nowrap;
+  background: var(--panel); border: 2px solid var(--accent); color: var(--fg); font-weight: 800;
+}
+.scoop-strip {
+  position: absolute; display: none; pointer-events: none;
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-left: 2px solid var(--accent); border-right: 2px solid var(--accent);
+}
+.target-actions {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+  display: flex; gap: 8px;
+}
+.target-actions .btn { padding: 0 18px; }
+
+/* --- shared overlay cards --- */
+/* Above scene content that sets its own z-index (e.g. menu children). */
+.econ-overlay { z-index: 30; }
+.econ-overlay .card { gap: 10px; max-height: 100%; overflow-y: auto; }
+.econ-overlay h2 { font-size: 1.6rem; }
+.fake-note {
+  margin: 0; padding: 8px 10px; border-radius: 10px; font-weight: 800; font-size: 0.9rem;
+  background: color-mix(in srgb, var(--danger) 18%, transparent); border: 2px dashed var(--danger); color: var(--fg);
+}
+
+/* --- shop --- */
+.shop-card { text-align: left; }
+.shop-head { display: flex; align-items: center; gap: 8px; }
+.shop-head h2 { flex: 1; }
+.shop-body { display: flex; flex-direction: column; gap: 8px; }
+.shop-row {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px;
+}
+.shop-row-hero { border: 2px solid var(--accent); }
+.shop-ico { display: grid; place-items: center; width: 36px; height: 36px; flex: none; font-size: 1.6rem; }
+.shop-ico .booster-icon { width: 28px; height: 28px; }
+.shop-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.shop-text small { color: var(--muted); }
+.shop-text .badge { align-self: flex-start; margin-top: 2px; }
+.shop-buy { flex: none; min-width: 88px; padding: 0 12px; font-size: 0.95rem; }
+.shop-buy-gold { display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
+.shop-sub { margin: 6px 0 0; font-size: 1rem; color: var(--muted); }
+.shop-restore { font-size: 0.9rem; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+
+/* --- booster offer --- */
+.offer-ico .booster-icon { width: 48px; height: 48px; }
+.offer-card .gold-badge { align-self: center; }
+.offer-actions { display: flex; flex-direction: column; gap: 8px; }
+.offer-buy { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.offer-ad { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 6px; }
+.offer-ad small { color: var(--muted); font-size: 0.75rem; }
+
+/* --- daily reward --- */
+.daily-streak { margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 800; color: var(--accent); }
+.daily-strip { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.daily-box {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px;
+  border-radius: 12px; background: var(--panel-2); border: 2px solid var(--line); font-size: 0.85rem;
+}
+.daily-box small { color: var(--muted); font-size: 0.7rem; }
+.daily-box.big { grid-column: span 2; }
+.daily-box.past { opacity: 0.45; }
+.daily-box.today { border-color: var(--star); box-shadow: 0 0 12px color-mix(in srgb, var(--star) 55%, transparent); animation: daily-glow 1.4s ease-in-out infinite; }
+@keyframes daily-glow { 50% { box-shadow: 0 0 2px color-mix(in srgb, var(--star) 30%, transparent); } }
+.daily-icons { display: inline-flex; gap: 2px; font-size: 1.2rem; }
+.daily-icons .booster-icon { width: 20px; height: 20px; }
+.daily-today { margin: 0; font-weight: 800; font-size: 1.1rem; }
+
+/* --- result: reward + continue --- */
+.reward-panel, .continue-offer {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px;
+  border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line);
+}
+.reward-line { display: inline-flex; align-items: center; gap: 8px; font-size: 1.3rem; }
+.reward-chest { display: flex; flex-direction: column; gap: 2px; color: var(--accent); }
+.reward-chest small { color: var(--fg); }
+.reward-double, .continue-offer .btn { align-self: stretch; }
+.continue-title { font-size: 1.05rem; }
+.continue-gold { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.continue-hint:empty { display: none; }
+
+/* --- fake ad / purchase layer (above every scene) --- */
+.fake-ad {
+  position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent); animation: fade 160ms ease;
+}
+.fake-ad-box {
+  width: min(340px, 100%); display: flex; flex-direction: column; gap: 12px; text-align: center;
+  padding: 24px; border-radius: 20px; background: var(--panel); border: 2px dashed var(--accent);
+}
+.fake-ad-title { font-size: 1.5rem; color: var(--accent); }
+.fake-product { margin: 0; font-weight: 800; font-size: 1.1rem; }
+.fake-ad-track { height: 10px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.fake-ad-bar { display: block; height: 100%; width: 100%; background: var(--accent); transform-origin: left; animation: fake-ad-fill linear forwards; }
+@keyframes fake-ad-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.fake-ad-skip { font-size: 0.85rem; min-height: 40px; }
+
+.econ-flash {
+  position: fixed; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 72px); transform: translateX(-50%);
+  z-index: 110; padding: 8px 16px; border-radius: 999px; pointer-events: none; white-space: nowrap;
+  background: var(--panel); border: 2px solid var(--star); color: var(--fg); font-weight: 800;
+  animation: econ-flash 1.4s ease forwards;
+}
+@keyframes econ-flash { 0% { opacity: 0; transform: translate(-50%, -8px); } 12%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .gold-badge.bump, .daily-box.today, .econ-flash, .fake-ad { animation: none; }
+}

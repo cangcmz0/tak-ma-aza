@@ -1,0 +1,29 @@
+{
+  "name": "kum-akisi",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Kum Akışı — sand puzzle mobile game (Vite + TypeScript + Canvas 2D + Capacitor)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "cap:sync": "npm run build && cap sync"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/haptics": "8.0.2",
+    "@capacitor/preferences": "8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "typescript": "6.0.3",
+    "vite": "8.3.6",
+    "vitest": "5.1.1"
+  }
+}

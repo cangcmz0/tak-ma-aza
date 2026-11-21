@@ -1,0 +1,27 @@
+{
+  "id": 6,
+  "name": "Acı Biber",
+  "difficulty": 3,
+  "customer": "mehmet",
+  "colors": [1, 2, 3],
+  "pieceLimit": 19,
+  "goals": [{ "type": "clear_paths", "count": 3 }],
+  "stars": [900, 1800, 2700],
+  "prefill": {
+    "type": "pattern",
+    "rows": [
+      "112233112233",
+      "233112233112",
+      "331122331122",
+      "122331122331",
+      "223311223311",
+      "311223311223"
+    ]
+  },
+  "obstacles": [],
+  "specials": { "bombChance": 0.2, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 6006,
+  "scriptedPieces": [{ "shape": "T", "color": 1, "rot": 0, "bomb": 1 }],
+  "intro": ["bomb"],
+  "hint": "Acı biberli kese yolda patlarsa çevresini de uçurur."
+}

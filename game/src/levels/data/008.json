@@ -1,0 +1,16 @@
+{
+  "id": 8,
+  "name": "Pazar Kalabalığı",
+  "difficulty": 4,
+  "customer": "anna",
+  "colors": [1, 2, 3],
+  "pieceLimit": 20,
+  "goals": [{ "type": "clear_paths", "count": 4 }],
+  "stars": [1000, 2100, 3100],
+  "prefill": { "type": "random", "rows": 28, "density": 0.9 },
+  "obstacles": [],
+  "specials": { "bombChance": 0.1, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 8008,
+  "intro": [],
+  "hint": "Kalabalık tezgâh: önce alttaki yolları aç."
+}

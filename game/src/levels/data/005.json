@@ -1,0 +1,16 @@
+{
+  "id": 5,
+  "name": "Kırmızı Sipariş",
+  "difficulty": 3,
+  "customer": "ayse",
+  "colors": [1, 2, 3],
+  "pieceLimit": 17,
+  "goals": [{ "type": "clear_paths", "count": 2 }, { "type": "clear_paths", "count": 1, "color": 1 }],
+  "stars": [600, 1200, 1800],
+  "prefill": { "type": "random", "rows": 12, "density": 0.6, "colors": [1, 1, 2, 3] },
+  "obstacles": [],
+  "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 5005,
+  "intro": ["colorPath"],
+  "hint": "Ayşe Teyze pul biber istiyor: kırmızı bir yol patlat."
+}
