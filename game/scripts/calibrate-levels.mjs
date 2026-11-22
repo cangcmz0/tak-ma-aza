@@ -212,6 +212,10 @@ async function main() {
       const never = sw.filter((r) => r.needed === null).length;
       console.log(`| ${prep.id} | ${prep.name} | ${d} | ${pct(target)} | ${limit} | ${pct(core.rateAtLimit(sw, limit))} | ${core.limitForRate(sw, target) ?? '–'} | ${q(0.5)}/${q(0.8)}/${q(0.95)} | ${never}/${sw.length} |`);
     }
+    if (o.json) {
+      const sweep = Object.fromEntries(preps.map(({ prep }) => [prep.id, results.get(`${bot}:${prep.id}`)]));
+      writeFileSync(o.json, JSON.stringify({ date: new Date().toISOString(), bot, trials: o.trials, sweep }, null, 2));
+    }
     return;
   }
 
