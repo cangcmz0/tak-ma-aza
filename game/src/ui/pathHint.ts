@@ -4,6 +4,7 @@
 // it), arrowheads at both ends and a "%80" tag. Recomputed once per settle
 // (game/pathProgress.ts), drawn on its own canvas over the board; hidden while sand moves.
 // All coordinates come from grid.w/h and the renderer (no hard-coded board size).
+import { SUB } from '../config';
 import type { SessionEvent } from '../core/events';
 import { PathProgressScanner, type PathProgress } from '../game/pathProgress';
 import type { Session } from '../game/session';
@@ -89,7 +90,8 @@ export class PathHint {
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     c.clearRect(0, 0, this.wCss, this.hCss);
     const g = this.host.session.grid;
-    const k = this.wCss / g.w; // css px per grain
+    const k = this.wCss / g.w; // css px per cell
+    const kg = k * SUB; // css px per design grain (decoration sizes)
     const hints = this.progress
       .filter((p) => p.frac >= MIN_FRAC && p.frac < 1)
       .sort((a, b) => b.frac - a.frac)
@@ -103,7 +105,7 @@ export class PathHint {
       const bx = hasR ? p.rightReach * k : this.wCss;
       const by = (hasR ? p.rightRow + 0.5 : p.leftRow + 0.5) * k;
       const col = sandCss(p.color, 1);
-      const lw = Math.max(2, k * 0.55);
+      const lw = Math.max(2, kg * 0.55);
       // Gap line: dark casing + coloured dashes.
       c.lineCap = 'round';
       c.setLineDash([]);
@@ -124,7 +126,7 @@ export class PathHint {
       // Percentage tag beside the tip, over the region's own sand (the gap stays visible).
       const pct = `%${Math.round(p.frac * 100)}`;
       let tx = hasL ? ax - 34 : bx + 34;
-      let ty = (hasL ? ay : by) - Math.max(14, k * 3);
+      let ty = (hasL ? ay : by) - Math.max(14, kg * 3);
       for (const q of placed) if (Math.abs(q.x - tx) < 56 && Math.abs(q.y - ty) < 20) ty = q.y - 22;
       tx = Math.max(26, Math.min(this.wCss - 26, tx));
       placed.push({ x: tx, y: ty });
@@ -140,7 +142,7 @@ export class PathHint {
   }
 
   private arrow(c: CanvasRenderingContext2D, x: number, y: number, dir: 1 | -1, col: string, k: number): void {
-    const s = Math.max(6, k * 1.8);
+    const s = Math.max(6, k * SUB * 1.8);
     c.beginPath();
     c.moveTo(x + dir * s, y);
     c.lineTo(x - dir * s * 0.2, y - s * 0.75);
@@ -155,7 +157,7 @@ export class PathHint {
 
   /** Target marker on the opposite wall when no region grows from it yet. */
   private wallFlag(c: CanvasRenderingContext2D, x: number, y: number, col: string, k: number): void {
-    const s = Math.max(5, k * 1.4);
+    const s = Math.max(5, k * SUB * 1.4);
     c.fillStyle = col;
     c.strokeStyle = 'rgba(20,10,6,0.75)';
     c.lineWidth = 1.5;

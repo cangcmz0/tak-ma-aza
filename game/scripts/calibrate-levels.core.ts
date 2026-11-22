@@ -15,6 +15,7 @@
 // Wave-2 mechanics (scripted pieces, joker, two-colour pieces, sacks /
 // clear_obstacles) are detected at runtime; a level using one the engine lacks is
 // flagged "pending" and, where possible, calibrated with a proxy.
+import { BLOCK, cellsToGrains, SUB } from '../src/config';
 import { Rng } from '../src/core/rng';
 import { chooseMove, type BotMove } from '../src/dev/bot';
 import { ClearResult, findClears, removeMarked } from '../src/engine/clear';
@@ -254,7 +255,8 @@ class SmartEvaluator {
         break;
       }
     const fill = (g.h - top) / g.h;
-    return total - fill * fill * 30 - (top < 16 ? (16 - top) * 15 : 0);
+    const danger = g.h / 5; // top 4 block rows
+    return total - fill * fill * 30 - (top < danger ? ((danger - top) / SUB) * 15 : 0);
   }
 
   /** Sacks (alive in the session) touched by the current clear marks. */
@@ -297,7 +299,7 @@ class SmartEvaluator {
     while (canStamp(g, shape, x, y + 1)) y++;
     stamp(g, p, x, y, this.rng);
     p.rot = r0;
-    settle(g, this.rng, 300);
+    settle(g, this.rng, 300 * SUB);
     let gain = 0;
     const paths = findClears(g, this.res);
     if (paths > 0) {
@@ -310,9 +312,9 @@ class SmartEvaluator {
           for (let r = 0; r < res.regionCount; r++) if (d.color === undefined || res.regionColor[r] === d.color) n++;
           gain += Math.min(n, rem) * (d.color === undefined ? 400 : 700);
         } else if (d.type === 'clear_color_grains') {
-          gain += Math.min(res.colorCounts[d.color], rem) * 2.5;
+          gain += Math.min(cellsToGrains(res.colorCounts[d.color]), rem) * 2.5;
         } else if (d.type === 'score') {
-          gain += Math.min(res.cellCount + 100 * paths, rem) * 0.6;
+          gain += Math.min(cellsToGrains(res.cellCount) + 100 * paths, rem) * 0.6;
         } else if (d.type === 'clear_obstacles') {
           const { hits, breaks } = this.sackHits(s);
           gain += hits * 250 + Math.min(breaks, rem) * 350;
@@ -320,7 +322,7 @@ class SmartEvaluator {
       }
       gain += 100 * paths; // any clear makes room and keeps the chain going
       removeMarked(g, res);
-      settle(g, this.rng, 300);
+      settle(g, this.rng, 300 * SUB);
     }
     return gain + this.shape(s, ctx.weights, ctx.sackBias);
   }
@@ -335,7 +337,7 @@ interface SmartContext {
 const smartEvaluators = new Map<string, SmartEvaluator>();
 
 /** Goal-aware greedy move choice (see SmartEvaluator). Null if nothing fits. */
-export function chooseSmartMove(s: Session, xStep = 4): BotMove | null {
+export function chooseSmartMove(s: Session, xStep = BLOCK): BotMove | null {
   const grid = s.grid;
   const key = `${grid.w}x${grid.h}`;
   let ev = smartEvaluators.get(key);
@@ -430,7 +432,7 @@ export interface SweepResult {
  * bot needed. The bot's choices do not depend on the limit, so the win rate for any
  * limit L is ≈ P(needed ≤ L) — one run gives the whole curve.
  */
-export function playUnlimited(level: LevelDef, attempt: number, bot: BotKind = 'smart', maxMoves = 80): SweepResult {
+export function playUnlimited(level: LevelDef, attempt: number, bot: BotKind = 'smart', maxMoves = 60): SweepResult {
   const lv: LevelDef = { ...level, pieceLimit: null };
   const s = new Session(lv, { attempt });
   const choose = bot === 'smart' ? chooseSmartMove : chooseMove;
@@ -550,9 +552,10 @@ export function boardAscii(level: LevelDef): string {
     }
   const ready = findClears(g, ClearResult.for(g));
   const lines: string[] = [`hazır yol: ${ready}${ready ? '  <-- GEÇERSİZ (GDD §8)' : ''}`];
-  for (let y = Math.max(0, top - 2); y < g.h; y++) {
+  // One character per design grain (samples every SUB-th cell).
+  for (let y = Math.max(0, top - 2 * SUB) - (Math.max(0, top - 2 * SUB) % SUB); y < g.h; y += SUB) {
     let line = '';
-    for (let x = 0; x < g.w; x++) {
+    for (let x = 0; x < g.w; x += SUB) {
       const i = y * g.w + x;
       const c = g.color[i];
       if (c === EMPTY) line += '.';
@@ -563,7 +566,8 @@ export function boardAscii(level: LevelDef): string {
       else if (c <= 9) line += String(c);
       else line += '?';
     }
-    lines.push(`${String(y).padStart(2)}${y % 4 === 0 ? '-' : ' '}${line}`);
+    const dy = y / SUB;
+    lines.push(`${String(dy).padStart(2)}${dy % 4 === 0 ? '-' : ' '}${line}`);
   }
   return lines.join('\n');
 }
