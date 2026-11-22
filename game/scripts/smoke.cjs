@@ -3,7 +3,7 @@
 // Exits non-zero on console errors / page errors.
 const { chromium } = require('playwright');
 const OUT = process.argv[2] || '.';
-const URL = process.argv[3] || 'http://localhost:4173/?debug=1';
+const URL = process.argv[3] || 'http://localhost:4173/?debug=1&nofirst&nohowto';
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });

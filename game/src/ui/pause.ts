@@ -3,6 +3,7 @@ import { zerde } from '../art/zerde';
 import { feedbackToggles } from '../fx/settingsToggle';
 import { strings } from '../i18n';
 import type { App, Scene } from './app';
+import { ConfirmScene } from './confirm';
 import { h } from './dom';
 import { HowToScene } from './howTo';
 import { LevelSelectScene } from './levelSelect';
@@ -24,6 +25,38 @@ export class PauseScene implements Scene {
     };
     const restartMode: PlayMode = mode.kind === 'level' ? { kind: 'level', id: mode.id, intro: false } : mode;
     const endless = mode.kind === 'endless';
+    const c = strings().confirm;
+    // An abandoned level attempt still counts, so the next try deals a new sequence (QA-004).
+    const abandon = () => {
+      if (mode.kind === 'level') app.save.recordAbandon(mode.id);
+    };
+    // Restart / leave lose the attempt's progress: ask first (GDD §15, QA-003).
+    const restart = () =>
+      app.scenes.push(
+        new ConfirmScene(app, {
+          id: 'restart',
+          title: c.restartTitle,
+          body: c.progressLost,
+          yes: c.restartYes,
+          onYes: () => {
+            abandon();
+            app.scenes.replace(new PlayScene(app, restartMode));
+          },
+        }),
+      );
+    const leave = () =>
+      app.scenes.push(
+        new ConfirmScene(app, {
+          id: 'leave',
+          title: endless ? c.leaveEndlessTitle : c.leaveTitle,
+          body: c.progressLost,
+          yes: c.leaveYes,
+          onYes: () => {
+            abandon();
+            app.scenes.replace(endless ? new MenuScene(app) : new LevelSelectScene(app));
+          },
+        }),
+      );
     this.el = h(
       'section',
       { class: 'scene overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': s.title },
@@ -40,7 +73,7 @@ export class PauseScene implements Scene {
             class: 'btn',
             type: 'button',
             'data-testid': 'pause-restart',
-            onclick: tap(() => app.scenes.replace(new PlayScene(app, restartMode))),
+            onclick: tap(restart),
           },
           icon('retry'),
           h('span', { text: s.restart }),
@@ -51,7 +84,7 @@ export class PauseScene implements Scene {
             class: 'btn btn-ghost',
             type: 'button',
             'data-testid': 'pause-exit',
-            onclick: tap(() => app.scenes.replace(endless ? new MenuScene(app) : new LevelSelectScene(app))),
+            onclick: tap(leave),
           },
           icon(endless ? 'home' : 'map'),
           h('span', { text: endless ? s.menu : s.levels }),

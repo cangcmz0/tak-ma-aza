@@ -52,6 +52,8 @@ export const tr = {
     sneeze: 'Hapşu!',
     /** Short order-line labels on the HUD card (the value column shows the numbers). */
     goalShort: { paths: 'Soldan sağa yol', pathsColor: '{color} yolu', score: 'Puan', obstacles: 'Çuval' },
+    /** Narrow-screen variants (≤ 340 px wide). */
+    goalTiny: { paths: 'Yol' },
   },
   goals: {
     clear_paths: 'Soldan sağa {n} yol patlat',
@@ -148,6 +150,19 @@ export const tr = {
     restart: 'Yeniden başla',
     levels: 'Bölümler',
     menu: 'Ana menü',
+  },
+  /** Confirmations (GDD §15: restart / leave lose progress; Android back on the main menu). */
+  confirm: {
+    restartTitle: 'Yeniden başlansın mı?',
+    leaveTitle: 'Bölümden çıkılsın mı?',
+    leaveEndlessTitle: 'Oyundan çıkılsın mı?',
+    progressLost: 'İlerleme kaybolacak.',
+    restartYes: 'Yeniden başla',
+    leaveYes: 'Çık',
+    exitTitle: 'Çıkılsın mı?',
+    exitBody: 'Oyunu kapatmak istiyor musun?',
+    exitYes: 'Çık',
+    no: 'Vazgeç',
   },
   result: {
     won: 'Tebrikler!',

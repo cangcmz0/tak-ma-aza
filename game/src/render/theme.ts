@@ -86,7 +86,7 @@ export const defaultTheme: Theme = {
     // Text
     '--fg': '#fbf0dc',
     '--muted': '#c9ad8d',
-    '--faint': '#8c7360',
+    '--faint': '#9a8068',
     // Primary action: saffron gold
     '--accent': '#f3b53f',
     '--accent-hi': '#ffd77a',
@@ -96,7 +96,7 @@ export const defaultTheme: Theme = {
     '--parchment': '#f4e4c3',
     '--parchment-2': '#e8d0a3',
     '--parchment-ink': '#3b2414',
-    '--parchment-muted': '#8a6a4a',
+    '--parchment-muted': '#76583a',
     '--jute': '#c9a66b',
     // State colours
     '--danger': '#ff5b3d',

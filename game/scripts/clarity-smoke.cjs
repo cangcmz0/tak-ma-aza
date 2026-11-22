@@ -51,7 +51,7 @@ const BASE = process.argv[3] || 'http://localhost:4173/';
   }
 
   // 1) First launch → level 1: how-to card first.
-  await page.goto(`${BASE}?debug=1&nodaily`);
+  await page.goto(`${BASE}?debug=1&nodaily&nofirst`); // fresh save would open level 1 directly
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('[data-testid=menu-play]');

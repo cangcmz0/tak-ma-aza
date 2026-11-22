@@ -52,6 +52,8 @@ interface Step {
   until: SessionEventType | 'timer';
   /** Timer length, or max wait for an event. */
   ms?: number;
+  /** Also leave the step on this event, jumping `skip` steps ahead (e.g. the player dropped without rotating). */
+  orOn?: { type: SessionEventType; skip: number };
 }
 
 const T = () => strings().tutorial;
@@ -75,7 +77,8 @@ export const TUTORIAL_STEPS: Record<TutorialId, Step[]> = {
     { text: () => T().t2_refill, hand: 'move', until: 'trayRefill', ms: 20000 },
   ],
   t3: [
-    { text: () => T().t3_rotate, hand: 'tapSlot', slot: 0, focus: true, until: 'rotated' },
+    // QA-010: a player who drops without rotating must not get stuck on the rotate step.
+    { text: () => T().t3_rotate, hand: 'tapSlot', slot: 0, focus: true, until: 'rotated', orOn: { type: 'placed', skip: 2 } },
     { text: () => T().t3_drop, hand: 'move', slot: 0, focus: true, until: 'placed' },
     { until: 'chainWord', ms: 15000 },
     { text: () => T().t3_chain, until: 'timer', ms: 3000 },
@@ -233,6 +236,7 @@ export class Tutorial {
     }
     const st = this.step;
     if (st && st.until === e.type) this.goto(this.index + 1);
+    else if (st?.orOn && st.orOn.type === e.type) this.goto(this.index + st.orOn.skip);
   }
 
   frame(dtMs: number): void {

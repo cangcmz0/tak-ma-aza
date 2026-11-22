@@ -1,7 +1,8 @@
-// Touch / mouse input for the play scene.
-// - Drag a tray piece onto the board and release to drop it.
-// - With a piece selected, touch the board, slide to aim, release to drop.
-// - Tap the already-selected tray piece to rotate it.
+// Touch / mouse input for the play scene. Placement is drag & drop only:
+// - Press a tray pouch, drag it over the board (it is drawn lifted above the finger) and
+//   release to drop it there. Releasing outside the board returns it to the tray (no cost).
+// - Tap the already-selected tray pouch to rotate it.
+// - Touching the board itself does nothing (tap-to-drop was removed: players found it confusing).
 // Only one pointer is tracked at a time (extra fingers are ignored).
 
 export interface PointerTarget {
@@ -22,15 +23,13 @@ export interface PointerTarget {
 }
 
 /** Vertical slack above the board that still counts as "over the board" (CSS px). */
-/** Placement only by drag & drop from the tray. */
-const DRAG_ONLY = true;
 const BOARD_TOP_SLACK = 40;
 /** Movement (CSS px) after which a press is a drag, not a tap. */
 const TAP_SLOP = 10;
 
 interface Gesture {
   id: number;
-  source: 'tray' | 'board';
+  source: 'tray';
   slot: number;
   wasSelected: boolean;
   x0: number;
@@ -57,7 +56,6 @@ export class PointerInput {
       this.offs.push(() => el.removeEventListener(type, fn as EventListener, opts));
     };
     slots.forEach((el, i) => on(el, 'pointerdown', (e) => this.downTray(e, i)));
-    on(board, 'pointerdown', (e) => this.downBoard(e));
     on(window, 'pointermove', (e) => this.move(e), { passive: true });
     on(window, 'pointerup', (e) => this.up(e));
     on(window, 'pointercancel', (e) => this.cancel(e));
@@ -89,25 +87,12 @@ export class PointerInput {
     this.g = { id: e.pointerId, source: 'tray', slot, wasSelected, x0: e.clientX, y0: e.clientY, moved: false };
   }
 
-  private downBoard(e: PointerEvent): void {
-    // Pieces are placed only by dragging them from the tray (player feedback: tap-to-drop
-    // on the board was confusing). A tap on the board does nothing.
-    if (DRAG_ONLY) return;
-    if (this.g || !this.target.enabled()) return;
-    const slot = this.target.selected();
-    if (slot < 0 || !this.target.hasPiece(slot)) return;
-    e.preventDefault();
-    this.g = { id: e.pointerId, source: 'board', slot, wasSelected: true, x0: e.clientX, y0: e.clientY, moved: false };
-    this.target.aim(e.clientX);
-  }
-
   private move(e: PointerEvent): void {
     const g = this.g;
     if (!g || e.pointerId !== g.id) return;
     if (!g.moved && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > TAP_SLOP) g.moved = true;
     if (g.source === 'tray' && g.moved) this.target.drag?.(e.clientX, e.clientY);
-    if (g.source === 'board') this.target.aim(e.clientX);
-    else if (this.overBoard(e.clientX, e.clientY)) this.target.aim(e.clientX, g.moved ? e.clientY : undefined);
+    if (this.overBoard(e.clientX, e.clientY)) this.target.aim(e.clientX, g.moved ? e.clientY : undefined);
     else if (g.moved) this.target.aim(null);
   }
 
@@ -122,8 +107,7 @@ export class PointerInput {
       return;
     }
     if (this.overBoard(e.clientX, e.clientY)) {
-      if (g.source === 'tray') this.target.aim(e.clientX, e.clientY);
-      else this.target.aim(e.clientX);
+      this.target.aim(e.clientX, e.clientY);
       this.target.drop();
     }
   }

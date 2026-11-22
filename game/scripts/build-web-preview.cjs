@@ -21,7 +21,7 @@ const safe = (s) => s.replace(/<\/(script|style)/gi, '<\\/$1');
 
 const page = [
   `<title>${title}</title>`,
-  `<meta name="theme-color" content="#14112b">`,
+  `<meta name="theme-color" content="#1a120e">`,
   // Turkish casing for CSS text-transform (i→İ); the artifact wrapper has no lang attribute.
   `<script>document.documentElement.lang = 'tr';</script>`,
   `<style>${safe(css.join('\n'))}</style>`,

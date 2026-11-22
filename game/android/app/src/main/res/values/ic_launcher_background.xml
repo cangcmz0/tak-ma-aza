@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Adaptive icon arka planı (scripts/make-icons.cjs: COLORS.bgMid; ikon degradesinin ortası). -->
-    <color name="ic_launcher_background">#2A1F5C</color>
+    <!-- Adaptive icon arka planı (scripts/make-icons.cjs: COLORS.bgMid; sıcak ceviz, theme --panel-3). -->
+    <color name="ic_launcher_background">#4B3527</color>
 </resources>

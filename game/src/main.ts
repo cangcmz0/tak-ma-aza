@@ -10,7 +10,7 @@ import { createStorageBackend } from './platform/preferencesBackend';
 import { SaveStore } from './platform/storage';
 import { applyCssVars } from './render/theme';
 import { SceneManager, type App } from './ui/app';
-import { MenuScene } from './ui/menu';
+import { startScene } from './ui/menu';
 
 declare const __APP_VERSION__: string;
 
@@ -39,7 +39,7 @@ async function boot(): Promise<void> {
   };
   if (LEVEL_ERRORS.length && app.debug) console.warn('Level validation errors', LEVEL_ERRORS);
 
-  app.scenes.replace(new MenuScene(app));
+  app.scenes.replace(startScene(app)); // first launch → level 1 directly (QA-007), else the menu
   void bindNativeShell(app); // Android back button + background save (no-op on web)
 
   // Resize / orientation.

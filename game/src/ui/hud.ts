@@ -11,7 +11,7 @@ import { fmt, strings } from '../i18n';
 import { symbolSvg } from '../render/symbols';
 import { sandCss } from '../render/theme';
 import { h } from './dom';
-import { goalColor, goalLabel, goalShortLabel } from './goalText';
+import { goalColor, goalLabel, goalShortLabel, goalTinyLabel } from './goalText';
 
 export interface GoalEl {
   root: HTMLElement;
@@ -53,6 +53,8 @@ export class PlayHud {
   private readonly thresholds: number[];
   private cache = { score: -1, pieces: -1 };
   private goalCache: number[] = [];
+  private readonly noteEl: HTMLElement;
+  private noteTimer = 0;
 
   constructor(
     private readonly session: Session,
@@ -78,7 +80,14 @@ export class PlayHud {
       const value = h('span', { class: 'goal-value' });
       const chip = goalChip(goal);
       const bar = h('i', { class: 'goal-bar', 'aria-hidden': 'true' });
-      const root = h('li', { class: 'goal', 'aria-label': goalLabel(goal) }, bar, chip, h('span', { class: 'goal-label', text: goalShortLabel(goal) }), value);
+      // Full and one-word labels; CSS shows the short one on narrow screens (QA-013).
+      const label = h(
+        'span',
+        { class: 'goal-label' },
+        h('span', { class: 'gl-full', text: goalShortLabel(goal) }),
+        h('span', { class: 'gl-tiny', text: goalTinyLabel(goal) }),
+      );
+      const root = h('li', { class: 'goal', 'aria-label': goalLabel(goal) }, bar, chip, label, value);
       const c = goalColor(goal);
       if (c !== undefined) root.style.setProperty('--goal-tint', sandCss(c));
       this.goalEls.push({ root, value, chip, bar });
@@ -86,13 +95,24 @@ export class PlayHud {
     }
     if (endless) goals.append(h('li', { class: 'goal goal-endless' }, h('span', { class: 'goal-label', text: s.endlessSub })));
 
-    const caption = endless ? s.endlessTitle : `${fmt(s.level, { n: level.id })} · ${level.name}`;
+    const caption = s.endlessTitle;
     const face = endless ? h('span', { class: 'avatar avatar-zerde', 'aria-hidden': 'true' }, zerde('idle')) : customerAvatar(level.customer);
     this.orderCard = h(
       'div',
       { class: `order-card goals-${Math.min(3, session.goals.goals.length || 1)}`, 'data-testid': 'order-card' },
       face,
-      h('div', { class: 'order-body' }, h('small', { class: 'order-caption', text: caption }), goals),
+      h(
+        'div',
+        { class: 'order-body' },
+        // Level number always; the name is dropped on narrow screens (QA-013).
+        h(
+          'small',
+          { class: 'order-caption' },
+          endless ? caption : h('span', { class: 'cap-level', text: fmt(s.level, { n: level.id }) }),
+          endless ? null : h('span', { class: 'cap-name', text: ` · ${level.name}` }),
+        ),
+        goals,
+      ),
     );
 
     this.header = h(
@@ -114,9 +134,22 @@ export class PlayHud {
       track.append(m);
     }
     this.scoreBar = h('div', { class: `scorebar${endless ? ' endless' : ''}` }, track, h('div', { class: 'score-box' }, this.scoreEl, h('small', { text: s.score })));
+    this.noteEl = h('div', { class: 'hud-note', role: 'status', 'data-testid': 'hud-note' });
+    this.scoreBar.append(this.noteEl);
   }
 
   /** @returns true when an order line changed. */
+  /**
+   * Short notice laid over the score bar (e.g. "Hediye: …"), so it never covers the board
+   * (QA-021). Hidden again after `ms`.
+   */
+  showNote(text: string, ms = 3500): void {
+    this.noteEl.textContent = text;
+    this.noteEl.classList.add('show');
+    window.clearTimeout(this.noteTimer);
+    this.noteTimer = window.setTimeout(() => this.noteEl.classList.remove('show'), ms);
+  }
+
   update(bestEndless: number): boolean {
     const s = this.session;
     if (s.score !== this.cache.score) {

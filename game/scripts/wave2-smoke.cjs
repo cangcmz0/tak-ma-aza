@@ -48,7 +48,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2-gameplay-${na
   }
 
   // 1) Fresh start: menu.
-  await page.goto(`${BASE}?debug=1`);
+  await page.goto(`${BASE}?debug=1&nofirst`);
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('[data-testid=menu-play]');
@@ -116,7 +116,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2-gameplay-${na
   const handled = await page.evaluate(() => window.__app.scenes.back());
   await page.waitForSelector('[data-testid=pause-resume]');
   log('back() handled on play scene:', handled);
-  await page.click('[data-testid=pause-exit]');
+  await page.click('[data-testid=pause-exit]'); await page.click('[data-testid=confirm-yes]');
 
   // 4) Sack level (intro card with "Yeni!" mechanic card), joker and two-colour levels.
   for (const id of [16, 13, 22]) {
@@ -132,7 +132,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2-gameplay-${na
     await playHinted(2);
     await shot(page, `10-level-${id}`);
     await page.click('[data-testid=pause]');
-    await page.click('[data-testid=pause-exit]');
+    await page.click('[data-testid=pause-exit]'); await page.click('[data-testid=confirm-yes]');
   }
 
   // 5) Endless mode from the menu, play a few moves, force game over → record.

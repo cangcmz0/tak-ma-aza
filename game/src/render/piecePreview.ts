@@ -1,6 +1,6 @@
 // Tray pieces drawn as small spice pouches ("kese"): one stitched cloth silhouette per
 // tetromino with rounded outer corners, spice speckles, a twine tie, the colour-blind
-// symbol on every block (GDD §3.2) and a chili on bomb blocks. Joker blocks get rainbow
+// symbol on every block (GDD §3.2; bomb blocks too, with a small chili beside it). Joker blocks get rainbow
 // stripes and a star. Used by the tray slots and by the dragged piece (board scale).
 import { JOKER } from '../engine/grid';
 import { blockColor, pieceShape, type Piece } from '../engine/pieces';
@@ -164,15 +164,22 @@ export function drawPieceBlocks(c: CanvasRenderingContext2D, piece: Piece, ox: n
     const cx = ox + bx * cell + cell / 2;
     const cy = oy + by * cell + cell / 2 + cell * 0.03;
     const col = blockColor(piece, i);
-    if (piece.special === 'bomb' && i === piece.specialCell) {
-      chili(c, cx, cy, cell);
-      continue;
+    const bomb = piece.special === 'bomb' && i === piece.specialCell;
+    if (symbols) {
+      // Bomb blocks keep their colour symbol (QA-020), nudged left so the chili fits beside it.
+      const sx = bomb ? cx - cell * 0.13 : cx;
+      const sy = bomb ? cy + cell * 0.08 : cy;
+      const sr = bomb ? cell * 0.19 : cell * 0.23;
+      if (col === JOKER) {
+        drawSymbol(c, JOKER, sx, sy + cell * 0.01, sr * 1.12, 'rgba(59,36,20,0.6)');
+        drawSymbol(c, JOKER, sx, sy - cell * 0.02, sr, '#fff8e6');
+      } else {
+        // Light halo + dark glyph: readable on every spice colour (QA-020).
+        drawSymbol(c, col, sx, sy + cell * 0.015, sr * 1.16, 'rgba(255,246,226,0.55)');
+        drawSymbol(c, col, sx, sy, sr, mixHex(sandCss(col, 2), '#1a0a04', 0.55));
+      }
     }
-    if (!symbols) continue;
-    if (col === JOKER) {
-      drawSymbol(c, JOKER, cx, cy + cell * 0.01, cell * 0.24, 'rgba(59,36,20,0.55)');
-      drawSymbol(c, JOKER, cx, cy - cell * 0.02, cell * 0.22, '#fff8e6');
-    } else drawSymbol(c, col, cx, cy, cell * 0.17, mixHex(sandCss(col, 2), '#1a0a04', 0.35));
+    if (bomb) chili(c, symbols ? cx + cell * 0.2 : cx, symbols ? cy - cell * 0.1 : cy, symbols ? cell * 0.62 : cell);
   }
 
   // 6) twine tie on the top-left block of the top row.

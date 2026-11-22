@@ -5,7 +5,7 @@ import { icon } from '../art/icons';
 import { zerde } from '../art/zerde';
 import { goalDone } from '../game/goals';
 import type { Session } from '../game/session';
-import { fmt, strings } from '../i18n';
+import { fmt, num, strings } from '../i18n';
 import { reducedMotion, sandCss } from '../render/theme';
 import { h } from './dom';
 import { goalLabel } from './goalText';
@@ -59,7 +59,7 @@ export function orderProgress(session: Session): HTMLElement | null {
         { class: goalDone(g) ? 'done' : '' },
         goalChip(g),
         h('span', { class: 'ro-label', text: goalLabel(g) }),
-        h('span', { class: 'ro-value', text: `${Math.min(g.current, g.target)}/${g.target}${unit}` }),
+        h('span', { class: 'ro-value', text: `${num(Math.min(g.current, g.target))}/${num(g.target)}${unit}` }),
         h('i', { class: 'ro-bar', style: `--p:${frac}` }),
       ),
     );

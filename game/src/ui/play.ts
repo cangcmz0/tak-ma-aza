@@ -235,7 +235,8 @@ export class PlayScene implements Scene {
     if (this.mode.kind === 'level' && level.tutorial === 't1' && !noHowTo && !this.app.save.hasSeenIntro(HOWTO_SEEN)) this.app.scenes.push(new HowToScene(this.app));
     if (this.gifts.length) {
       const e = strings();
-      this.toast(fmt(e.economy.giftToast, { list: this.gifts.map((id) => e.boosters.names[id]).join(', ') }), 2200);
+      // Over the score bar, not the board (QA-021).
+      this.hud.showNote(fmt(e.economy.giftToast, { list: this.gifts.map((id) => e.boosters.names[id]).join(', ') }), 4500);
     }
     if (this.app.debug)
       (window as unknown as { __kum: unknown }).__kum = { scene: this, session: this.session, hint: () => findHintMove(this.session) };

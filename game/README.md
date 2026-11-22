@@ -27,7 +27,7 @@ NODE_PATH=$(npm root -g) node scripts/clarity-smoke.cjs /tmp/ekranlar # nasıl o
 
 Hata ayıklama: URL'ye `?debug=1` ekle → `window.__app`, oynarken `window.__kum.session` / `window.__kum.scene` / `window.__kum.hint()` (öğretici el işaretinin önerdiği hamle).
 Tahtayı elle değiştirdikten sonra `session.wake()` çağır (fizik + yol kontrolü yeniden çalışır).
-`?debug=1&unlockAll` tüm bölümleri açar; `&nohowto` bölüm 1 öncesi "Nasıl oynanır?" kartını atlar (otomatik testler için). Masaüstü tuşları: ←/→ kaydır, ↑ veya R döndür, Boşluk/↓ bırak, 1–3 parça seç, Esc duraklat.
+`?debug=1&unlockAll` tüm bölümleri açar; `&nohowto` bölüm 1 öncesi "Nasıl oynanır?" kartını atlar; `&nofirst` ilk açılışta bölüm 1 yerine menüyü açar (otomatik testler için). Masaüstü tuşları: ←/→ kaydır, ↑ veya R döndür, Boşluk/↓ bırak, 1–3 kese seç, Esc geri (oyunda duraklat).
 
 ### Android
 
@@ -84,7 +84,7 @@ src/
   ui/pathHint.ts          Tahta üstü ipucu katmanı: duvar şeritleri (çerçevede) + en yakın 2 renk için eksik boşluk (kesik çizgi, oklar, "%80")
   ui/howTo.ts             "Nasıl oynanır?" kartı (3 animasyonlu adım); bölüm 1'den önce bir kez + Duraklat menüsünde
   ui/goldInfo.ts          "Altın ne işe yarar?" penceresi (her altın rozetine dokununca); booster ilk görünüşte tek seferlik balon (boosterBar), ilk altında ipucu (rewardPanel)
-  input/pointer.ts        Tepsiden sürükle-bırak, tahtaya dokun-kaydır-bırak, seçili parçaya tekrar dokun = döndür; tek parmak takibi
+  input/pointer.ts        Yalnız sürükle-bırak: keseyi tepsiden tahtaya sürükle, bırak (tahta dışında bırakınca tepsiye döner); seçili keseye tekrar dokun = döndür; tahtaya dokunmak bir şey yapmaz; tek parmak takibi
   input/keyboard.ts       Masaüstü tuşları
   ui/app.ts               App bağlamı + SceneManager (replace/push/pop, overlay)
   ui/menu.ts, play.ts, pause.ts, result.ts, goalText.ts, dom.ts
@@ -139,7 +139,7 @@ Kum ızgarası tasarım biriminden `SUB` (= 2) kat ince: **1 tasarım tanesi = S
 - **Tehlike**: kum durulduğunda en üstteki (statik olmayan) tane üstten `DANGER_ROWS` (8 tane = 8 × SUB hücre) satır içindeyse `danger {on, first}`; tahta çerçevesinin üstü kırmızı nabız atar, ilk seferde "Tezgâh doluyor!".
 - **Sonsuz mod**: `new Session(makeEndlessLevel(seed), { endless: true })`. Hedef yok, kazanılmaz, yalnızca `no_space` ile biter; renk sayısı 3/4/5 (0/3000/8000 puan), bomba 0,05 (2000+), joker 0,03 (5000+). Rekor `save.endlessBest`. Menüde bölüm `ENDLESS_UNLOCK_LEVEL` (8) kazanılınca açılır (`?debug=1&unlockAll` hep açık).
 - Tepsi: 3 yuva, üçü de bitince yeniden dolar (limit < 3 kaldıysa kalan kadar). Parçalar **adil torbadan** gelir: şekiller karıştırılmış torba (izinli şekiller), renkler her renk 2 kez olan torba (`PieceBag`).
-- Döndürme: seçili tepsi parçasına tekrar dokun. Ayrı "Döndür" düğmesi `SHOW_ROTATE_BUTTON` ile açılır (GDD §4.3 gereği varsayılan kapalı).
+- Yerleştirme yalnız sürükle-bırak; döndürme: seçili tepsi kesesine tekrar dokun. Ayrı "Döndür" düğmesi `SHOW_ROTATE_BUTTON` ile açılır (GDD §4.3 gereği varsayılan kapalı).
 - **Kazanma:** kum durulmuş ve bekleyen patlama yokken tüm hedefler tamam.
 - **Kaybetme** (yalnızca kum durulmuşken): parça limiti bitti ve hedefler eksik (`out_of_pieces`) ya da tepsideki hiçbir parça hiçbir dönüşte/sütunda sığmıyor (`no_space`).
 - Yıldız: kazanınca en az 1; `stars` eşiklerinden her biri için +1 (en fazla 3).
@@ -208,7 +208,7 @@ Ses dosyası yok: tüm efektler **Web Audio API ile sentezlenir** (`src/audio/`)
 - Beyaz/pembe gürültü tamponları bir kez, Karplus-Strong telli notaları ilk kullanımda (jingle notaları açılışta) üretilir ve önbelleklenir.
 - Zincir: master → kompresör → hoparlör; kısa geri beslemeli gecikme "oda" efekti (clear/yıldız/jingle).
 - **Üst üste binme sınırı:** her sesin `cooldownMs` ve `maxVoices` değeri var (`sounds.ts`); sınırı aşan çağrı sessizce atlanır.
-- **Ayarlar** (`SaveStore.settings`): `sound`, `haptics`, `volume` (0..1). Menü ve **Duraklat** ekranında Ses/Titreşim düğmeleri. Ses kapalıyken hiç düğüm oluşturulmaz ve bağlam askıya alınır. Uygulama arka plana geçince döngüler durur, bağlam askıya alınır; Duraklat açılınca döngüler durur.
+- **Ayarlar** (`SaveStore.settings`): `sound`, `haptics`, `volume` (0..1). Menü ve **Duraklat** ekranında Ses/Titreşim düğmeleri. Ses kapalıyken hiç düğüm oluşturulmaz ve bağlam askıya alınır. Duraklat açılınca, sahneden çıkınca (harita / menü / yeniden başla) ve uygulama arka plana geçince (önce Duraklat açılır) döngüler `stopLoops()` ile durur; arka planda bağlam da askıya alınır. Oyuna dönülünce tahta hâlâ tehlikedeyse tehlike döngüsü yeniden başlar (`ui/play.ts` `frame()`, devam +5 sonrası da).
 - Döngüler: `setFlow(0..1)` kum hışırtısı (yenilenmezse 2,5 sn'de kendiliğinden söner), `setDanger(on)` 1,2 sn'de bir iki "küt". `stopLoops()` ikisini de keser.
 - WebAudio yoksa (Node/vitest, eski WebView) her çağrı güvenli no-op.
 
@@ -335,8 +335,9 @@ Tek kaynak: `src/render/theme.ts` → `defaultTheme.css` (`:root`'a yazılır). 
 GDD §18.6'daki farklardan **yapılanlar**: puan formülü + zincir tavanı + Tezgâh Bonusu, deneme başına tohum, adil torba, renk id eşlemesi, ayrı döndür düğmesi kaldırıldı, "Burası dolu!" metni.
 Dalga 2 (Oynanış Mühendisi) **yapılanlar**: çuval + `clear_obstacles`, joker, ikili kese, `scriptedPieces`, yardım kuralı, zincir kuralı (`CHAIN_RESET_ON_DROP = false`), sürüklenen kese 64 dp yukarıda, tehlike uyarısı, Çifte/zincir yazıları, taneler sipariş kesesine uçar (yer tutucu), bölüm başı kartı + mekanik kartları, öğretici t1–t3, Sonsuz mod + rekor, Android geri tuşu, Preferences kaydı.
 
-- Sanat (dalga 2b) yapıldı: tema, tahta dokusu, keseler, HUD, Zerde, efektler, menü/harita/kartlar, öğretici karartması. Eksikler: Ayarlar'da "Ekran sarsıntısı" ve "Renk körü modu" anahtarı yok (semboller tepside/çiplerde hep açık; sarsıntı yalnızca OS "hareketi azalt" ile kapanır); uygulama ikonu / açılış görseli (`scripts/make-icons.cjs`) eski mor paletle — yeni palete göre yeniden üretilmeli; Zerde'nin harita düğümüne yürüme ve sandık açılma animasyonu yok; çuval hasarında hücreler değil yalnızca bağ/parlama sallanır.
-- İlk açılışta doğrudan bölüm 1'e girme (GDD §15) yok; menüden "Oyna".
+- Sanat (dalga 2b) yapıldı: tema, tahta dokusu, keseler, HUD, Zerde, efektler, menü/harita/kartlar, öğretici karartması. Eksikler: Ayarlar'da "Ekran sarsıntısı" ve "Renk körü modu" anahtarı yok (semboller tepside/çiplerde hep açık; sarsıntı yalnızca OS "hareketi azalt" ile kapanır); Zerde'nin harita düğümüne yürüme ve sandık açılma animasyonu yok; çuval hasarında hücreler değil yalnızca bağ/parlama sallanır.
+- İlk açılış (hiç bölüm oynanmamış): menü atlanır, doğrudan bölüm 1 + "Nasıl oynanır?" kartı (`ui/menu.ts` `startScene`). Duraklat → Yeniden başla / Bölümler ve Android geri tuşu (ana menüde "Çıkılsın mı?") onay sorar (`ui/confirm.ts`); yarıda bırakılan deneme `attempts`'e sayılır (`save.recordAbandon`), yeni deneme farklı kese dizisi verir.
+- Uygulama ikonu / adaptive arka plan / açılış görseli sıcak ceviz-bakır palette (`NODE_PATH=$(npm root -g) node scripts/make-icons.cjs`).
 - "Günün bulmacası" yok (GDD v1.1).
 - Müzik yok (GDD: MVP sonrası). Ana ses seviyesi kayıtta (`settings.volume`) ama oyunda kaydırıcısı yok (Ayarlar ekranı gelince eklenmeli).
 - Reklam ve satın alma sahte (geliştirme yedeği); gerçek AdMob / Play Billing eklentisi takılmadı, UMP onayı yok. Analitik (Firebase) yok. Ayarlar ekranında "Satın alımları geri yükle" yok (Mağaza'da var). Başlangıç/Esnaf paketleri (GDD "Sonra") yok. Harita ekranında altın göstergesi yok (menü ve oyunda var).

@@ -105,6 +105,12 @@ function defaults(): SaveData {
 
 const strList = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
 
+/** Finite integer in [lo, hi] (anything else → lo). */
+function clampInt(v: unknown, lo: number, hi: number): number {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : lo;
+}
+
 function sanitize(raw: unknown): SaveData {
   const d = defaults();
   if (!raw || typeof raw !== 'object') return d;
@@ -113,11 +119,11 @@ function sanitize(raw: unknown): SaveData {
     for (const [id, p] of Object.entries(r.levels)) {
       if (p && typeof p === 'object')
         d.levels[id] = {
-          stars: Number(p.stars) || 0,
-          best: Number(p.best) || 0,
+          stars: clampInt(p.stars, 0, 3), // QA-018: a corrupt save must not show 7 stars
+          best: clampInt(p.best, 0, Number.MAX_SAFE_INTEGER),
           completed: !!p.completed,
-          attempts: Number(p.attempts) || 0,
-          lossStreak: Number(p.lossStreak) || 0,
+          attempts: clampInt(p.attempts, 0, 1e9),
+          lossStreak: clampInt(p.lossStreak, 0, 1e9),
         };
     }
   }
@@ -178,12 +184,22 @@ export class SaveStore {
   recordResult(id: number, won: boolean, score: number, stars: number): void {
     const prev = this.data.levels[String(id)] ?? { stars: 0, best: 0, completed: false, attempts: 0, lossStreak: 0 };
     this.data.levels[String(id)] = {
-      stars: Math.max(prev.stars, stars),
+      stars: Math.max(prev.stars, Math.max(0, Math.min(3, Math.floor(stars)))),
       best: Math.max(prev.best, score),
       completed: prev.completed || won,
       attempts: prev.attempts + 1,
       lossStreak: won ? 0 : prev.lossStreak + 1,
     };
+    this.persist();
+  }
+
+  /**
+   * An attempt was abandoned (pause → restart / leave): count it so the next try deals a
+   * different piece sequence (QA-004). Not a loss: the help-rule streak is unchanged.
+   */
+  recordAbandon(id: number): void {
+    const prev = this.data.levels[String(id)] ?? { stars: 0, best: 0, completed: false, attempts: 0, lossStreak: 0 };
+    this.data.levels[String(id)] = { ...prev, attempts: prev.attempts + 1 };
     this.persist();
   }
 
@@ -197,6 +213,11 @@ export class SaveStore {
     p.lossStreak--;
     p.attempts = Math.max(0, p.attempts - 1);
     this.persist();
+  }
+
+  /** No level was ever played or finished (first launch: GDD §15 starts level 1 directly). */
+  get isFresh(): boolean {
+    return Object.keys(this.data.levels).length === 0;
   }
 
   /** A level is unlocked if it is the first one or the previous one is completed. */

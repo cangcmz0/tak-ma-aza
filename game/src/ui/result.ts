@@ -49,6 +49,9 @@ export class ResultScene implements Scene {
     const next = nextLevelId(id);
     const best = app.save.level(id)?.best ?? session.score;
     const reason = session.loseReason === 'no_space' ? s.noSpace : session.loseReason === 'out_of_pieces' ? s.outOfPieces : '';
+    const offer = !won && onContinue ? continueOfferEl(app, session, onContinue) : null;
+    // "Tekrar dene" is the primary action only when nothing else is (won → next level, lost → continue).
+    const retryPrimary = !won && !offer?.querySelector('.btn-primary');
     return h(
       'section',
       { class: `scene overlay result-overlay ${won ? 'won' : 'lost'}`, role: 'dialog', 'aria-modal': 'true', 'data-testid': won ? 'result-won' : 'result-lost' },
@@ -59,37 +62,47 @@ export class ResultScene implements Scene {
         resultZerde(won),
         h('h2', { class: 'result-title', text: won ? s.won : session.loseReason === 'no_space' ? s.lostSpace : session.loseReason === 'out_of_pieces' ? s.lostPieces : s.lost }),
         won ? resultStars(session.stars) : null,
-        !won && reason ? h('p', { class: 'muted', text: reason }) : null,
+        // The headline already names the reason; repeat it only when there is no specific headline.
+        !won && reason && !session.loseReason ? h('p', { class: 'muted', text: reason }) : null,
         !won ? orderProgress(session) : null,
-        h('p', { class: 'result-score', text: fmt(s.score, { n: session.score }) }),
+        h('p', { class: 'result-score' }, fmt(s.score, { n: session.score }), h('small', { class: 'result-best', text: fmt(s.best, { n: best }) })),
         won && session.endBonus > 0 ? h('p', { class: 'muted', text: fmt(s.bonus, { n: session.endBonus }) }) : null,
-        h('p', { class: 'muted', text: fmt(s.best, { n: best }) }),
         won ? rewardPanelEl(app, this.endInfo) : null,
-        !won && onContinue ? continueOfferEl(app, session, onContinue) : null,
-        won && next !== undefined
-          ? h('button', {
-              class: 'btn btn-primary',
-              type: 'button',
-              'data-testid': 'result-next',
-              text: s.next,
-              onclick: tap(() => leaveResult(app, this.endInfo, true, () => app.scenes.replace(new PlayScene(app, { kind: 'level', id: next })))),
-            })
-          : null,
+        offer,
         won && next === undefined ? h('p', { class: 'muted', text: s.allDone }) : null,
-        h('button', {
-          class: won ? 'btn' : 'btn btn-primary',
-          type: 'button',
-          'data-testid': 'result-retry',
-          text: s.retry,
-          onclick: tap(() => leaveResult(app, this.endInfo, false, () => app.scenes.replace(new PlayScene(app, { kind: 'level', id, intro: false })))),
-        }),
-        h('button', {
-          class: 'btn btn-ghost',
-          type: 'button',
-          'data-testid': 'result-levels',
-          text: s.levels,
-          onclick: tap(() => leaveResult(app, this.endInfo, true, () => app.scenes.replace(new LevelSelectScene(app)))),
-        }),
+        // One primary action per card (QA-009): next level when won; on a loss the continue offer
+        // is primary when there is one, otherwise "Tekrar dene". Secondary actions share a row.
+        h(
+          'div',
+          { class: 'result-actions' },
+          won && next !== undefined
+            ? h('button', {
+                class: 'btn btn-primary',
+                type: 'button',
+                'data-testid': 'result-next',
+                text: s.next,
+                onclick: tap(() => leaveResult(app, this.endInfo, true, () => app.scenes.replace(new PlayScene(app, { kind: 'level', id: next })))),
+              })
+            : null,
+          h(
+            'div',
+            { class: `result-actions-row${retryPrimary ? ' solo-primary' : ''}` },
+            h('button', {
+              class: retryPrimary ? 'btn btn-primary' : 'btn',
+              type: 'button',
+              'data-testid': 'result-retry',
+              text: s.retry,
+              onclick: tap(() => leaveResult(app, this.endInfo, false, () => app.scenes.replace(new PlayScene(app, { kind: 'level', id, intro: false })))),
+            }),
+            h('button', {
+              class: 'btn btn-ghost',
+              type: 'button',
+              'data-testid': 'result-levels',
+              text: s.levels,
+              onclick: tap(() => leaveResult(app, this.endInfo, true, () => app.scenes.replace(new LevelSelectScene(app)))),
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -106,8 +119,7 @@ export class ResultScene implements Scene {
         resultZerde(newBest),
         h('h2', { class: 'result-title', text: s.endless.over }),
         newBest ? h('p', { class: 'new-best', 'data-testid': 'new-best', text: s.endless.newBest }) : null,
-        h('p', { class: 'result-score', text: fmt(s.result.score, { n: session.score }) }),
-        h('p', { class: 'muted', text: fmt(s.result.best, { n: app.save.endlessBest }) }),
+        h('p', { class: 'result-score' }, fmt(s.result.score, { n: session.score }), h('small', { class: 'result-best', text: fmt(s.result.best, { n: app.save.endlessBest }) })),
         rewardPanelEl(app, this.endInfo),
         h('button', {
           class: 'btn btn-primary',

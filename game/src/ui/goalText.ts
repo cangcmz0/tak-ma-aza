@@ -41,3 +41,11 @@ export function goalShortLabel(g: Goal): string {
       return s.obstacles;
   }
 }
+
+/** Narrow screens (≤ 340 px, QA-013): one word; the chip already shows path / colour. */
+export function goalTinyLabel(g: Goal): string {
+  const d = g.def;
+  const cap = (t: string) => t.charAt(0).toLocaleUpperCase('tr-TR') + t.slice(1);
+  if (d.type === 'clear_paths') return d.color === undefined ? strings().hud.goalTiny.paths : cap(colorName(d.color));
+  return goalShortLabel(g);
+}

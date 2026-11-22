@@ -4,7 +4,9 @@ import { zerde } from '../art/zerde';
 import { ENDLESS_UNLOCK_LEVEL } from '../config';
 import { fmt, strings } from '../i18n';
 import { getLevel, LEVELS } from '../levels/levels';
+import { exitApp, isNative } from '../platform/native';
 import type { App, Scene } from './app';
+import { ConfirmScene } from './confirm';
 import { h } from './dom';
 import { LevelSelectScene } from './levelSelect';
 import { menuEntered, menuMetaBar } from './menuMeta';
@@ -14,6 +16,19 @@ import { PlayScene } from './play';
 export function isEndlessUnlocked(app: App): boolean {
   if (app.debug && new URLSearchParams(location.search).has('unlockAll')) return true;
   return !getLevel(ENDLESS_UNLOCK_LEVEL) || !!app.save.level(ENDLESS_UNLOCK_LEVEL)?.completed;
+}
+
+/**
+ * First scene after boot. First launch (nothing played yet) skips the menu and opens level 1,
+ * which shows the "Nasıl oynanır?" card first (GDD §15, QA-007). `?debug=1&nofirst` (or
+ * `&unlockAll`) keeps the menu for automated runs.
+ */
+export function startScene(app: App): Scene {
+  const q = new URLSearchParams(location.search);
+  const skip = app.debug && (q.has('nofirst') || q.has('unlockAll')); // tester modes keep the menu
+  const first = LEVELS[0];
+  if (!skip && first && app.save.isFresh) return new PlayScene(app, { kind: 'level', id: first.id });
+  return new MenuScene(app);
 }
 
 export class MenuScene implements Scene {
@@ -122,5 +137,18 @@ export class MenuScene implements Scene {
 
   enter(): void {
     menuEntered(this.app); // daily reward popup (ui/dailyReward.ts)
+  }
+
+  /**
+   * Android back on the main menu: ask "Çıkılsın mı?" before closing the app (GDD §15, QA-006).
+   * On the web there is nothing to exit; the dialog is only shown in debug builds (tests).
+   */
+  back(): void {
+    if (this.app.scenes.top !== this) return;
+    if (!isNative() && !this.app.debug) return;
+    const c = strings().confirm;
+    this.app.scenes.push(
+      new ConfirmScene(this.app, { id: 'exit', title: c.exitTitle, body: c.exitBody, yes: c.exitYes, onYes: () => void exitApp() }),
+    );
   }
 }

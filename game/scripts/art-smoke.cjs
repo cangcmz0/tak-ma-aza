@@ -72,7 +72,7 @@ async function run(browser, vp) {
   }
 
   // 1) Menu (fresh save) and the map.
-  await page.goto(`${BASE}?debug=1&nodaily`);
+  await page.goto(`${BASE}?debug=1&nodaily&nofirst`); // fresh save would open level 1 directly
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.waitForSelector('[data-testid=menu-play]');

@@ -72,6 +72,8 @@ async function newPage(browser, vp = VIEWPORTS[0], extra = {}) {
 
 const H = {
   async fresh(page, query = '?debug=1&nohowto&nodaily', save) {
+    // Fresh storage = first launch, which opens level 1 directly (QA-007); these runs want the menu.
+    if (!/nofirst/.test(query)) query += '&nofirst';
     await page.goto(`${BASE}${query}`);
     await page.evaluate((s) => {
       localStorage.clear();
@@ -941,7 +943,7 @@ sections.flow = async (browser) => {
   check('ilk açılışta doğrudan bölüm 1 (GDD §15)', first === 'board', `açılan: ${first}`);
   await H.shot(page, 'flow-01-first-launch');
   check('ilk açılışta günlük ödül çıkmıyor', (await page.locator('[data-testid=daily]').count()) === 0);
-  check('ilk açılışta Serbest Tezgâh kilitli', await page.locator('[data-testid=menu-endless]').isDisabled());
+  if (first === 'menu') check('ilk açılışta Serbest Tezgâh kilitli', await page.locator('[data-testid=menu-endless]').isDisabled());
   // "Nasıl oynanır?" card before level 1 (without the nohowto flag).
   {
     const { ctx: c2, page: p2 } = await newPage(browser, VIEWPORTS[0]);
@@ -961,7 +963,7 @@ sections.flow = async (browser) => {
   }
   // Tutorials 1–3 through the real pointer path.
   for (const id of [1, 2, 3]) {
-    if (id === 1) await page.click('[data-testid=menu-play]');
+    if (id === 1 && (await page.locator('[data-testid=menu-play]').count())) await page.click('[data-testid=menu-play]');
     await page.waitForSelector('[data-testid=board]');
     await page.waitForTimeout(500);
     if (await page.locator('[data-testid=intro-start]').count()) await page.click('[data-testid=intro-start]');
@@ -1027,17 +1029,35 @@ sections.flow = async (browser) => {
     check('duraklat: ses kapat kaydediliyor', v === false);
     await soundBtn.click();
   }
-  // Restart has no confirmation (GDD §15: "İlerleme kaybolacak").
-  const placedBefore = await page.evaluate(() => window.__kum.session.placed);
+  // Restart asks first (GDD §15: "İlerleme kaybolacak"); "Vazgeç" keeps the attempt.
+  const before4 = await page.evaluate(() => ({ placed: window.__kum.session.placed, attempts: window.__app.save.level(4)?.attempts ?? 0, tray: JSON.stringify(window.__kum.session.tray) }));
   await page.click('[data-testid=pause-restart]');
   await page.waitForTimeout(300);
   const confirmShown = (await page.locator('[role=alertdialog], [data-testid*=confirm]').count()) > 0;
-  check('Yeniden başla onay soruyor (GDD §15)', confirmShown, `onay yok; ${placedBefore} kese ilerleme sessizce silindi`);
-  // Pause → exit to map: also no confirmation.
+  check('Yeniden başla onay soruyor (GDD §15)', confirmShown, confirmShown ? undefined : `onay yok; ${before4.placed} kese ilerleme sessizce silindi`);
+  if (confirmShown) {
+    await page.click('[data-testid=confirm-no]');
+    await page.waitForTimeout(200);
+    const kept = await page.evaluate(() => window.__kum.session.placed);
+    check('onayda "Vazgeç" denemeyi koruyor', kept === before4.placed && (await page.locator('[data-testid=pause-resume]').count()) === 1, { kept });
+    await page.click('[data-testid=pause-restart]');
+    await page.click('[data-testid=confirm-yes]');
+    await page.waitForSelector('[data-testid=board]');
+    await page.waitForTimeout(300);
+    const after4 = await page.evaluate(() => ({ placed: window.__kum.session.placed, attempts: window.__app.save.level(4)?.attempts ?? 0, tray: JSON.stringify(window.__kum.session.tray) }));
+    check('yeniden başla = yeni deneme (attempts artar, yeni kese dizisi) (QA-004)', after4.attempts === before4.attempts + 1 && after4.placed === 0, { before: before4.attempts, after: after4.attempts });
+    info('yeniden başla sonrası tepsi değişti', after4.tray !== before4.tray);
+  }
+  // Pause → exit to map: also asks.
   await page.click('[data-testid=pause]');
   await page.click('[data-testid=pause-exit]');
   await page.waitForTimeout(300);
-  check('Haritaya dön onay soruyor (GDD §15)', (await page.locator('[role=alertdialog], [data-testid*=confirm]').count()) > 0, 'onay yok');
+  const exitConfirm = (await page.locator('[role=alertdialog], [data-testid*=confirm]').count()) > 0;
+  check('Haritaya dön onay soruyor (GDD §15)', exitConfirm, exitConfirm ? undefined : 'onay yok');
+  if (exitConfirm) {
+    await page.click('[data-testid=confirm-yes]');
+    await page.waitForSelector('[data-testid=map]');
+  }
   // Daily reward on the next menu entry (level 1 done).
   await page.goto(`${BASE}?debug=1&nohowto`);
   await page.waitForSelector('[data-testid=menu-play]');
@@ -1107,6 +1127,15 @@ sections.flow = async (browser) => {
   await page.waitForTimeout(200);
   const resumed = (await page.locator('[data-testid=pause-resume]').count()) === 0;
   check('geri: oyun → duraklat → devam', paused === 1 && resumed);
+  // Main menu: back asks "Çıkılsın mı?" (QA-006; debug builds show it on the web too).
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  await page.evaluate(() => window.__app.scenes.back()); // = Android back button (native shell)
+  await page.waitForTimeout(250);
+  const exitAsk = (await page.locator('[data-testid=confirm-exit]').count()) === 1;
+  await H.shot(page, 'flow-10-exit-confirm');
+  if (exitAsk) await page.click('[data-testid=confirm-no]');
+  check('geri: ana menüde "Çıkılsın mı?" onayı (GDD §15)', exitAsk && (await page.locator('[data-testid=menu-levels]').count()) === 1);
   check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
   await ctx.close();
 };
@@ -1202,9 +1231,9 @@ sections.save = async (browser) => {
   const junk = ['çöp{{{', 'null', '[]', '123', '{"levels":"x","settings":null,"economy":{"gold":-50,"boosters":"y"},"daily":7,"ads":{"interstitials":"z"}}', '{"levels":{"1":null,"2":{"completed":"yes","stars":"9"}},"economy":{"gold":"1e999"}}', '{"version":1,"seenIntros":[1,2],"tutorialsDone":{"a":1}}'];
   for (const j of junk) {
     const { ctx: c2, page: p2 } = await newPage(browser, VIEWPORTS[1]);
-    await p2.goto(`${BASE}?debug=1&nohowto&nodaily`);
+    await p2.goto(`${BASE}?debug=1&nohowto&nodaily&nofirst`);
     await p2.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, j]);
-    await p2.goto(`${BASE}?debug=1&nohowto&nodaily`);
+    await p2.goto(`${BASE}?debug=1&nohowto&nodaily&nofirst`);
     const ok = await p2.waitForSelector('[data-testid=menu-play]', { timeout: 5000 }).then(() => true).catch(() => false);
     const st = ok ? await p2.evaluate(() => ({ gold: window.__app.meta.economy.gold, l2: window.__app.save.level(2) || null })) : null;
     let playable = false;
@@ -1227,7 +1256,7 @@ sections.save = async (browser) => {
         throw new Error('blocked');
       };
     });
-    await p3.goto(`${BASE}?debug=1&nohowto&nodaily`);
+    await p3.goto(`${BASE}?debug=1&nohowto&nodaily&nofirst`);
     const ok = await p3.waitForSelector('[data-testid=menu-play]', { timeout: 5000 }).then(() => true).catch(() => false);
     check('localStorage engelliyken oyun açılıyor', ok, p3.errors.slice(0, 2));
     await c3.close();

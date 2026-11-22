@@ -97,6 +97,7 @@ export class BoosterBar {
     let drops = 0;
     const close = () => {
       tip.remove();
+      this.el.classList.remove('explaining');
       off();
       btn.removeEventListener('click', close);
     };
@@ -106,6 +107,7 @@ export class BoosterBar {
     tip.addEventListener('click', close);
     btn.addEventListener('click', close);
     btn.classList.add('is-new');
+    this.el.classList.add('explaining'); // hide what the tip would cover (QA-021)
     this.el.append(tip);
     // Sit beside the button inside the bar (never over the tray above it).
     const place = () => {

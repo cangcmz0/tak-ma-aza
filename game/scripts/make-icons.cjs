@@ -1,5 +1,5 @@
 // Uygulama ikonu + açılış (splash) görselleri üretici.
-// HTML canvas'ta koyu mor zemin üzerine piksel kum tepeciği (baharat renkleri) çizer,
+// HTML canvas'ta sıcak ceviz/bakır zemin üzerine piksel kum tepeciği (baharat renkleri) çizer,
 // Playwright/Chromium ile PNG'ye çevirir ve Android kaynak klasörlerine yazar.
 //
 // Kullanım (game/ içinden; Playwright global kurulu, `playwright install` gerekmez):
@@ -21,16 +21,18 @@ const RES = path.join(ROOT, 'android/app/src/main/res');
 
 // Renkler: src/render/theme.ts ile uyumlu.
 const COLORS = {
-  appBg: '#14112b', // theme css --bg (splash zemini)
-  bgTop: '#3a2b7d', // ikon zemini (koyu mor degrade)
-  bgBottom: '#1f1748',
-  bgMid: '#2a1f5c', // adaptive icon arka plan rengi (düz)
+  appBg: '#1a120e', // theme css --bg (splash zemini)
+  bgTop: '#6b4426', // ikon zemini: sıcak ceviz degrade (theme --wood)
+  bgBottom: '#2e1f17', // theme --panel
+  bgMid: '#4b3527', // adaptive icon arka plan rengi (düz; theme --panel-3)
+  rim: '#c8773f', // bakır çerçeve (theme --copper)
+  rimHi: '#f3b53f', // altın iç çizgi (theme --accent)
   sand: [
     // [base, light, dark] — theme.ts sand
-    ['#4f6fe0', '#7189ec', '#3a56c2'], // çivit
-    ['#4fb874', '#6fcf8f', '#3a9a5c'], // nane
-    ['#e8553f', '#f27a5f', '#c9412e'], // pul biber
-    ['#f2c230', '#f7d65e', '#d9a816'], // zerdeçal
+    ['#3d6fd8', '#6e95ec', '#2b53aa'], // çivit
+    ['#5dae4b', '#86cc73', '#43893a'], // nane
+    ['#e0432f', '#f2705c', '#b83322'], // pul biber
+    ['#f4b526', '#ffd261', '#d09310'], // zerdeçal
   ],
 };
 
@@ -80,6 +82,16 @@ function render({ kind, w, h, colors }) {
     g.addColorStop(0, colors.bgTop);
     g.addColorStop(1, colors.bgBottom);
     return g;
+  }
+
+  // Copper rim with a thin gold inner line (the game's metal accents).
+  function rim(lw) {
+    ctx.lineWidth = lw;
+    ctx.strokeStyle = colors.rim;
+    ctx.stroke();
+    ctx.lineWidth = Math.max(1, lw * 0.35);
+    ctx.strokeStyle = colors.rimHi;
+    ctx.stroke();
   }
 
   function roundRect(x, y, s, r) {
@@ -158,6 +170,7 @@ function render({ kind, w, h, colors }) {
     ctx.save();
     ctx.clip();
     art(s / 2, s / 2, bs * 0.72);
+    rim(Math.max(1.5, bs * 0.07));
     ctx.restore();
   } else if (kind === 'round') {
     const m = s * (2 / 48);
@@ -169,6 +182,7 @@ function render({ kind, w, h, colors }) {
     ctx.save();
     ctx.clip();
     art(s / 2, s / 2, bs * 0.62);
+    rim(Math.max(1.5, bs * 0.07));
     ctx.restore();
   } else if (kind === 'foreground') {
     // Adaptive icon foreground: 108dp canvas, keep art inside the 66dp safe zone.
@@ -178,6 +192,9 @@ function render({ kind, w, h, colors }) {
     ctx.fillStyle = bgGradient(0, 0, s);
     ctx.fillRect(0, 0, s, s);
     art(s / 2, s / 2, s * 0.7);
+    ctx.beginPath();
+    ctx.rect(0, 0, s, s);
+    rim(s * 0.05);
   } else if (kind === 'splash') {
     ctx.fillStyle = colors.appBg;
     ctx.fillRect(0, 0, w, h);
@@ -190,6 +207,7 @@ function render({ kind, w, h, colors }) {
     ctx.save();
     ctx.clip();
     art(w / 2, h / 2, bs * 0.72);
+    rim(Math.max(2, bs * 0.05));
     ctx.restore();
   }
   return c.toDataURL('image/png');
