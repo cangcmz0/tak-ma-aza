@@ -588,6 +588,7 @@ sections.gameplay = async (browser) => {
     if (s.state !== 'playing') return;
     s.extraPieces = s.placed - s.level.pieceLimit;
     for (let i = 0; i < s.tray.length; i++) s.tray[i] = null;
+    s.dealt = s.placed;
     s.wake();
   });
   await H.waitResult(page);
@@ -601,6 +602,7 @@ sections.gameplay = async (browser) => {
     const s = window.__kum.session;
     s.extraPieces = s.placed - s.level.pieceLimit;
     for (let i = 0; i < s.tray.length; i++) s.tray[i] = null;
+    s.dealt = s.placed;
     s.wake();
   });
   await H.waitResult(page);
