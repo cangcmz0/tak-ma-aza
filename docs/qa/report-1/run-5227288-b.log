@@ -1,0 +1,117 @@
+PASS [text] html lang="tr"
+PASS [text] HUD sipariş başlığında Ö/Ü/İ noktaları kesilmiyor — {"text":"Bölüm 10 · Biber Ustası","transform":"uppercase","overflow":"hidden","lineHeight":"13.92px","fontSize":"9.6px","boxH":13.90625,"inkAscentDiacritic":10,"inkAscentPlain":8,"fontAscent":8,"halfLeading":1.46}
+INFO [text] büyük harfe çevrilen etiketler (oyun ekranı) — [{"text":"Bölüm 10 · Biber Ustası","lang":"tr","overflow":"hidden","lh":"13.92px"},{"text":"Parça","lang":"tr","overflow":"visible","lh":"9.28px"},{"text":"Puan","lang":"tr","overflow":"visible","lh":"9.28px"}]
+PASS [text] text-transform uppercase lang=tr altında i→İ yapıyor
+PASS [text] web önizleme paketi lang="tr" taşıyor — build-web-preview.cjs <html lang> yazmıyor
+FAIL [text] web önizleme theme-color yeni palette — theme-color #14112b (eski mor)
+FAIL [text] sonuç kartı puanı binlik ayırıcılı (HUD ile tutarlı) — Puan: 13645
+PASS [text] tr.ts Türkçe karakter eksik yazım yok — []
+INFO [text] terim tutarlılığı — {"Parça/parça":4,"kese":21,"hud":"hud.pieces='Parça', result.outOfPieces='Parçalar bitti.' / lostPieces='Keseler bitti!'"}
+FAIL [text] terim: HUD sayacı ile kayıp başlığı aynı terimi kullanıyor — HUD 'Parça' / sonuç 'Keseler bitti!' + 'Parçalar bitti.' aynı kartta
+PASS [text] konsol hatası yok — []
+--- text: 3.0 sn
+PASS [layout] 390x844 01-menu-fresh yerleşim
+PASS [layout] 390x844 02-map yerleşim
+PASS [layout] 390x844 03-intro-30 yerleşim
+FAIL [layout] 390x844 04-play-30 yerleşim — {"overflowX":[],"offscreen":[],"clipped":[],"smallTap":[],"overlap":["button[booster-scoop].booster-btn \"Kepçe 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (79×52)","button[booster-sieve].booster-btn \"Elek 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (72×52)","button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"],"belowFold":[]}
+PASS [layout] 390x844 05-pause yerleşim
+PASS [layout] 390x844 06-lost yerleşim
+PASS [layout] 390x844 07-won-10-chest yerleşim
+FAIL [layout] 390x844 08-shop yerleşim — {"overflowX":[],"offscreen":["button[shop-buy-remove_ads].btn.btn-primary \"$2,99\" x:106..396","button[shop-buy-gold_small].btn.btn-primary \"$0,99\" x:105..397","button[shop-buy-gold_large].btn.btn-primary \"$4,99\" x:105..397","button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" x:105..397"],"clipped":[],"smallTap":[],"overlap":[],"belowFold":["button[shop-booster-scoop].btn.shop-buy \"150\" y:866 (kaydırınca görünür)","span \"150\" y:881 (kaydırınca görünür)","button[shop-booster-sieve].btn.shop-buy \"250\" y:946 (kaydırınca görünür)","span \"250\" y:961 (kaydırınca görünür)","button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1014 (kaydırınca görünür)"]}
+INFO [layout] 390x844 08-shop ekran altında kalan (kaydırmalı kart) öğeler — ["button[shop-booster-scoop].btn.shop-buy \"150\" y:866 (kaydırınca görünür)","span \"150\" y:881 (kaydırınca görünür)","button[shop-booster-sieve].btn.shop-buy \"250\" y:946 (kaydırınca görünür)","span \"250\" y:961 (kaydırınca görünür)","button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1014 (kaydırınca görünür)"]
+PASS [layout] 390x844 09-daily yerleşim
+PASS [layout] 390x844 10-endless yerleşim
+PASS [layout] 390x844 11-tutorial-1 yerleşim
+PASS [layout] 390x844 konsol hatası yok — []
+PASS [layout] 360x740 01-menu-fresh yerleşim
+PASS [layout] 360x740 02-map yerleşim
+PASS [layout] 360x740 03-intro-30 yerleşim
+FAIL [layout] 360x740 04-play-30 yerleşim — {"overflowX":[],"offscreen":[],"clipped":[],"smallTap":[],"overlap":["button[booster-scoop].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (48×52)","button[booster-sieve].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (52×52)","button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"],"belowFold":[]}
+PASS [layout] 360x740 05-pause yerleşim
+PASS [layout] 360x740 06-lost yerleşim
+PASS [layout] 360x740 07-won-10-chest yerleşim
+INFO [layout] 360x740 07-won-10-chest ekran altında kalan (kaydırmalı kart) öğeler — ["button[result-levels].btn.btn-ghost \"Bölümler\" y:719 (kaydırınca görünür)"]
+FAIL [layout] 360x740 08-shop yerleşim — {"overflowX":[],"offscreen":["button[shop-buy-remove_ads].btn.btn-primary \"$2,99\" x:102..370","button[shop-buy-gold_small].btn.btn-primary \"$0,99\" x:101..371","button[shop-buy-gold_large].btn.btn-primary \"$4,99\" x:101..371","button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" x:101..371"],"clipped":[],"smallTap":[],"overlap":[],"belowFold":["button[shop-booster-shuffle].btn.shop-buy \"100\" y:770 (kaydırınca görünür)","span \"100\" y:785 (kaydırınca görünür)","button[shop-booster-scoop].btn.shop-buy \"150\" y:860 (kaydırınca görünür)","span \"150\" y:875 (kaydırınca görünür)","button[shop-booster-sieve].btn.shop-buy \"250\" y:940 (kaydırınca görünür)","span \"250\" y:955 (kaydırınca görünür)","button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1008 (kaydırınca görünür)"]}
+INFO [layout] 360x740 08-shop ekran altında kalan (kaydırmalı kart) öğeler — ["button[shop-booster-shuffle].btn.shop-buy \"100\" y:770 (kaydırınca görünür)","span \"100\" y:785 (kaydırınca görünür)","button[shop-booster-scoop].btn.shop-buy \"150\" y:860 (kaydırınca görünür)","span \"150\" y:875 (kaydırınca görünür)","button[shop-booster-sieve].btn.shop-buy \"250\" y:940 (kaydırınca görünür)","span \"250\" y:955 (kaydırınca görünür)","button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1008 (kaydırınca görünür)"]
+PASS [layout] 360x740 09-daily yerleşim
+PASS [layout] 360x740 10-endless yerleşim
+PASS [layout] 360x740 11-tutorial-1 yerleşim
+PASS [layout] 360x740 konsol hatası yok — []
+PASS [layout] 320x640 01-menu-fresh yerleşim
+PASS [layout] 320x640 02-map yerleşim
+PASS [layout] 320x640 03-intro-30 yerleşim
+FAIL [layout] 320x640 04-play-30 yerleşim — {"overflowX":[],"offscreen":[],"clipped":["small.order-caption \"BÖLÜM 30 · ÇARŞI AĞASI\" (w 141>119)","span.goal-label \"Soldan sağa yol\" (w 92>66)"],"smallTap":[],"overlap":["button[booster-scoop].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (48×52)","button[booster-sieve].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (52×52)","button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"],"belowFold":[]}
+PASS [layout] 320x640 05-pause yerleşim
+PASS [layout] 320x640 06-lost yerleşim
+INFO [layout] 320x640 06-lost ekran altında kalan (kaydırmalı kart) öğeler — ["button[result-retry].btn.btn-primary \"Tekrar dene\" y:609 (kaydırınca görünür)","button[result-levels].btn.btn-ghost \"Bölümler\" y:665 (kaydırınca görünür)"]
+PASS [layout] 320x640 07-won-10-chest yerleşim
+INFO [layout] 320x640 07-won-10-chest ekran altında kalan (kaydırmalı kart) öğeler — ["button[result-next].btn.btn-primary \"Sonraki bölüm\" y:607 (kaydırınca görünür)","button[result-retry].btn \"Tekrar dene\" y:663 (kaydırınca görünür)","button[result-levels].btn.btn-ghost \"Bölümler\" y:719 (kaydırınca görünür)"]
+FAIL [layout] 320x640 08-shop yerleşim — {"overflowX":[],"offscreen":["button[shop-buy-remove_ads].btn.btn-primary \"$2,99\" x:102..330","button[shop-buy-gold_small].btn.btn-primary \"$0,99\" x:101..331","button[shop-buy-gold_large].btn.btn-primary \"$4,99\" x:101..331","button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" x:101..331"],"clipped":[],"smallTap":[],"overlap":[],"belowFold":["button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" y:619 (kaydırınca görünür)","h3.shop-sub \"Güçlendiriciler\" y:737 (kaydırınca görünür)","button[shop-booster-shuffle].btn.shop-buy \"100\" y:787 (kaydırınca görünür)","span \"100\" y:802 (kaydırınca görünür)","button[shop-booster-scoop].btn.shop-buy \"150\" y:877 (kaydırınca görünür)","span \"150\" y:892 (kaydırınca görünür)","button[shop-booster-sieve].btn.shop-buy \"250\" y:957 (kaydırınca görünür)","span \"250\" y:972 (kaydırınca görünür)","button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1025 (kaydırınca görünür)"]}
+INFO [layout] 320x640 08-shop ekran altında kalan (kaydırmalı kart) öğeler — ["button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" y:619 (kaydırınca görünür)","h3.shop-sub \"Güçlendiriciler\" y:737 (kaydırınca görünür)","button[shop-booster-shuffle].btn.shop-buy \"100\" y:787 (kaydırınca görünür)","span \"100\" y:802 (kaydırınca görünür)","button[shop-booster-scoop].btn.shop-buy \"150\" y:877 (kaydırınca görünür)","span \"150\" y:892 (kaydırınca görünür)","button[shop-booster-sieve].btn.shop-buy \"250\" y:957 (kaydırınca görünür)","span \"250\" y:972 (kaydırınca görünür)","button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1025 (kaydırınca görünür)"]
+PASS [layout] 320x640 09-daily yerleşim
+PASS [layout] 320x640 10-endless yerleşim
+FAIL [layout] 320x640 11-tutorial-1 yerleşim — {"overflowX":[],"offscreen":[],"clipped":["span.goal-label \"Soldan sağa yol\" (w 92>66)"],"smallTap":[],"overlap":[],"belowFold":[]}
+PASS [layout] 320x640 konsol hatası yok — []
+PASS [layout] 768x1024 01-menu-fresh yerleşim
+PASS [layout] 768x1024 02-map yerleşim
+PASS [layout] 768x1024 03-intro-30 yerleşim
+FAIL [layout] 768x1024 04-play-30 yerleşim — {"overflowX":[],"offscreen":[],"clipped":[],"smallTap":[],"overlap":["button[booster-scoop].booster-btn \"Kepçe 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (97×52)","button[booster-sieve].booster-btn \"Elek 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (86×52)","button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"],"belowFold":[]}
+PASS [layout] 768x1024 05-pause yerleşim
+PASS [layout] 768x1024 06-lost yerleşim
+PASS [layout] 768x1024 07-won-10-chest yerleşim
+PASS [layout] 768x1024 08-shop yerleşim
+INFO [layout] 768x1024 08-shop ekran altında kalan (kaydırmalı kart) öğeler — ["button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1014 (kaydırınca görünür)"]
+PASS [layout] 768x1024 09-daily yerleşim
+PASS [layout] 768x1024 10-endless yerleşim
+PASS [layout] 768x1024 11-tutorial-1 yerleşim
+PASS [layout] 768x1024 konsol hatası yok — []
+--- layout: 61.1 sn
+FAIL [flow] ilk açılışta doğrudan bölüm 1 (GDD §15) — açılan: menu
+PASS [flow] ilk açılışta günlük ödül çıkmıyor
+PASS [flow] ilk açılışta Serbest Tezgâh kilitli
+INFO [flow] bölüm 1 öncesi "Nasıl oynanır?" kartı — gösterildi
+INFO [flow] öğretici 1 metinleri — ["Keseyi tut, sarı boşluğa sürükle, bırak!","Aynı renk soldan sağa → patladı"]
+PASS [flow] bölüm 1 (öğretici) ipucu hamleleriyle kazanılıyor — {"state":"won","placed":2,"score":1440,"stars":3}
+PASS [flow] bölüm 1 ödül paneli ilk galibiyet altını (3★ → 40) — +40 altın
+INFO [flow] öğretici 2 metinleri — ["Keseyi aynı renk şeridin boşluğuna sürükle.","Kese hakkın burada. Bitmeden siparişi tamamla."]
+PASS [flow] bölüm 2 (öğretici) ipucu hamleleriyle kazanılıyor — {"state":"won","placed":2,"score":2240,"stars":3}
+PASS [flow] bölüm 2 ödül paneli ilk galibiyet altını (3★ → 40) — +40 altın
+INFO [flow] öğretici 3 metinleri — ["Keseye dokun, döner."]
+PASS [flow] bölüm 3 (öğretici) ipucu hamleleriyle kazanılıyor — {"state":"won","placed":8,"score":1960,"stars":2}
+PASS [flow] bölüm 3 ödül paneli ilk galibiyet altını (2★ → 30) — +30 altın
+INFO [flow] harita toplam yıldız — 8
+PASS [flow] harita: bölüm 4 açık, 5 kilitli
+PASS [flow] bölüm 4 tanıtım: scoreGoal + boosterShuffle kartları — ["intro-scoreGoal","intro-boosterShuffle","intro-start"]
+PASS [flow] bölüm 4: Yenile görünür, 2 hediye
+PASS [flow] ücretsiz devam sonrası oyun sürüyor — {"state":"playing","left":29}
+INFO [flow] duraklat düğmeleri — ["Devam et","Yeniden başla","Bölümler","?Nasıl oynanır?","Ses: Açık","Titreşim: Açık"]
+PASS [flow] duraklat: ses kapat kaydediliyor
+FAIL [flow] Yeniden başla onay soruyor (GDD §15) — onay yok; 0 kese ilerleme sessizce silindi
+FAIL [flow] Haritaya dön onay soruyor (GDD §15) — onay yok
+PASS [flow] günlük ödül: bölüm 1 sonrası menüde açılıyor
+PASS [flow] günlük ödül 1. gün = 25 altın — {"g0":310,"g1":335}
+PASS [flow] günlük ödül aynı gün ikinci kez çıkmıyor
+PASS [flow] mağaza: bedava altın günde 3 × 30 = 90 — {"g2":335,"g3":425}
+PASS [flow] mağaza: Yenile 100 altına alınıyor — {"b0":{"g":425,"n":2},"b1":{"g":325,"n":3}}
+PASS [flow] sonsuz mod: bölüm 7 kazanılmışken kilitli
+PASS [flow] sonsuz mod: bölüm 8 kazanılınca açık
+PASS [flow] sonsuz ödül en fazla 30 altın — +30 altın
+PASS [flow] sonsuz sonuçta "Devam et" teklifi yok
+PASS [flow] geri: oyun → duraklat → devam
+PASS [flow] konsol hatası yok — []
+--- flow: 47.0 sn
+PASS [ads] bölüm 8 kazanılmadan geçiş reklamı yok — ["locked","locked","locked","locked"]
+PASS [ads] bölüm 8 sonunda reklam yok (kural: 8 önceden kazanılmış olmalı) — {"shown":false,"reason":"locked","ends":5}
+PASS [ads] oturum < 3 dk iken reklam yok — {"shown":false,"reason":"session","ends":6}
+PASS [ads] tüm koşullar sağlanınca geçiş reklamı gösteriliyor — {"shown":true,"reason":"ok","ends":0}
+PASS [ads] reklam sonrası < 3 bölüm sonu → yok — {"shown":false,"reason":"level_gap","ends":1}
+PASS [ads] 3 bölüm sonu ama < 90 sn → yok (cooldown) — {"shown":false,"reason":"cooldown","ends":3}
+PASS [ads] 90 sn sonra gösteriliyor — {"shown":true,"reason":"ok","ends":0}
+PASS [ads] "Tekrar dene" geçişinde asla yok — {"shown":false,"reason":"ok","ends":4}
+PASS [ads] aynı bölümde art arda 3 kayıp → haritaya geçişte yok — {"shown":false,"reason":"frustration","ends":5}
+PASS [ads] saatte en fazla 4 geçiş reklamı — {"r":{"shown":false,"reason":"hourly_cap","ends":18},"shownCount":2,"inter":4,"offsetMin":26}
+PASS [ads] Reklamları Kaldır sonrası geçiş reklamı yok — {"shown":false,"reason":"no_ads","ends":22}
+PASS [ads] konsol hatası yok — []
+--- ads: 122.9 sn
+
+Toplam: 82 geçti, 14 başarısız, 15 bilgi. Sonuçlar: /tmp/claude-0/-home-user-tak-ma-aza/77224588-f699-5b99-85fa-d5e1cdced422/scratchpad/h2/qa-results.json

@@ -1,0 +1,371 @@
+<title>Kum Akışı</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@400;700&display=swap">
+<style>
+/* Layout: one narrow game column — title + score strip, sand board, piece tray, short how-to. Single dark "desert night" look by choice. */
+:root {
+  --bg: #15122e;
+  --panel: #221e45;
+  --line: #36316e;
+  --fg: #f3f0ff;
+  --muted: #a8a2d6;
+  --accent: #ffb547;
+  --on-accent: #2a1a00;
+  --display: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  --body: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); }
+.wrap {
+  max-width: 440px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 28px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+header { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1; margin: 0; }
+h1 span { color: var(--accent); }
+.sub { color: var(--muted); font-size: .78rem; margin-top: 4px; }
+.scores { display: flex; gap: 16px; text-align: right; }
+.score b { display: block; font-family: var(--display); font-size: 1.55rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.score small { color: var(--muted); font-size: .64rem; text-transform: uppercase; letter-spacing: .09em; }
+.chain { min-height: 1.2em; text-align: center; font-family: var(--display); color: var(--accent); font-size: 1rem; margin: -4px 0; }
+.board-wrap {
+  position: relative; align-self: center; max-width: 100%;
+  border-radius: 14px; background: var(--panel); border: 2px solid var(--line);
+  overflow: hidden; touch-action: none;
+}
+canvas#board { display: block; touch-action: none; cursor: crosshair; }
+.overlay {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; background: rgba(21, 18, 46, .86); text-align: center; padding: 20px;
+}
+.overlay h2 { font-family: var(--display); margin: 0; font-size: 2rem; line-height: 1.1; }
+.overlay p { margin: 0; color: var(--muted); }
+.tray { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 8px; }
+.slot {
+  background: var(--panel); border: 2px solid var(--line); border-radius: 12px; height: 78px;
+  display: flex; align-items: center; justify-content: center; cursor: grab; touch-action: none; padding: 0;
+}
+.slot.sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(255, 181, 71, .25); }
+.slot.used { opacity: .22; cursor: default; }
+.slot canvas { pointer-events: none; width: 64px; height: 64px; }
+.btn {
+  font-family: var(--display); font-weight: 600; font-size: 1rem; line-height: 1.1;
+  background: var(--accent); color: var(--on-accent); border: 0; border-radius: 12px; padding: 0 14px; cursor: pointer;
+}
+.overlay .btn { padding: 12px 22px; font-size: 1.1rem; }
+button:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+.how { color: var(--muted); font-size: .86rem; line-height: 1.55; margin: 0; }
+.how b { color: var(--fg); font-weight: 700; }
+.tag { display: inline-block; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Kum <span>Akışı</span></h1>
+      <div class="sub">Deneme sürümü · prototip</div>
+    </div>
+    <div class="scores">
+      <div class="score"><b id="score">0</b><small>Puan</small></div>
+      <div class="score"><b id="best">0</b><small>Rekor</small></div>
+    </div>
+  </header>
+
+  <div class="chain" id="chain" aria-live="polite"></div>
+
+  <div class="board-wrap" id="boardWrap">
+    <canvas id="board" aria-label="Kum tahtası"></canvas>
+    <div class="overlay" id="overlay" hidden>
+      <h2>Tahta doldu!</h2>
+      <p id="finalScore"></p>
+      <button class="btn" id="again">Tekrar oyna</button>
+    </div>
+  </div>
+
+  <div class="tray" id="tray">
+    <button class="slot" id="slot0" aria-label="Parça 1"><canvas></canvas></button>
+    <button class="slot" id="slot1" aria-label="Parça 2"><canvas></canvas></button>
+    <button class="slot" id="slot2" aria-label="Parça 3"><canvas></canvas></button>
+    <button class="btn" id="rotate" aria-label="Seçili parçayı döndür">↻<br>Döndür</button>
+  </div>
+
+  <p class="how">
+    <span class="tag">Nasıl oynanır</span><br>
+    Alttaki parçalardan birini <b>tahtaya sürükleyip bırak</b>. Parça kuma dönüşüp akar.
+    <b>Aynı renk kum soldan sağa kesintisiz bir yol</b> oluşturunca patlar.
+    Art arda patlamalar <b>zincir</b> yapar ve puanı katlar. Tahta tepeye kadar dolarsa oyun biter.
+  </p>
+  <p class="how">Bilgisayarda: ← → taşı · ↑ döndür · Boşluk bırak · 1–3 parça seç</p>
+</div>
+
+<script>
+(() => {
+  const W = 40, H = 64, B = 4; // board size in sand grains, one block = B×B grains
+  const PAL = {
+    1: ['#ff6b6b', '#ff8a80', '#ec5656'],
+    2: ['#2ec4b6', '#55d8cb', '#22a99c'],
+    3: ['#ffd166', '#ffde8a', '#f2bd45'],
+    4: ['#9b7bff', '#b49dff', '#8566f0'],
+  };
+  const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const RGB = {}; for (const k in PAL) RGB[k] = PAL[k].map(hex);
+  const BG = hex('#1b1839');
+  const SHAPES = [
+    [[0,0],[1,0],[2,0],[3,0]], [[0,0],[1,0],[0,1],[1,1]], [[0,0],[1,0],[2,0],[1,1]],
+    [[0,0],[0,1],[0,2],[1,2]], [[1,0],[1,1],[1,2],[0,2]], [[1,0],[2,0],[0,1],[1,1]], [[0,0],[1,0],[1,1],[2,1]],
+  ];
+
+  const canvas = document.getElementById('board');
+  const ctx = canvas.getContext('2d');
+  const off = document.createElement('canvas'); off.width = W; off.height = H;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(W, H);
+  const slots = [0, 1, 2].map(i => document.getElementById('slot' + i));
+  const $score = document.getElementById('score'), $best = document.getElementById('best');
+  const $chain = document.getElementById('chain'), $overlay = document.getElementById('overlay');
+
+  let grid, shade, marked = null, markedSet = null, clearAt = 0, settledChecked = true;
+  let chain = 0, score = 0, best = 0, over = false, colorsInPlay = 3;
+  let tray = [], sel = -1, gx = 0, dragging = false, chainTimer = 0;
+
+  try { best = parseInt(localStorage.getItem('kumakisi-best') || '0', 10) || 0; } catch (e) {}
+
+  const rnd = n => Math.floor(Math.random() * n);
+  function normalize(cells) {
+    const mx = Math.min(...cells.map(c => c[0])), my = Math.min(...cells.map(c => c[1]));
+    const out = cells.map(([x, y]) => [x - mx, y - my]);
+    return { cells: out, w: Math.max(...out.map(c => c[0])) + 1, h: Math.max(...out.map(c => c[1])) + 1 };
+  }
+  function rotate(p) { return { ...normalize(p.cells.map(([x, y]) => [p.h - 1 - y, x])), color: p.color }; }
+  function makePiece() {
+    let p = { ...normalize(SHAPES[rnd(SHAPES.length)]), color: 1 + rnd(colorsInPlay) };
+    for (let r = rnd(4); r > 0; r--) p = rotate(p);
+    return p;
+  }
+
+  function stamp(p, x0) {
+    for (const [bx, by] of p.cells)
+      for (let dy = 0; dy < B; dy++) for (let dx = 0; dx < B; dx++)
+        if (grid[(by * B + dy) * W + x0 + bx * B + dx]) return false;
+    for (const [bx, by] of p.cells)
+      for (let dy = 0; dy < B; dy++) for (let dx = 0; dx < B; dx++) {
+        const i = (by * B + dy) * W + x0 + bx * B + dx;
+        grid[i] = p.color; shade[i] = rnd(3);
+      }
+    return true;
+  }
+
+  function move(a, b) { grid[b] = grid[a]; shade[b] = shade[a]; grid[a] = 0; }
+  function step() {
+    let moved = false;
+    for (let y = H - 2; y >= 0; y--) {
+      const ltr = Math.random() < 0.5;
+      for (let k = 0; k < W; k++) {
+        const x = ltr ? k : W - 1 - k, i = y * W + x;
+        if (!grid[i]) continue;
+        const below = i + W;
+        if (!grid[below]) { move(i, below); moved = true; continue; }
+        const dl = x > 0 && !grid[below - 1], dr = x < W - 1 && !grid[below + 1];
+        if (dl && dr) { move(i, Math.random() < 0.5 ? below - 1 : below + 1); moved = true; }
+        else if (dl) { move(i, below - 1); moved = true; }
+        else if (dr) { move(i, below + 1); moved = true; }
+      }
+    }
+    return moved;
+  }
+
+  // A same-colour region touching both the left and right wall is cleared.
+  function findClears() {
+    const seen = new Uint8Array(W * H), out = [];
+    for (let y = 0; y < H; y++) {
+      const s = y * W, c = grid[s];
+      if (!c || seen[s]) continue;
+      const stack = [s], comp = []; seen[s] = 1; let right = false;
+      while (stack.length) {
+        const i = stack.pop(); comp.push(i);
+        const x = i % W; if (x === W - 1) right = true;
+        const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, i >= W ? i - W : -1, i < W * (H - 1) ? i + W : -1];
+        for (const j of nb) if (j >= 0 && !seen[j] && grid[j] === c) { seen[j] = 1; stack.push(j); }
+      }
+      if (right) for (const i of comp) out.push(i);
+    }
+    return out;
+  }
+
+  function prefill() {
+    for (let n = 0; n < 9; n++) {
+      const p = makePiece();
+      stamp(p, rnd(W - p.w * B + 1));
+      let guard = 0; while (step() && guard++ < 400) {}
+    }
+    let m; while ((m = findClears()).length) { for (const i of m) grid[i] = 0; let g = 0; while (step() && g++ < 400) {} }
+  }
+
+  function refillTray() {
+    colorsInPlay = score >= 2500 ? 4 : 3;
+    tray = [0, 1, 2].map(() => ({ piece: makePiece(), used: false }));
+    sel = 0; clampGhost();
+  }
+
+  function clampGhost() {
+    if (sel < 0) return;
+    const pw = tray[sel].piece.w * B;
+    gx = Math.max(0, Math.min(W - pw, gx));
+  }
+
+  function drawTray() {
+    const dpr = window.devicePixelRatio || 1;
+    slots.forEach((el, i) => {
+      const t = tray[i], cv = el.querySelector('canvas'), c = cv.getContext('2d');
+      cv.width = 64 * dpr; cv.height = 64 * dpr; c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.clearRect(0, 0, 64, 64);
+      el.classList.toggle('sel', i === sel && !t.used);
+      el.classList.toggle('used', t.used);
+      if (t.used) return;
+      const p = t.piece, s = Math.min(14, Math.floor(56 / Math.max(p.w, p.h)));
+      const ox = (64 - p.w * s) / 2, oy = (64 - p.h * s) / 2;
+      for (const [bx, by] of p.cells) {
+        c.fillStyle = PAL[p.color][0]; c.fillRect(ox + bx * s + 1, oy + by * s + 1, s - 2, s - 2);
+        c.fillStyle = PAL[p.color][1]; c.fillRect(ox + bx * s + 1, oy + by * s + 1, s - 2, 3);
+      }
+    });
+  }
+
+  function updateScore() {
+    $score.textContent = score;
+    if (score > best) { best = score; try { localStorage.setItem('kumakisi-best', String(best)); } catch (e) {} }
+    $best.textContent = best;
+  }
+
+  function drop() {
+    if (over || sel < 0 || tray[sel].used) return;
+    const p = tray[sel].piece;
+    if (!stamp(p, gx)) {
+      // Only lose when the sand has settled; while it is still falling, just wait.
+      if (settledChecked && !marked) gameOver();
+      return;
+    }
+    tray[sel].used = true; chain = 0; settledChecked = false;
+    const next = tray.findIndex(t => !t.used);
+    if (next === -1) refillTray(); else { sel = next; clampGhost(); }
+    drawTray();
+  }
+
+  function gameOver() {
+    over = true; dragging = false; updateScore();
+    document.getElementById('finalScore').textContent = `Puanın: ${score}` + (score >= best && score > 0 ? ' · Yeni rekor!' : '');
+    $overlay.hidden = false;
+  }
+
+  function restart() {
+    grid = new Uint8Array(W * H); shade = new Uint8Array(W * H);
+    marked = null; markedSet = null; score = 0; chain = 0; over = false; settledChecked = true;
+    colorsInPlay = 3; prefill(); refillTray(); gx = Math.floor((W - tray[0].piece.w * B) / 2);
+    $overlay.hidden = true; $chain.textContent = ''; updateScore(); drawTray();
+  }
+
+  function layout() {
+    const wrap = document.querySelector('.wrap');
+    const cs = getComputedStyle(wrap);
+    const availW = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 4;
+    const availH = Math.max(260, window.innerHeight * 0.56);
+    const cell = Math.max(3, Math.min(availW / W, availH / H));
+    const cssW = Math.floor(cell * W), cssH = Math.floor(cell * H), dpr = window.devicePixelRatio || 1;
+    canvas.style.width = cssW + 'px'; canvas.style.height = cssH + 'px';
+    canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  }
+
+  function render(t) {
+    const d = img.data, flashOn = marked && Math.floor((t - clearAt) / 70) % 2 === 0;
+    for (let i = 0; i < W * H; i++) {
+      const c = grid[i]; let col;
+      if (!c) col = BG; else if (flashOn && markedSet[i]) col = [255, 255, 255]; else col = RGB[c][shade[i]];
+      const o = i * 4; d[o] = col[0]; d[o + 1] = col[1]; d[o + 2] = col[2]; d[o + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
+    if (sel >= 0 && !over && !tray[sel].used) {
+      const p = tray[sel].piece, cs = canvas.width / W;
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      ctx.fillRect(gx * cs, 0, p.w * B * cs, canvas.height);
+      ctx.globalAlpha = 0.6; ctx.fillStyle = PAL[p.color][1];
+      for (const [bx, by] of p.cells) ctx.fillRect((gx + bx * B) * cs, by * B * cs, B * cs, B * cs);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function frame(t) {
+    if (marked) {
+      if (t - clearAt > 380) {
+        for (const i of marked) grid[i] = 0;
+        chain++; score += marked.length * chain;
+        $chain.textContent = chain > 1 ? `Zincir ×${chain}!` : `+${marked.length}`;
+        clearTimeout(chainTimer); chainTimer = setTimeout(() => { $chain.textContent = ''; }, 1400);
+        marked = null; markedSet = null; settledChecked = false; updateScore();
+      }
+    } else {
+      let moved = false;
+      for (let k = 0; k < 3; k++) moved = step() || moved;
+      if (moved) settledChecked = false;
+      else if (!settledChecked) {
+        settledChecked = true;
+        const m = findClears();
+        if (m.length) { marked = m; markedSet = new Uint8Array(W * H); for (const i of m) markedSet[i] = 1; clearAt = t; }
+      }
+    }
+    render(t);
+    requestAnimationFrame(frame);
+  }
+
+  // Input
+  function setGhostFrom(clientX) {
+    if (sel < 0) return;
+    const r = canvas.getBoundingClientRect(), pw = tray[sel].piece.w * B;
+    gx = Math.round((clientX - r.left) / r.width * W - pw / 2); clampGhost();
+  }
+  function overBoard(e) {
+    const r = canvas.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top - 30 && e.clientY <= r.bottom;
+  }
+  slots.forEach((el, i) => el.addEventListener('pointerdown', e => {
+    if (over || tray[i].used) return;
+    e.preventDefault(); sel = i; dragging = true; clampGhost(); drawTray();
+  }));
+  canvas.addEventListener('pointerdown', e => {
+    if (over || sel < 0) return;
+    e.preventDefault(); dragging = true; setGhostFrom(e.clientX);
+  });
+  window.addEventListener('pointermove', e => { if (dragging && overBoard(e)) setGhostFrom(e.clientX); });
+  window.addEventListener('pointerup', e => {
+    if (!dragging) return; dragging = false;
+    if (overBoard(e)) { setGhostFrom(e.clientX); drop(); }
+  });
+  window.addEventListener('pointercancel', () => { dragging = false; });
+  document.getElementById('rotate').addEventListener('click', () => {
+    if (over || sel < 0) return; tray[sel].piece = rotate(tray[sel].piece); clampGhost(); drawTray();
+  });
+  document.getElementById('again').addEventListener('click', restart);
+  window.addEventListener('keydown', e => {
+    if (over) { if (e.key === 'Enter') restart(); return; }
+    const k = e.key;
+    if (k === 'ArrowLeft') { gx -= 2; clampGhost(); }
+    else if (k === 'ArrowRight') { gx += 2; clampGhost(); }
+    else if (k === 'ArrowUp' || k === 'r' || k === 'R') { if (sel >= 0) { tray[sel].piece = rotate(tray[sel].piece); clampGhost(); drawTray(); } }
+    else if (k === ' ' || k === 'ArrowDown') drop();
+    else if (k === '1' || k === '2' || k === '3') { const i = +k - 1; if (!tray[i].used) { sel = i; clampGhost(); drawTray(); } }
+    else return;
+    e.preventDefault();
+  });
+  window.addEventListener('resize', layout);
+
+  layout(); restart(); requestAnimationFrame(frame);
+})();
+</script>

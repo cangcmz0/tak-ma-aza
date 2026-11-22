@@ -1,0 +1,17 @@
+{
+  "id": 13,
+  "name": "Karışık Baharat",
+  "difficulty": 4,
+  "customer": "selim",
+  "colors": [1, 2, 3, 4],
+  "pieceLimit": 28,
+  "goals": [{ "type": "clear_paths", "count": 4 }],
+  "stars": [1100, 2100, 3200],
+  "prefill": { "type": "random", "rows": 24, "density": 0.85 },
+  "obstacles": [],
+  "specials": { "bombChance": 0, "jokerChance": 0.2, "twoColorChance": 0 },
+  "seed": 13013,
+  "scriptedPieces": [{ "shape": "L", "color": 2, "rot": 0, "joker": 3 }],
+  "intro": ["joker"],
+  "hint": "Karışık baharat her renge uyar."
+}

@@ -1,0 +1,16 @@
+{
+  "id": 4,
+  "name": "Puan Peşinde",
+  "difficulty": 2,
+  "customer": "anna",
+  "colors": [1, 2, 3],
+  "pieceLimit": 24,
+  "goals": [{ "type": "score", "value": 1500 }],
+  "stars": [1500, 2200, 3000],
+  "prefill": { "type": "random", "rows": 20, "density": 0.95 },
+  "obstacles": [],
+  "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 4004,
+  "intro": ["scoreGoal", "boosterShuffle"],
+  "hint": "Zincirler puanı katlar."
+}

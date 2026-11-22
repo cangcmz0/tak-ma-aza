@@ -1,0 +1,12 @@
+INFO [perf] sonsuz mod performans — {"secs":180,"frames":10766,"avgMs":16.72,"p95Ms":16.8,"p99Ms":16.8,"maxMs":116.7,"over33":7,"games":1,"moves":152,"maxScore":12837}
+INFO [perf] ipucu (findHintMove) süresi / çağrı — {"ms":[25.3,14.6,20.5,24.1,13.9],"grid":"96x160"}
+PASS [perf] ipucu araması tek karede ≤ 50 ms (öğretici el işareti ana iş parçacığında) — {"ms":[25.3,14.6,20.5,24.1,13.9],"grid":"96x160"}
+INFO [perf] örnekler (10 sn) — [{"t":10,"heapMB":10.2,"nodes":216,"particles":0},{"t":20,"heapMB":8.7,"nodes":216,"particles":0},{"t":30,"heapMB":9.3,"nodes":224,"particles":0},{"t":40,"heapMB":8.8,"nodes":226,"particles":0},{"t":50,"heapMB":8.5,"nodes":226,"particles":0},{"t":60,"heapMB":8.5,"nodes":226,"particles":0},{"t":70,"heapMB":8.5,"nodes":226,"particles":0},{"t":80,"heapMB":8.6,"nodes":226,"particles":0},{"t":90,"heapMB":8.6,"nodes":226,"particles":0},{"t":100,"heapMB":8.7,"nodes":226,"particles":0},{"t":110,"heapMB":8.7,"nodes":226,"particles":0},{"t":120,"heapMB":8.7,"nodes":226,"particles":0},{"t":130,"heapMB":8.8,"nodes":226,"particles":0},{"t":140,"heapMB":8.7,"nodes":226,"particles":0},{"t":150,"heapMB":8.7,"nodes":226,"particles":0},{"t":160,"heapMB":9.3,"nodes":226,"particles":0},{"t":170,"heapMB":9.2,"nodes":226,"particles":0},{"t":180,"heapMB":8.5,"nodes":226,"particles":0}]
+PASS [perf] kare süresi ort. ≤ 17.5 ms (60 fps, headless yazılım çizimi) — 16.72
+PASS [perf] kare süresi p95 ≤ 25 ms — 16.8
+PASS [perf] DOM düğüm sayısı büyümüyor (≤ +15%) — {"first":216,"last":226}
+PASS [perf] JS heap büyümesi ≤ 10 MB — {"first":8.7,"last":8.5}
+PASS [perf] konsol hatası yok — []
+--- perf: 180.9 sn
+
+Toplam: 6 geçti, 0 başarısız, 3 bilgi. Sonuçlar: /tmp/claude-0/-home-user-tak-ma-aza/77224588-f699-5b99-85fa-d5e1cdced422/scratchpad/perf3/qa-results.json

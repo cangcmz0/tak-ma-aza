@@ -1,0 +1,16 @@
+{
+  "id": 19,
+  "name": "Dar Geçit",
+  "difficulty": 6,
+  "customer": "anna",
+  "colors": [1, 2, 3, 4],
+  "pieceLimit": 18,
+  "goals": [{ "type": "clear_paths", "count": 4 }],
+  "stars": [1100, 2100, 3200],
+  "prefill": { "type": "random", "rows": 12, "density": 0.9 },
+  "obstacles": [{ "type": "shelf", "x": 4, "y": 12, "w": 4, "h": 1 }],
+  "specials": { "bombChance": 0, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 19019,
+  "intro": [],
+  "hint": "Baharat rafın iki yanından süzülür."
+}

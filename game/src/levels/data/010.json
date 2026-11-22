@@ -1,0 +1,19 @@
+{
+  "id": 10,
+  "name": "Biber Ustası",
+  "difficulty": 7,
+  "customer": "mehmet",
+  "colors": [1, 2, 3],
+  "pieceLimit": 13,
+  "goals": [
+    { "type": "clear_paths", "count": 5 },
+    { "type": "clear_color_grains", "color": 1, "count": 300 }
+  ],
+  "stars": [1300, 2500, 3700],
+  "prefill": { "type": "random", "rows": 40, "density": 0.95 },
+  "obstacles": [],
+  "specials": { "bombChance": 0.1, "jokerChance": 0, "twoColorChance": 0 },
+  "seed": 10010,
+  "intro": [],
+  "hint": "Tezgâh dolu! Kırmızıyı unutma."
+}

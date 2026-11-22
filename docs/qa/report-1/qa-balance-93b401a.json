@@ -1,0 +1,632 @@
+[
+  {
+    "id": 1,
+    "wins": 3,
+    "tries": 3,
+    "scores": [
+      1440,
+      1440,
+      1440
+    ],
+    "used": [
+      2,
+      2,
+      2
+    ],
+    "reasons": [],
+    "readyPath": false,
+    "limit": 10
+  },
+  {
+    "id": 2,
+    "wins": 3,
+    "tries": 3,
+    "scores": [
+      2240,
+      2240,
+      2240
+    ],
+    "used": [
+      2,
+      2,
+      2
+    ],
+    "reasons": [],
+    "readyPath": false,
+    "limit": 18
+  },
+  {
+    "id": 3,
+    "wins": 3,
+    "tries": 3,
+    "scores": [
+      1136,
+      2020,
+      2120
+    ],
+    "used": [
+      13,
+      4,
+      3
+    ],
+    "reasons": [],
+    "readyPath": false,
+    "limit": 14
+  },
+  {
+    "id": 4,
+    "wins": 1,
+    "tries": 3,
+    "scores": [
+      2871,
+      0,
+      420
+    ],
+    "used": [
+      14,
+      24,
+      24
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 24
+  },
+  {
+    "id": 5,
+    "wins": 3,
+    "tries": 3,
+    "scores": [
+      1475,
+      1936,
+      1727
+    ],
+    "used": [
+      10,
+      10,
+      7
+    ],
+    "reasons": [],
+    "readyPath": false,
+    "limit": 17
+  },
+  {
+    "id": 6,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      798,
+      1327,
+      809
+    ],
+    "used": [
+      19,
+      19,
+      19
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 19
+  },
+  {
+    "id": 7,
+    "wins": 3,
+    "tries": 3,
+    "scores": [
+      2252,
+      2535,
+      2611
+    ],
+    "used": [
+      13,
+      10,
+      13
+    ],
+    "reasons": [],
+    "readyPath": false,
+    "limit": 24
+  },
+  {
+    "id": 8,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      1854,
+      1142
+    ],
+    "used": [
+      20,
+      20,
+      20
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 20
+  },
+  {
+    "id": 9,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      0,
+      0
+    ],
+    "used": [
+      14,
+      14,
+      14
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 14
+  },
+  {
+    "id": 10,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      1716,
+      578,
+      1351
+    ],
+    "used": [
+      13,
+      13,
+      13
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 13
+  },
+  {
+    "id": 11,
+    "wins": 2,
+    "tries": 3,
+    "scores": [
+      1711,
+      1639,
+      1208
+    ],
+    "used": [
+      17,
+      17,
+      17
+    ],
+    "reasons": [
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 17
+  },
+  {
+    "id": 12,
+    "wins": 1,
+    "tries": 3,
+    "scores": [
+      0,
+      1780,
+      5924
+    ],
+    "used": [
+      26,
+      26,
+      4
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 26
+  },
+  {
+    "id": 13,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      436,
+      656
+    ],
+    "used": [
+      28,
+      28,
+      28
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 28
+  },
+  {
+    "id": 14,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      1780,
+      2711,
+      1828
+    ],
+    "used": [
+      22,
+      22,
+      22
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 22
+  },
+  {
+    "id": 15,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      1582,
+      1226,
+      1851
+    ],
+    "used": [
+      22,
+      22,
+      22
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 22
+  },
+  {
+    "id": 16,
+    "wins": 1,
+    "tries": 3,
+    "scores": [
+      572,
+      2149,
+      788
+    ],
+    "used": [
+      18,
+      7,
+      18
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 18
+  },
+  {
+    "id": 17,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      0,
+      2098
+    ],
+    "used": [
+      28,
+      28,
+      28
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 28
+  },
+  {
+    "id": 18,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      2864,
+      3788,
+      1780
+    ],
+    "used": [
+      25,
+      25,
+      25
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 25
+  },
+  {
+    "id": 19,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      0,
+      0
+    ],
+    "used": [
+      18,
+      18,
+      18
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 18
+  },
+  {
+    "id": 20,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      555,
+      0
+    ],
+    "used": [
+      30,
+      30,
+      30
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 30
+  },
+  {
+    "id": 21,
+    "wins": 2,
+    "tries": 3,
+    "scores": [
+      1280,
+      5096,
+      5192
+    ],
+    "used": [
+      17,
+      2,
+      2
+    ],
+    "reasons": [
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 17
+  },
+  {
+    "id": 22,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      741,
+      770,
+      1401
+    ],
+    "used": [
+      28,
+      28,
+      28
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 28
+  },
+  {
+    "id": 23,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      4012,
+      1780,
+      2136
+    ],
+    "used": [
+      28,
+      28,
+      28
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 28
+  },
+  {
+    "id": 24,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      382,
+      0
+    ],
+    "used": [
+      32,
+      32,
+      32
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 32
+  },
+  {
+    "id": 25,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      292,
+      400,
+      892
+    ],
+    "used": [
+      28,
+      28,
+      28
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 28
+  },
+  {
+    "id": 26,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      0,
+      0,
+      0
+    ],
+    "used": [
+      26,
+      26,
+      26
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 26
+  },
+  {
+    "id": 27,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      1887,
+      0,
+      0
+    ],
+    "used": [
+      30,
+      30,
+      30
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 30
+  },
+  {
+    "id": 28,
+    "wins": 1,
+    "tries": 3,
+    "scores": [
+      5456,
+      2152,
+      0
+    ],
+    "used": [
+      28,
+      32,
+      32
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 32
+  },
+  {
+    "id": 29,
+    "wins": 2,
+    "tries": 3,
+    "scores": [
+      356,
+      11220,
+      11220
+    ],
+    "used": [
+      26,
+      2,
+      2
+    ],
+    "reasons": [
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 26
+  },
+  {
+    "id": 30,
+    "wins": 0,
+    "tries": 3,
+    "scores": [
+      3687,
+      0,
+      3562
+    ],
+    "used": [
+      34,
+      24,
+      34
+    ],
+    "reasons": [
+      "out_of_pieces",
+      "no_space",
+      "out_of_pieces"
+    ],
+    "readyPath": false,
+    "limit": 34
+  }
+]
