@@ -16,13 +16,18 @@ function randomPlay(levelIndex: number, attempt = 0, maxMoves = 200): Session {
   s.runUntilSettled();
   for (let n = 0; n < maxMoves && s.isPlaying; n++) {
     const moves: [number, number, number][] = [];
-    s.tray.forEach((p, slot) => {
-      if (!p) return;
-      for (let rot = 0; rot < 4; rot++) {
-        const shape = ROTATIONS[p.kind][rot];
-        for (let x = 0; x <= maxX(s.grid, shape); x += 4) if (canStamp(s.grid, shape, x, 0)) moves.push([slot, rot, x]);
-      }
-    });
+    // Block-aligned columns first; fall back to every grain column (steep piles can leave
+    // only off-grid gaps, which the session still counts as "fits somewhere").
+    for (const stepX of [4, 1]) {
+      s.tray.forEach((p, slot) => {
+        if (!p) return;
+        for (let rot = 0; rot < 4; rot++) {
+          const shape = ROTATIONS[p.kind][rot];
+          for (let x = 0; x <= maxX(s.grid, shape); x += stepX) if (canStamp(s.grid, shape, x, 0)) moves.push([slot, rot, x]);
+        }
+      });
+      if (moves.length) break;
+    }
     if (!moves.length) break;
     const [slot, rot, x] = rng.pick(moves);
     const p = s.tray[slot];

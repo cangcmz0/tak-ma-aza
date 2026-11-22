@@ -11,7 +11,7 @@ export interface PointerTarget {
   select(slot: number): void;
   rotate(slot: number): void;
   /** Aim the ghost at a client X coordinate (null hides the ghost). */
-  aim(clientX: number | null): void;
+  aim(clientX: number | null, clientY?: number): void;
   /** Drop the selected piece at the current aim. */
   drop(): void;
   enabled(): boolean;
@@ -101,7 +101,8 @@ export class PointerInput {
     if (!g || e.pointerId !== g.id) return;
     if (!g.moved && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) > TAP_SLOP) g.moved = true;
     if (g.source === 'tray' && g.moved) this.target.drag?.(e.clientX, e.clientY);
-    if (g.source === 'board' || this.overBoard(e.clientX, e.clientY)) this.target.aim(e.clientX);
+    if (g.source === 'board') this.target.aim(e.clientX);
+    else if (this.overBoard(e.clientX, e.clientY)) this.target.aim(e.clientX, g.moved ? e.clientY : undefined);
     else if (g.moved) this.target.aim(null);
   }
 
@@ -116,7 +117,8 @@ export class PointerInput {
       return;
     }
     if (this.overBoard(e.clientX, e.clientY)) {
-      this.target.aim(e.clientX);
+      if (g.source === 'tray') this.target.aim(e.clientX, e.clientY);
+      else this.target.aim(e.clientX);
       this.target.drop();
     }
   }

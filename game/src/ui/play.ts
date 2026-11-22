@@ -66,6 +66,8 @@ export class PlayScene implements Scene {
 
   private sel = 0;
   private ghostX = 0;
+  /** Grain row the dragged piece's top edge is aimed at (0 = released from the top). */
+  private wantY = 0;
   private acc = 0;
   private endTimer = -1;
   private toastTimer = 0;
@@ -159,7 +161,7 @@ export class PlayScene implements Scene {
       renderer: this.renderer,
       goalTarget: (i) => this.hud.goalEls[i]?.chip ?? null,
     });
-    this.ghost = { piece: this.session.tray[0] ?? { kind: 'O', rot: 0, color: 1, special: null, specialCell: -1 }, x: 0, ok: true };
+    this.ghost = { piece: this.session.tray[0] ?? { kind: 'O', rot: 0, color: 1, special: null, specialCell: -1 }, x: 0, y: 0, ok: true };
     this.centerGhost();
   }
 
@@ -169,8 +171,9 @@ export class PlayScene implements Scene {
       hasPiece: (i) => this.slotUsable(i),
       select: (i) => this.select(i),
       rotate: (i) => this.rotate(i),
-      aim: (cx) => {
-        if (cx !== null) this.aimAt(cx);
+      aim: (cx, cy) => {
+        if (cx !== null) this.aimAt(cx, cy);
+        else this.showDragFloat(true);
       },
       drop: () => this.dropSelected(),
       enabled: () => this.session.isPlaying && this.app.scenes.top === this && !this.boosters.busy,
@@ -310,11 +313,25 @@ export class PlayScene implements Scene {
     this.setGhostX((this.session.grid.w - pieceShape(p).w * BLOCK) / 2);
   }
 
-  private aimAt(clientX: number): void {
+  private aimAt(clientX: number, clientY?: number): void {
     const p = this.selectedPiece();
     if (!p) return;
+    const shape = pieceShape(p);
     const center = this.renderer.clientToGrainX(clientX);
-    this.setGhostX(center - (pieceShape(p).w * BLOCK) / 2);
+    this.setGhostX(center - (shape.w * BLOCK) / 2);
+    if (clientY === undefined) {
+      this.wantY = 0;
+      return;
+    }
+    // The dragged piece is drawn DRAG_LIFT_PX above the finger; release it where it is shown.
+    const topCss = clientY - DRAG_LIFT_PX - shape.h * BLOCK * this.renderer.cssPerGrain;
+    this.wantY = Math.max(0, Math.round(this.renderer.clientToGrainY(topCss)));
+    // Over the board the snapped ghost shows the exact placement, so hide the floating copy.
+    this.showDragFloat(false);
+  }
+
+  private showDragFloat(on: boolean): void {
+    this.dragEl.style.opacity = on ? '' : '0';
   }
 
   /** Draw the dragged piece at board scale, DRAG_LIFT_PX above the finger (GDD §4.4). */
@@ -349,13 +366,16 @@ export class PlayScene implements Scene {
     if (!this.dragging) return;
     this.dragging = false;
     this.dragEl.classList.remove('show');
+    this.showDragFloat(true);
     for (const el of this.slotEls) el.classList.remove('dragging');
   }
 
   private dropSelected(): void {
     if (this.app.scenes.top !== this) return;
     if (!this.slotUsable(this.sel)) return;
-    if (this.session.drop(this.sel, this.ghostX)) {
+    const wantY = this.wantY;
+    this.wantY = 0;
+    if (this.session.drop(this.sel, this.ghostX, wantY)) {
       const next = this.session.tray.findIndex((_, i) => this.slotUsable(i));
       if (next >= 0) {
         this.sel = next;
@@ -504,6 +524,7 @@ export class PlayScene implements Scene {
       this.ghost.piece = p;
       this.ghost.x = this.ghostX;
       this.ghost.ok = this.session.canDrop(this.sel, this.ghostX);
+      this.ghost.y = this.ghost.ok ? Math.max(0, this.session.dropRow(this.sel, this.ghostX, this.wantY)) : 0;
       ghost = this.ghost;
     }
     this.renderer.draw(this.session, ghost);

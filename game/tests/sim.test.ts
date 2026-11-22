@@ -16,7 +16,7 @@ describe('sand sim', () => {
     const g = new SandGrid(3, 2);
     g.set(1, 1, 1);
     g.set(1, 0, 2);
-    const moved = step(g, new Rng(3));
+    const moved = step(g, new Rng(3), 1);
     expect(moved).toBe(1);
     expect(g.get(1, 0)).toBe(0);
     expect(g.get(0, 1) === 2 || g.get(2, 1) === 2).toBe(true);
@@ -27,8 +27,20 @@ describe('sand sim', () => {
     g.set(1, 1, 1);
     g.set(0, 1, 1);
     g.set(1, 0, 2);
-    step(g, new Rng(5));
+    step(g, new Rng(5), 1);
     expect(g.get(2, 1)).toBe(2);
+  });
+
+  it('with repose 2 a one-row step holds, a two-row drop slides', () => {
+    const one = new SandGrid(3, 2);
+    one.set(1, 1, 1);
+    one.set(1, 0, 2);
+    expect(step(one, new Rng(3), 2)).toBe(0);
+    const two = new SandGrid(3, 3);
+    two.set(1, 2, 1);
+    two.set(1, 1, 1);
+    two.set(1, 0, 2);
+    expect(step(two, new Rng(3), 2)).toBeGreaterThan(0);
   });
 
   it('stays put when fully supported', () => {

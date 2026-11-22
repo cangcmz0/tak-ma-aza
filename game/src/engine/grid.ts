@@ -19,6 +19,8 @@ export const STONE = 255;
 /** Cell flag bits. */
 export const FLAG_STATIC = 1 << 0; // never moves (stone, frozen grains)
 export const FLAG_BOMB = 1 << 1; // special: bomb grain (see engine/specials.ts)
+/** Grain of a just-dropped piece: falls as one rigid block until it touches anything, then becomes sand. */
+export const FLAG_FALLING = 1 << 7;
 // Bits 2..7 are free for future special grain types.
 
 export class SandGrid {

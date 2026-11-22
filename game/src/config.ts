@@ -11,6 +11,12 @@ export const BLOCK = 4;
 export const SIM_TICK_HZ = 60;
 /** Sand physics passes per tick. Higher = faster falling sand. */
 export const SIM_STEPS_PER_TICK = 3;
+/**
+ * Sand "angle of repose": a grain slides diagonally only when it can drop at least this
+ * many rows on that side. 1 = loose 45° piles (sand runs far); 2 = steeper ~63° piles,
+ * so a dropped piece stays close to where it was placed.
+ */
+export const SAND_REPOSE = 2;
 /** Max ticks processed per frame (avoids spiral of death after a long pause). */
 export const MAX_TICKS_PER_FRAME = 5;
 

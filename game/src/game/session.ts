@@ -20,8 +20,8 @@ import {
 import { Emitter, type LoseReason, type SessionEvent } from '../core/events';
 import { Rng, deriveSeed } from '../core/rng';
 import { ClearResult, findClears, removeMarked } from '../engine/clear';
-import { FLAG_BOMB, FLAG_STATIC, JOKER, MAX_SAND_COLOR, SandGrid } from '../engine/grid';
-import { canStamp, fitsAnywhere, PieceBag, pieceShape, rotatePiece, stamp, type Piece } from '../engine/pieces';
+import { FLAG_BOMB, FLAG_FALLING, FLAG_STATIC, JOKER, MAX_SAND_COLOR, SandGrid } from '../engine/grid';
+import { canStamp, dropHeight, fitsAnywhere, PieceBag, pieceShape, rotatePiece, stamp, type Piece } from '../engine/pieces';
 import { Sacks } from '../engine/sacks';
 import { step } from '../engine/sim';
 import type { LevelDef, ScriptedPieceDef } from '../levels/schema';
@@ -206,6 +206,16 @@ export class Session {
     return !!p && this.isPlaying && canStamp(this.grid, pieceShape(p), x, 0);
   }
 
+  /**
+   * Row where the piece in `slot` would be placed when released at column x with its
+   * top edge aimed at grain row `wantY` (it then falls from there). -1 = blocked.
+   */
+  dropRow(slot: number, x: number, wantY = 0): number {
+    const p = this.tray[slot];
+    if (!p || !this.isPlaying) return -1;
+    return dropHeight(this.grid, pieceShape(p), x, wantY);
+  }
+
   rotate(slot: number): boolean {
     const p = this.tray[slot];
     if (!p || !this.isPlaying) return false;
@@ -215,13 +225,15 @@ export class Session {
   }
 
   /**
-   * Drop the tray piece at grain column x (top of board). A collision never ends
+   * Drop the tray piece at grain column x, released with its top at row wantY (0 = top of
+   * board); it falls from there as a rigid block. A collision never ends
    * the game: the drop is simply refused (sand may still be flowing).
    */
-  drop(slot: number, x: number): boolean {
+  drop(slot: number, x: number, wantY = 0): boolean {
     const p = this.tray[slot];
     if (!p || !this.isPlaying) return false;
-    if (!stamp(this.grid, p, x, 0, this.rngCosmetic)) {
+    const y = dropHeight(this.grid, pieceShape(p), x, wantY);
+    if (y < 0 || !stamp(this.grid, p, x, y, this.rngCosmetic, FLAG_FALLING)) {
       this.events.emit({ type: 'blocked', slot, x });
       return false;
     }

@@ -18,6 +18,8 @@ export interface Ghost {
   piece: Piece;
   /** Grain column of the piece's left edge. */
   x: number;
+  /** Grain row of the piece's top edge (where it will be released). */
+  y: number;
   /** Whether the drop is currently possible. */
   ok: boolean;
 }
@@ -409,13 +411,13 @@ export class BoardRenderer {
     lane.addColorStop(0, gh.ok ? 'rgba(255,214,150,0.14)' : 'rgba(255,90,60,0.16)');
     lane.addColorStop(1, gh.ok ? 'rgba(255,214,150,0.03)' : 'rgba(255,90,60,0.03)');
     ctx.fillStyle = lane;
-    ctx.fillRect(gh.x * sc, 0, shape.w * bw, H);
+    ctx.fillRect(gh.x * sc, 0, shape.w * bw, Math.min(H, gh.y * sc + shape.h * bw));
     ctx.globalAlpha = gh.ok ? 0.72 : 0.55;
     for (let c = 0; c < shape.cells.length; c++) {
       const [bx, by] = shape.cells[c];
       const col = blockColor(gh.piece, c);
       ctx.fillStyle = gh.ok ? (col === JOKER ? sandCss(JOKER, 5) : mixHex(sandCss(col, 1), '#ffffff', 0.15)) : t.ghostBad;
-      ctx.fillRect(gh.x * sc + bx * bw, by * bw, bw, bw);
+      ctx.fillRect(gh.x * sc + bx * bw, gh.y * sc + by * bw, bw, bw);
     }
     ctx.globalAlpha = 1;
     ctx.strokeStyle = gh.ok ? t.ghostOk : t.ghostBad;
@@ -423,7 +425,7 @@ export class BoardRenderer {
     ctx.setLineDash([sc * 0.9, sc * 0.6]);
     for (let c = 0; c < shape.cells.length; c++) {
       const [bx, by] = shape.cells[c];
-      ctx.strokeRect(gh.x * sc + bx * bw + 1, by * bw + 1, bw - 2, bw - 2);
+      ctx.strokeRect(gh.x * sc + bx * bw + 1, gh.y * sc + by * bw + 1, bw - 2, bw - 2);
     }
     ctx.setLineDash([]);
   }
@@ -432,5 +434,10 @@ export class BoardRenderer {
   clientToGrainX(clientX: number): number {
     const r = this.canvas.getBoundingClientRect();
     return ((clientX - r.left) / r.width) * this.gw;
+  }
+
+  clientToGrainY(clientY: number): number {
+    const r = this.canvas.getBoundingClientRect();
+    return ((clientY - r.top) / r.height) * this.gh;
   }
 }

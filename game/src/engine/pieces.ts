@@ -123,10 +123,23 @@ export function canStamp(g: SandGrid, s: Shape, x0: number, y0 = 0): boolean {
 }
 
 /**
+ * Lowest row (<= wantY) the shape can be placed at column x0 while having a clear
+ * path straight down from the top of the board (so pieces cannot be tucked under
+ * overhangs). Returns -1 if it does not even fit at the top.
+ */
+export function dropHeight(g: SandGrid, s: Shape, x0: number, wantY: number): number {
+  if (!canStamp(g, s, x0, 0)) return -1;
+  const maxY = Math.min(Math.floor(wantY), g.h - s.h * BLOCK);
+  let y = 0;
+  while (y < maxY && canStamp(g, s, x0, y + 1)) y++;
+  return y;
+}
+
+/**
  * Write a piece as sand grains. Returns false (and writes nothing) on collision.
  * `shadeRng` is a cosmetic stream so it does not disturb gameplay randomness.
  */
-export function stamp(g: SandGrid, p: Piece, x0: number, y0: number, shadeRng: Rng): boolean {
+export function stamp(g: SandGrid, p: Piece, x0: number, y0: number, shadeRng: Rng, extraFlags = 0): boolean {
   const s = pieceShape(p);
   if (!canStamp(g, s, x0, y0)) return false;
   const specialFlag = p.special ? specialById(p.special).flag : 0;
@@ -142,7 +155,7 @@ export function stamp(g: SandGrid, p: Piece, x0: number, y0: number, shadeRng: R
         const i = (oy + dy) * w + ox + dx;
         g.color[i] = col;
         g.shade[i] = shadeRng.int(SHADES);
-        g.flags[i] = f;
+        g.flags[i] = f | extraFlags;
       }
     }
   }
