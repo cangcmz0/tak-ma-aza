@@ -29,7 +29,7 @@ export const tr = {
   hud: {
     pause: 'Duraklat',
     score: 'Puan',
-    pieces: 'Parça',
+    pieces: 'Kese',
     unlimited: '∞',
     level: 'Bölüm {n}',
     rotate: 'Döndür',
@@ -38,7 +38,7 @@ export const tr = {
     wait: 'Kum akıyor…',
     noRoom: 'Burası dolu!',
     goals: 'Hedefler',
-    traySlot: 'Parça {n}',
+    traySlot: 'Kese {n}',
     boardAria: 'Kum tahtası',
     double: 'Çifte!',
     /** Chain words by chain level (GDD §14.1). */
@@ -157,8 +157,8 @@ export const tr = {
     next: 'Sonraki bölüm',
     retry: 'Tekrar dene',
     levels: 'Bölümler',
-    outOfPieces: 'Parçalar bitti.',
-    noSpace: 'Yeni parça sığmıyor.',
+    outOfPieces: 'Kese hakkın bitti.',
+    noSpace: 'Yeni kese sığmıyor.',
     starsAria: '{n} yıldız',
     allDone: 'Tüm bölümler bitti! Yenileri yolda.',
     bonus: 'Tezgâh bonusu: +{n}',
