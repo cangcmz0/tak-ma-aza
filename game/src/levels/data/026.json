@@ -3,7 +3,7 @@
   "name": "Çay Molası",
   "difficulty": 3,
   "customer": "selim",
-  "colors": [1, 2, 3, 4],
+  "colors": [1, 2, 3],
   "pieceLimit": 26,
   "goals": [{ "type": "clear_paths", "count": 3 }],
   "stars": [900, 1800, 2800],

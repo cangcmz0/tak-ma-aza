@@ -72,6 +72,8 @@ export class PlayScene implements Scene {
   private ghostX = 0;
   /** Grain row the dragged piece's top edge is aimed at (0 = released from the top). */
   private wantY = 0;
+  /** Whether the danger loop is currently playing for this scene (QA-002). */
+  private dangerAudio = false;
   private acc = 0;
   private endTimer = -1;
   private toastTimer = 0;
@@ -166,7 +168,7 @@ export class PlayScene implements Scene {
       goalTarget: (i) => this.hud.goalEls[i]?.chip ?? null,
     });
     this.pathHint = new PathHint({ session: this.session, boardFrame: this.boardFrame, renderer: this.renderer });
-    this.ghost = { piece: this.session.tray[0] ?? { kind: 'O', rot: 0, color: 1, special: null, specialCell: -1 }, x: 0, y: 0, ok: true };
+    this.ghost = { piece: this.session.tray[0] ?? { kind: 'O', rot: 0, color: 1, special: null, specialCell: -1 }, x: 0, y: 0, ok: true, landY: -1 };
     this.centerGhost();
   }
 
@@ -178,7 +180,10 @@ export class PlayScene implements Scene {
       rotate: (i) => this.rotate(i),
       aim: (cx, cy) => {
         if (cx !== null) this.aimAt(cx, cy);
-        else this.showDragFloat(true);
+        else {
+          this.wantY = 0; // QA-014: off the board -> back to a top release
+          this.showDragFloat(true);
+        }
       },
       drop: () => this.dropSelected(),
       enabled: () => this.session.isPlaying && this.app.scenes.top === this && !this.boosters.busy,
@@ -237,6 +242,8 @@ export class PlayScene implements Scene {
   }
 
   exit(): void {
+    this.app.audio.stopLoops();
+    this.dangerAudio = false;
     this.input?.destroy();
     this.unbindKeys?.();
     this.unbindSession?.();
@@ -271,6 +278,8 @@ export class PlayScene implements Scene {
     if (this.app.scenes.top !== this) return;
     this.endDrag();
     this.boosters.cancel();
+    this.app.audio.stopLoops();
+    this.dangerAudio = false;
     this.app.audio.play('ui_tap');
     this.app.scenes.push(new PauseScene(this.app, this.mode));
   }
@@ -377,6 +386,7 @@ export class PlayScene implements Scene {
     this.dragging = false;
     this.dragEl.classList.remove('show');
     this.showDragFloat(true);
+    this.wantY = 0; // QA-014: a cancelled drag must not leave the ghost low on the board
     for (const el of this.slotEls) el.classList.remove('dragging');
   }
 
@@ -509,6 +519,13 @@ export class PlayScene implements Scene {
       n++;
     }
     if (n === MAX_TICKS_PER_FRAME) this.acc = 0;
+    // Keep the danger loop in sync with the board (resume after pause, continue +5,
+    // back from background, restart) — QA-002 / QA-017.
+    const wantDanger = this.session.danger && this.session.isPlaying && this.app.scenes.top === this;
+    if (wantDanger !== this.dangerAudio) {
+      this.dangerAudio = wantDanger;
+      this.app.audio.setDanger(wantDanger);
+    }
     this.tutorial?.frame(dtMs);
     this.fx.frame(dtMs);
     if (this.endTimer > 0) {
@@ -536,6 +553,7 @@ export class PlayScene implements Scene {
       this.ghost.x = this.ghostX;
       this.ghost.ok = this.session.canDrop(this.sel, this.ghostX);
       this.ghost.y = this.ghost.ok ? Math.max(0, this.session.dropRow(this.sel, this.ghostX, this.wantY)) : 0;
+      this.ghost.landY = this.ghost.ok ? this.session.dropRow(this.sel, this.ghostX, this.session.grid.h) : -1;
       ghost = this.ghost;
     }
     this.renderer.draw(this.session, ghost);

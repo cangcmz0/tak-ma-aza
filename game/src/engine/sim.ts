@@ -113,43 +113,101 @@ export function step(g: SandGrid, rng: Rng, repose: number = SAND_REPOSE): numbe
   return moved;
 }
 
+// Scratch buffers for stepFalling (reused; resized only when the grid size changes).
+let compOf = new Int32Array(0); // component id + 1 per cell (0 = not labelled this step)
+let stack = new Int32Array(0);
+const MAX_COMPS = 64;
+const compFalls = new Uint8Array(MAX_COMPS);
+
 /**
- * A just-dropped piece (FLAG_FALLING grains) moves down one row as a rigid block.
- * As soon as any of its grains is supported, the whole piece turns into loose sand.
+ * Just-dropped pieces (FLAG_FALLING grains) move down one row as rigid blocks. Each
+ * connected falling block is handled on its own (QA-005): when one block touches
+ * support only that block turns into loose sand; a block still in the air keeps falling.
  * Only the rows in [fallLo, fallHi] are touched.
  * @returns number of grains moved
  */
 function stepFalling(g: SandGrid): number {
   const { w, h, color, flags } = g;
+  if (compOf.length !== g.size) {
+    compOf = new Int32Array(g.size);
+    stack = new Int32Array(g.size);
+  }
   const i0 = g.fallLo * w;
-  const i1 = (g.fallHi + 1) * w;
-  let canFall = true;
+  const i1 = Math.min(g.size, (g.fallHi + 1) * w);
+  // 1) Label 4-connected components of falling grains.
+  let comps = 0;
+  for (let i = i0; i < i1; i++) compOf[i] = 0;
   for (let i = i0; i < i1; i++) {
-    if ((flags[i] & FLAG_FALLING) === 0) continue;
-    const below = i + w;
-    if (i >= w * (h - 1) || (color[below] !== EMPTY && (flags[below] & FLAG_FALLING) === 0)) {
-      canFall = false;
-      break;
+    if ((flags[i] & FLAG_FALLING) === 0 || compOf[i] !== 0) continue;
+    const id = comps < MAX_COMPS ? comps++ : MAX_COMPS - 1;
+    let sp = 0;
+    stack[sp++] = i;
+    compOf[i] = id + 1;
+    while (sp > 0) {
+      const c = stack[--sp];
+      const x = c % w;
+      const n0 = x > 0 ? c - 1 : -1;
+      const n1 = x < w - 1 ? c + 1 : -1;
+      const n2 = c - w;
+      const n3 = c + w;
+      if (n0 >= i0 && (flags[n0] & FLAG_FALLING) !== 0 && compOf[n0] === 0) { compOf[n0] = id + 1; stack[sp++] = n0; }
+      if (n1 >= 0 && n1 < i1 && (flags[n1] & FLAG_FALLING) !== 0 && compOf[n1] === 0) { compOf[n1] = id + 1; stack[sp++] = n1; }
+      if (n2 >= i0 && (flags[n2] & FLAG_FALLING) !== 0 && compOf[n2] === 0) { compOf[n2] = id + 1; stack[sp++] = n2; }
+      if (n3 < i1 && (flags[n3] & FLAG_FALLING) !== 0 && compOf[n3] === 0) { compOf[n3] = id + 1; stack[sp++] = n3; }
     }
   }
-  if (!canFall) {
-    for (let i = i0; i < i1; i++) flags[i] &= ~FLAG_FALLING;
+  if (comps === 0) {
     g.fallLo = 0;
     g.fallHi = -1;
     return 0;
   }
+  // 2) A block can fall if nothing but itself (or another falling block that also
+  //    falls) is directly below it. Resolve dependencies bottom-up by iterating.
+  for (let k = 0; k < comps; k++) compFalls[k] = 1;
+  for (let i = i0; i < i1; i++) {
+    const id = compOf[i] - 1;
+    if (id < 0) continue;
+    if (i >= w * (h - 1)) { compFalls[id] = 0; continue; }
+    const below = i + w;
+    if (color[below] !== EMPTY && (flags[below] & FLAG_FALLING) === 0) compFalls[id] = 0;
+  }
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (let i = i0; i < i1; i++) {
+      const id = compOf[i] - 1;
+      if (id < 0 || compFalls[id] === 0) continue;
+      const below = i + w;
+      if (below >= i1) continue;
+      const other = compOf[below] - 1;
+      if (other >= 0 && other !== id && compFalls[other] === 0) {
+        compFalls[id] = 0; // resting on a block that has landed
+        changed = true;
+      }
+    }
+  }
+  // 3) Landed blocks become loose sand; falling blocks move down one row.
   let moved = 0;
+  let lo = h;
+  let hi = -1;
   for (let i = i1 - 1; i >= i0; i--) {
-    if ((flags[i] & FLAG_FALLING) === 0) continue;
+    const id = compOf[i] - 1;
+    if (id < 0) continue;
+    if (compFalls[id] === 0) {
+      flags[i] &= ~FLAG_FALLING;
+      continue;
+    }
     move(g, i, i + w);
     moved++;
+    const row = ((i + w) - ((i + w) % w)) / w;
+    if (row < lo) lo = row;
+    if (row > hi) hi = row;
   }
   if (moved === 0) {
     g.fallLo = 0;
     g.fallHi = -1;
   } else {
-    g.fallLo++;
-    g.fallHi++;
+    g.fallLo = lo;
+    g.fallHi = hi;
   }
   return moved;
 }

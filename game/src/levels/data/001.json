@@ -4,7 +4,7 @@
   "difficulty": 1,
   "customer": "ayse",
   "colors": [1, 2],
-  "pieceLimit": 10,
+  "pieceLimit": 20,
   "goals": [{ "type": "clear_paths", "count": 2 }],
   "stars": [500, 1000, 1400],
   "prefill": {

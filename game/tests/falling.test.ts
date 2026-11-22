@@ -32,6 +32,28 @@ describe('rigid falling piece', () => {
   });
 });
 
+describe('several falling pieces (QA-005)', () => {
+  it('a piece still in the air keeps falling when another one lands', () => {
+    const g = new SandGrid(32 * S, 60 * S);
+    const B: Piece = { kind: 'O', rot: 0, color: 2, special: null, specialCell: -1 };
+    // A sits right above the floor, B is high up in another column.
+    expect(stamp(g, O, 0, g.h - 8 * S - 1, new Rng(1), FLAG_FALLING)).toBe(true);
+    expect(stamp(g, B, 20 * S, 0, new Rng(2), FLAG_FALLING)).toBe(true);
+    for (let n = 0; n < 4; n++) step(g, new Rng(n));
+    let bFalling = 0;
+    let aFalling = 0;
+    for (let i = 0; i < g.size; i++) {
+      if (!(g.flags[i] & FLAG_FALLING)) continue;
+      if (g.color[i] === 2) bFalling++;
+      else aFalling++;
+    }
+    expect(aFalling).toBe(0); // A landed and is loose sand now
+    expect(bFalling).toBe(64 * S * S); // B is still one rigid block
+    // B kept its square shape.
+    for (let y = 4; y < 4 + 8 * S; y++) for (let x = 20 * S; x < 28 * S; x++) expect(g.get(x, y)).toBe(2);
+  });
+});
+
 describe('dropHeight', () => {
   it('returns the aimed row when the column below the top is clear', () => {
     const g = new SandGrid(16 * S, 40 * S);

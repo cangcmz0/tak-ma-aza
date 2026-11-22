@@ -1,0 +1,906 @@
+[
+  {
+    "section": "text",
+    "id": "html lang=\"tr\"",
+    "ok": true
+  },
+  {
+    "section": "text",
+    "id": "HUD sipariş başlığında Ö/Ü/İ noktaları kesilmiyor",
+    "ok": true,
+    "detail": {
+      "text": "Bölüm 10 · Biber Ustası",
+      "transform": "uppercase",
+      "overflow": "hidden",
+      "lineHeight": "13.92px",
+      "fontSize": "9.6px",
+      "boxH": 13.90625,
+      "inkAscentDiacritic": 10,
+      "inkAscentPlain": 8,
+      "fontAscent": 8,
+      "halfLeading": 1.46
+    }
+  },
+  {
+    "section": "text",
+    "id": "büyük harfe çevrilen etiketler (oyun ekranı)",
+    "info": true,
+    "detail": [
+      {
+        "text": "Bölüm 10 · Biber Ustası",
+        "lang": "tr",
+        "overflow": "hidden",
+        "lh": "13.92px"
+      },
+      {
+        "text": "Parça",
+        "lang": "tr",
+        "overflow": "visible",
+        "lh": "9.28px"
+      },
+      {
+        "text": "Puan",
+        "lang": "tr",
+        "overflow": "visible",
+        "lh": "9.28px"
+      }
+    ]
+  },
+  {
+    "section": "text",
+    "id": "text-transform uppercase lang=tr altında i→İ yapıyor",
+    "ok": true
+  },
+  {
+    "section": "text",
+    "id": "web önizleme paketi lang=\"tr\" taşıyor",
+    "ok": true,
+    "detail": "build-web-preview.cjs <html lang> yazmıyor"
+  },
+  {
+    "section": "text",
+    "id": "web önizleme theme-color yeni palette",
+    "ok": false,
+    "detail": "theme-color #14112b (eski mor)"
+  },
+  {
+    "section": "text",
+    "id": "sonuç kartı puanı binlik ayırıcılı (HUD ile tutarlı)",
+    "ok": false,
+    "detail": "Puan: 13645"
+  },
+  {
+    "section": "text",
+    "id": "tr.ts Türkçe karakter eksik yazım yok",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "section": "text",
+    "id": "terim tutarlılığı",
+    "info": true,
+    "detail": {
+      "Parça/parça": 4,
+      "kese": 21,
+      "hud": "hud.pieces='Parça', result.outOfPieces='Parçalar bitti.' / lostPieces='Keseler bitti!'"
+    }
+  },
+  {
+    "section": "text",
+    "id": "terim: HUD sayacı ile kayıp başlığı aynı terimi kullanıyor",
+    "ok": false,
+    "detail": "HUD 'Parça' / sonuç 'Keseler bitti!' + 'Parçalar bitti.' aynı kartta"
+  },
+  {
+    "section": "text",
+    "id": "konsol hatası yok",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "section": "layout",
+    "id": "390x844 01-menu-fresh yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 02-map yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 03-intro-30 yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 04-play-30 yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [],
+      "clipped": [],
+      "smallTap": [],
+      "overlap": [
+        "button[booster-scoop].booster-btn \"Kepçe 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (79×52)",
+        "button[booster-sieve].booster-btn \"Elek 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (72×52)",
+        "button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"
+      ],
+      "belowFold": []
+    }
+  },
+  {
+    "section": "layout",
+    "id": "390x844 05-pause yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 06-lost yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 07-won-10-chest yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 08-shop yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [
+        "button[shop-buy-remove_ads].btn.btn-primary \"$2,99\" x:106..396",
+        "button[shop-buy-gold_small].btn.btn-primary \"$0,99\" x:105..397",
+        "button[shop-buy-gold_large].btn.btn-primary \"$4,99\" x:105..397",
+        "button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" x:105..397"
+      ],
+      "clipped": [],
+      "smallTap": [],
+      "overlap": [],
+      "belowFold": [
+        "button[shop-booster-scoop].btn.shop-buy \"150\" y:866 (kaydırınca görünür)",
+        "span \"150\" y:881 (kaydırınca görünür)",
+        "button[shop-booster-sieve].btn.shop-buy \"250\" y:946 (kaydırınca görünür)",
+        "span \"250\" y:961 (kaydırınca görünür)",
+        "button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1014 (kaydırınca görünür)"
+      ]
+    }
+  },
+  {
+    "section": "layout",
+    "id": "390x844 08-shop ekran altında kalan (kaydırmalı kart) öğeler",
+    "info": true,
+    "detail": [
+      "button[shop-booster-scoop].btn.shop-buy \"150\" y:866 (kaydırınca görünür)",
+      "span \"150\" y:881 (kaydırınca görünür)",
+      "button[shop-booster-sieve].btn.shop-buy \"250\" y:946 (kaydırınca görünür)",
+      "span \"250\" y:961 (kaydırınca görünür)",
+      "button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1014 (kaydırınca görünür)"
+    ]
+  },
+  {
+    "section": "layout",
+    "id": "390x844 09-daily yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 10-endless yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 11-tutorial-1 yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "390x844 konsol hatası yok",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "section": "layout",
+    "id": "360x740 01-menu-fresh yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 02-map yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 03-intro-30 yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 04-play-30 yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [],
+      "clipped": [],
+      "smallTap": [],
+      "overlap": [
+        "button[booster-scoop].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (48×52)",
+        "button[booster-sieve].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (52×52)",
+        "button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"
+      ],
+      "belowFold": []
+    }
+  },
+  {
+    "section": "layout",
+    "id": "360x740 05-pause yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 06-lost yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 07-won-10-chest yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 07-won-10-chest ekran altında kalan (kaydırmalı kart) öğeler",
+    "info": true,
+    "detail": [
+      "button[result-levels].btn.btn-ghost \"Bölümler\" y:719 (kaydırınca görünür)"
+    ]
+  },
+  {
+    "section": "layout",
+    "id": "360x740 08-shop yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [
+        "button[shop-buy-remove_ads].btn.btn-primary \"$2,99\" x:102..370",
+        "button[shop-buy-gold_small].btn.btn-primary \"$0,99\" x:101..371",
+        "button[shop-buy-gold_large].btn.btn-primary \"$4,99\" x:101..371",
+        "button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" x:101..371"
+      ],
+      "clipped": [],
+      "smallTap": [],
+      "overlap": [],
+      "belowFold": [
+        "button[shop-booster-shuffle].btn.shop-buy \"100\" y:770 (kaydırınca görünür)",
+        "span \"100\" y:785 (kaydırınca görünür)",
+        "button[shop-booster-scoop].btn.shop-buy \"150\" y:860 (kaydırınca görünür)",
+        "span \"150\" y:875 (kaydırınca görünür)",
+        "button[shop-booster-sieve].btn.shop-buy \"250\" y:940 (kaydırınca görünür)",
+        "span \"250\" y:955 (kaydırınca görünür)",
+        "button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1008 (kaydırınca görünür)"
+      ]
+    }
+  },
+  {
+    "section": "layout",
+    "id": "360x740 08-shop ekran altında kalan (kaydırmalı kart) öğeler",
+    "info": true,
+    "detail": [
+      "button[shop-booster-shuffle].btn.shop-buy \"100\" y:770 (kaydırınca görünür)",
+      "span \"100\" y:785 (kaydırınca görünür)",
+      "button[shop-booster-scoop].btn.shop-buy \"150\" y:860 (kaydırınca görünür)",
+      "span \"150\" y:875 (kaydırınca görünür)",
+      "button[shop-booster-sieve].btn.shop-buy \"250\" y:940 (kaydırınca görünür)",
+      "span \"250\" y:955 (kaydırınca görünür)",
+      "button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1008 (kaydırınca görünür)"
+    ]
+  },
+  {
+    "section": "layout",
+    "id": "360x740 09-daily yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 10-endless yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 11-tutorial-1 yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "360x740 konsol hatası yok",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "section": "layout",
+    "id": "320x640 01-menu-fresh yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 02-map yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 03-intro-30 yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 04-play-30 yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [],
+      "clipped": [
+        "small.order-caption \"BÖLÜM 30 · ÇARŞI AĞASI\" (w 141>119)",
+        "span.goal-label \"Soldan sağa yol\" (w 92>66)"
+      ],
+      "smallTap": [],
+      "overlap": [
+        "button[booster-scoop].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (48×52)",
+        "button[booster-sieve].booster-btn \"2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (52×52)",
+        "button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"
+      ],
+      "belowFold": []
+    }
+  },
+  {
+    "section": "layout",
+    "id": "320x640 05-pause yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 06-lost yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 06-lost ekran altında kalan (kaydırmalı kart) öğeler",
+    "info": true,
+    "detail": [
+      "button[result-retry].btn.btn-primary \"Tekrar dene\" y:609 (kaydırınca görünür)",
+      "button[result-levels].btn.btn-ghost \"Bölümler\" y:665 (kaydırınca görünür)"
+    ]
+  },
+  {
+    "section": "layout",
+    "id": "320x640 07-won-10-chest yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 07-won-10-chest ekran altında kalan (kaydırmalı kart) öğeler",
+    "info": true,
+    "detail": [
+      "button[result-next].btn.btn-primary \"Sonraki bölüm\" y:607 (kaydırınca görünür)",
+      "button[result-retry].btn \"Tekrar dene\" y:663 (kaydırınca görünür)",
+      "button[result-levels].btn.btn-ghost \"Bölümler\" y:719 (kaydırınca görünür)"
+    ]
+  },
+  {
+    "section": "layout",
+    "id": "320x640 08-shop yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [
+        "button[shop-buy-remove_ads].btn.btn-primary \"$2,99\" x:102..330",
+        "button[shop-buy-gold_small].btn.btn-primary \"$0,99\" x:101..331",
+        "button[shop-buy-gold_large].btn.btn-primary \"$4,99\" x:101..331",
+        "button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" x:101..331"
+      ],
+      "clipped": [],
+      "smallTap": [],
+      "overlap": [],
+      "belowFold": [
+        "button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" y:619 (kaydırınca görünür)",
+        "h3.shop-sub \"Güçlendiriciler\" y:737 (kaydırınca görünür)",
+        "button[shop-booster-shuffle].btn.shop-buy \"100\" y:787 (kaydırınca görünür)",
+        "span \"100\" y:802 (kaydırınca görünür)",
+        "button[shop-booster-scoop].btn.shop-buy \"150\" y:877 (kaydırınca görünür)",
+        "span \"150\" y:892 (kaydırınca görünür)",
+        "button[shop-booster-sieve].btn.shop-buy \"250\" y:957 (kaydırınca görünür)",
+        "span \"250\" y:972 (kaydırınca görünür)",
+        "button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1025 (kaydırınca görünür)"
+      ]
+    }
+  },
+  {
+    "section": "layout",
+    "id": "320x640 08-shop ekran altında kalan (kaydırmalı kart) öğeler",
+    "info": true,
+    "detail": [
+      "button[shop-free-gold].btn.shop-buy \"Bugün 3/3 hak\" y:619 (kaydırınca görünür)",
+      "h3.shop-sub \"Güçlendiriciler\" y:737 (kaydırınca görünür)",
+      "button[shop-booster-shuffle].btn.shop-buy \"100\" y:787 (kaydırınca görünür)",
+      "span \"100\" y:802 (kaydırınca görünür)",
+      "button[shop-booster-scoop].btn.shop-buy \"150\" y:877 (kaydırınca görünür)",
+      "span \"150\" y:892 (kaydırınca görünür)",
+      "button[shop-booster-sieve].btn.shop-buy \"250\" y:957 (kaydırınca görünür)",
+      "span \"250\" y:972 (kaydırınca görünür)",
+      "button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1025 (kaydırınca görünür)"
+    ]
+  },
+  {
+    "section": "layout",
+    "id": "320x640 09-daily yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 10-endless yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "320x640 11-tutorial-1 yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [],
+      "clipped": [
+        "span.goal-label \"Soldan sağa yol\" (w 92>66)"
+      ],
+      "smallTap": [],
+      "overlap": [],
+      "belowFold": []
+    }
+  },
+  {
+    "section": "layout",
+    "id": "320x640 konsol hatası yok",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 01-menu-fresh yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 02-map yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 03-intro-30 yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 04-play-30 yerleşim",
+    "ok": false,
+    "detail": {
+      "overflowX": [],
+      "offscreen": [],
+      "clipped": [],
+      "smallTap": [],
+      "overlap": [
+        "button[booster-scoop].booster-btn \"Kepçe 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (97×52)",
+        "button[booster-sieve].booster-btn \"Elek 2\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (86×52)",
+        "button[gold-badge].gold-badge \"200 ?\" ∩ button[booster-tip].booster-tip \"Yeni: Tezgâhı Yenile Tepsideki\" (109×48)"
+      ],
+      "belowFold": []
+    }
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 05-pause yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 06-lost yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 07-won-10-chest yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 08-shop yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 08-shop ekran altında kalan (kaydırmalı kart) öğeler",
+    "info": true,
+    "detail": [
+      "button[shop-restore].btn.btn-ghost \"Satın alımları geri yükle\" y:1014 (kaydırınca görünür)"
+    ]
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 09-daily yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 10-endless yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 11-tutorial-1 yerleşim",
+    "ok": true
+  },
+  {
+    "section": "layout",
+    "id": "768x1024 konsol hatası yok",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "section": "flow",
+    "id": "ilk açılışta doğrudan bölüm 1 (GDD §15)",
+    "ok": false,
+    "detail": "açılan: menu"
+  },
+  {
+    "section": "flow",
+    "id": "ilk açılışta günlük ödül çıkmıyor",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "ilk açılışta Serbest Tezgâh kilitli",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 1 öncesi \"Nasıl oynanır?\" kartı",
+    "info": true,
+    "detail": "gösterildi"
+  },
+  {
+    "section": "flow",
+    "id": "öğretici 1 metinleri",
+    "info": true,
+    "detail": [
+      "Keseyi tut, sarı boşluğa sürükle, bırak!",
+      "Aynı renk soldan sağa → patladı"
+    ]
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 1 (öğretici) ipucu hamleleriyle kazanılıyor",
+    "ok": true,
+    "detail": {
+      "state": "won",
+      "placed": 2,
+      "score": 1440,
+      "stars": 3
+    }
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 1 ödül paneli ilk galibiyet altını (3★ → 40)",
+    "ok": true,
+    "detail": "+40 altın"
+  },
+  {
+    "section": "flow",
+    "id": "öğretici 2 metinleri",
+    "info": true,
+    "detail": [
+      "Keseyi aynı renk şeridin boşluğuna sürükle.",
+      "Kese hakkın burada. Bitmeden siparişi tamamla."
+    ]
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 2 (öğretici) ipucu hamleleriyle kazanılıyor",
+    "ok": true,
+    "detail": {
+      "state": "won",
+      "placed": 2,
+      "score": 2240,
+      "stars": 3
+    }
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 2 ödül paneli ilk galibiyet altını (3★ → 40)",
+    "ok": true,
+    "detail": "+40 altın"
+  },
+  {
+    "section": "flow",
+    "id": "öğretici 3 metinleri",
+    "info": true,
+    "detail": [
+      "Keseye dokun, döner."
+    ]
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 3 (öğretici) ipucu hamleleriyle kazanılıyor",
+    "ok": true,
+    "detail": {
+      "state": "won",
+      "placed": 8,
+      "score": 1960,
+      "stars": 2
+    }
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 3 ödül paneli ilk galibiyet altını (2★ → 30)",
+    "ok": true,
+    "detail": "+30 altın"
+  },
+  {
+    "section": "flow",
+    "id": "harita toplam yıldız",
+    "info": true,
+    "detail": "8"
+  },
+  {
+    "section": "flow",
+    "id": "harita: bölüm 4 açık, 5 kilitli",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 4 tanıtım: scoreGoal + boosterShuffle kartları",
+    "ok": true,
+    "detail": [
+      "intro-scoreGoal",
+      "intro-boosterShuffle",
+      "intro-start"
+    ]
+  },
+  {
+    "section": "flow",
+    "id": "bölüm 4: Yenile görünür, 2 hediye",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "ücretsiz devam sonrası oyun sürüyor",
+    "ok": true,
+    "detail": {
+      "state": "playing",
+      "left": 29
+    }
+  },
+  {
+    "section": "flow",
+    "id": "duraklat düğmeleri",
+    "info": true,
+    "detail": [
+      "Devam et",
+      "Yeniden başla",
+      "Bölümler",
+      "?Nasıl oynanır?",
+      "Ses: Açık",
+      "Titreşim: Açık"
+    ]
+  },
+  {
+    "section": "flow",
+    "id": "duraklat: ses kapat kaydediliyor",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "Yeniden başla onay soruyor (GDD §15)",
+    "ok": false,
+    "detail": "onay yok; 0 kese ilerleme sessizce silindi"
+  },
+  {
+    "section": "flow",
+    "id": "Haritaya dön onay soruyor (GDD §15)",
+    "ok": false,
+    "detail": "onay yok"
+  },
+  {
+    "section": "flow",
+    "id": "günlük ödül: bölüm 1 sonrası menüde açılıyor",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "günlük ödül 1. gün = 25 altın",
+    "ok": true,
+    "detail": {
+      "g0": 310,
+      "g1": 335
+    }
+  },
+  {
+    "section": "flow",
+    "id": "günlük ödül aynı gün ikinci kez çıkmıyor",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "mağaza: bedava altın günde 3 × 30 = 90",
+    "ok": true,
+    "detail": {
+      "g2": 335,
+      "g3": 425
+    }
+  },
+  {
+    "section": "flow",
+    "id": "mağaza: Yenile 100 altına alınıyor",
+    "ok": true,
+    "detail": {
+      "b0": {
+        "g": 425,
+        "n": 2
+      },
+      "b1": {
+        "g": 325,
+        "n": 3
+      }
+    }
+  },
+  {
+    "section": "flow",
+    "id": "sonsuz mod: bölüm 7 kazanılmışken kilitli",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "sonsuz mod: bölüm 8 kazanılınca açık",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "sonsuz ödül en fazla 30 altın",
+    "ok": true,
+    "detail": "+30 altın"
+  },
+  {
+    "section": "flow",
+    "id": "sonsuz sonuçta \"Devam et\" teklifi yok",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "geri: oyun → duraklat → devam",
+    "ok": true
+  },
+  {
+    "section": "flow",
+    "id": "konsol hatası yok",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "section": "ads",
+    "id": "bölüm 8 kazanılmadan geçiş reklamı yok",
+    "ok": true,
+    "detail": [
+      "locked",
+      "locked",
+      "locked",
+      "locked"
+    ]
+  },
+  {
+    "section": "ads",
+    "id": "bölüm 8 sonunda reklam yok (kural: 8 önceden kazanılmış olmalı)",
+    "ok": true,
+    "detail": {
+      "shown": false,
+      "reason": "locked",
+      "ends": 5
+    }
+  },
+  {
+    "section": "ads",
+    "id": "oturum < 3 dk iken reklam yok",
+    "ok": true,
+    "detail": {
+      "shown": false,
+      "reason": "session",
+      "ends": 6
+    }
+  },
+  {
+    "section": "ads",
+    "id": "tüm koşullar sağlanınca geçiş reklamı gösteriliyor",
+    "ok": true,
+    "detail": {
+      "shown": true,
+      "reason": "ok",
+      "ends": 0
+    }
+  },
+  {
+    "section": "ads",
+    "id": "reklam sonrası < 3 bölüm sonu → yok",
+    "ok": true,
+    "detail": {
+      "shown": false,
+      "reason": "level_gap",
+      "ends": 1
+    }
+  },
+  {
+    "section": "ads",
+    "id": "3 bölüm sonu ama < 90 sn → yok (cooldown)",
+    "ok": true,
+    "detail": {
+      "shown": false,
+      "reason": "cooldown",
+      "ends": 3
+    }
+  },
+  {
+    "section": "ads",
+    "id": "90 sn sonra gösteriliyor",
+    "ok": true,
+    "detail": {
+      "shown": true,
+      "reason": "ok",
+      "ends": 0
+    }
+  },
+  {
+    "section": "ads",
+    "id": "\"Tekrar dene\" geçişinde asla yok",
+    "ok": true,
+    "detail": {
+      "shown": false,
+      "reason": "ok",
+      "ends": 4
+    }
+  },
+  {
+    "section": "ads",
+    "id": "aynı bölümde art arda 3 kayıp → haritaya geçişte yok",
+    "ok": true,
+    "detail": {
+      "shown": false,
+      "reason": "frustration",
+      "ends": 5
+    }
+  },
+  {
+    "section": "ads",
+    "id": "saatte en fazla 4 geçiş reklamı",
+    "ok": true,
+    "detail": {
+      "r": {
+        "shown": false,
+        "reason": "hourly_cap",
+        "ends": 18
+      },
+      "shownCount": 2,
+      "inter": 4,
+      "offsetMin": 26
+    }
+  },
+  {
+    "section": "ads",
+    "id": "Reklamları Kaldır sonrası geçiş reklamı yok",
+    "ok": true,
+    "detail": {
+      "shown": false,
+      "reason": "no_ads",
+      "ends": 22
+    }
+  },
+  {
+    "section": "ads",
+    "id": "konsol hatası yok",
+    "ok": true,
+    "detail": []
+  }
+]

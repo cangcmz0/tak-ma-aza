@@ -24,6 +24,8 @@ export interface Ghost {
   y: number;
   /** Whether the drop is currently possible. */
   ok: boolean;
+  /** Cell row where the piece will first touch support (landing shadow), or -1. */
+  landY: number;
 }
 
 /** Device pixels per cell needed for 3 / 2 texels per cell side (else 1). */
@@ -565,6 +567,19 @@ export class BoardRenderer {
     lane.addColorStop(1, gh.ok ? 'rgba(255,214,150,0.03)' : 'rgba(255,90,60,0.03)');
     ctx.fillStyle = lane;
     ctx.fillRect(gh.x * sc, 0, shape.w * bw, Math.min(H, gh.y * sc + shape.h * bw));
+    // Landing shadow (QA-015): where the piece will hit the sand, when that is below it.
+    if (gh.ok && gh.landY > gh.y + BLOCK / 2) {
+      ctx.fillStyle = 'rgba(255,240,215,0.10)';
+      ctx.fillRect(gh.x * sc, (gh.y + shape.h * BLOCK) * sc, shape.w * bw, (gh.landY - gh.y) * sc);
+      ctx.globalAlpha = 0.28;
+      for (let c = 0; c < shape.cells.length; c++) {
+        const [bx, by] = shape.cells[c];
+        const col = blockColor(gh.piece, c);
+        ctx.fillStyle = col === JOKER ? sandCss(JOKER, 5) : sandCss(col, 1);
+        ctx.fillRect(gh.x * sc + bx * bw, gh.landY * sc + by * bw, bw, bw);
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.globalAlpha = gh.ok ? 0.72 : 0.55;
     for (let c = 0; c < shape.cells.length; c++) {
       const [bx, by] = shape.cells[c];

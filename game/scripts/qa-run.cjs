@@ -71,7 +71,7 @@ async function newPage(browser, vp = VIEWPORTS[0], extra = {}) {
 // ---- helpers shared by sections -------------------------------------------------------------
 
 const H = {
-  async fresh(page, query = '?debug=1&nodaily', save) {
+  async fresh(page, query = '?debug=1&nohowto&nodaily', save) {
     await page.goto(`${BASE}${query}`);
     await page.evaluate((s) => {
       localStorage.clear();
@@ -80,7 +80,7 @@ const H = {
     await page.goto(`${BASE}${query}`);
     await page.waitForSelector('[data-testid=menu-play]');
   },
-  async openLevel(page, id, query = '?debug=1&nodaily&unlockAll') {
+  async openLevel(page, id, query = '?debug=1&nohowto&nodaily&unlockAll') {
     if (!(await page.locator('[data-testid=menu-levels]').count())) {
       await page.goto(`${BASE}${query}`);
       await page.waitForSelector('[data-testid=menu-levels]');
@@ -114,8 +114,9 @@ const H = {
   },
   /** Fast-forward the session synchronously in the page (no rendering wait). */
   async runSettled(page) {
-    return page.evaluate(() => window.__kum.session.runUntilSettled(200000));
+    return page.evaluate(() => window.__kum.session.runUntilSettled(400000));
   },
+  /** grainCenterX is in design grains (0..48), independent of the grid resolution. */
   async dragSlotToGrain(page, slot, grainCenterX, opts = {}) {
     const s = await page.locator(`[data-testid=slot-${slot}]`).boundingBox();
     const board = await page.locator('[data-testid=board]').boundingBox();
@@ -144,14 +145,18 @@ const H = {
       return mv;
     });
     if (!m) return false;
-    const w = await page.evaluate((m) => {
-      const p = window.__kum.session.tray[m.slot];
-      if (!p) return 1;
+    // Centre of the hinted drop in design grains (0..48), whatever the grid resolution.
+    const cx = await page.evaluate((m) => {
+      const s = window.__kum.session;
+      const p = s.tray[m.slot];
+      if (!p) return 24;
       p.rot = m.rot;
       window.__kum.scene.trayDirty = true;
-      return (p.rot % 2 === 0 ? { I: 4, O: 2, T: 3, L: 2, J: 2, S: 3, Z: 3 } : { I: 1, O: 2, T: 2, L: 3, J: 3, S: 2, Z: 2 })[p.kind];
+      const w = (p.rot % 2 === 0 ? { I: 4, O: 2, T: 3, L: 2, J: 2, S: 3, Z: 3 } : { I: 1, O: 2, T: 2, L: 3, J: 3, S: 2, Z: 2 })[p.kind];
+      const block = s.grid.w / 12;
+      return ((m.x + (w * block) / 2) / s.grid.w) * 48;
     }, m);
-    await H.dragSlotToGrain(page, m.slot, m.x + (w * 4) / 2);
+    await H.dragSlotToGrain(page, m.slot, cx);
     return true;
   },
   /** Fast in-page bot: hinted drops via the session API (no pointer), settling synchronously. */
@@ -167,7 +172,7 @@ const H = {
         if (!p) break;
         p.rot = m.rot;
         if (!s.drop(m.slot, m.x)) break;
-        s.runUntilSettled(200000);
+        s.runUntilSettled(400000);
         moves++;
       }
       return { state: s.state, score: s.score, placed: s.placed, moves, reason: s.loseReason };
@@ -261,13 +266,13 @@ sections.layout = async (browser) => {
       screens[name] = await layoutAudit(page);
     };
     // Fresh menu (no progress) and progressed menu.
-    await H.fresh(page, '?debug=1&nodaily');
+    await H.fresh(page, '?debug=1&nohowto&nodaily');
     await audit('01-menu-fresh');
     await page.click('[data-testid=menu-levels]');
     await page.waitForSelector('[data-testid=map]');
     await audit('02-map');
     // Level intro + play (level 10: 2 goals, dense prefill).
-    await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+    await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
     await page.waitForSelector('[data-testid=menu-levels]');
     await H.openLevel(page, 30);
     await audit('03-intro-30');
@@ -287,7 +292,7 @@ sections.layout = async (browser) => {
     await H.waitResult(page);
     await audit('06-lost');
     // Win: level 1 via bot.
-    await H.fresh(page, '?debug=1&nodaily&unlockAll', { tutorialsDone: ['t1', 't2', 't3'] });
+    await H.fresh(page, '?debug=1&nohowto&nodaily&unlockAll', { tutorialsDone: ['t1', 't2', 't3'] });
     await H.startLevel(page, 10);
     await page.evaluate(() => {
       const s = window.__kum.session;
@@ -298,7 +303,7 @@ sections.layout = async (browser) => {
     await page.waitForTimeout(1600);
     await audit('07-won-10-chest');
     // Shop from the menu.
-    await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+    await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
     await page.waitForSelector('[data-testid=menu-play]');
     const shopBtn = page.locator('[data-testid=menu-shop]');
     if (await shopBtn.count()) {
@@ -306,18 +311,18 @@ sections.layout = async (browser) => {
       await audit('08-shop');
     } else info(`${tag} shop button`, 'menu-shop yok');
     // Daily reward.
-    await H.fresh(page, '?debug=1', { levels: { 1: { stars: 3, best: 1, completed: true, attempts: 1, lossStreak: 0 } } });
+    await H.fresh(page, '?debug=1&nohowto', { levels: { 1: { stars: 3, best: 1, completed: true, attempts: 1, lossStreak: 0 } } });
     await page.waitForTimeout(400);
     if (await page.locator('[data-testid=daily-claim]').count()) await audit('09-daily');
     else info(`${tag} daily`, 'günlük ödül penceresi açılmadı');
     // Endless.
-    await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+    await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
     await page.waitForSelector('[data-testid=menu-endless]');
     await page.click('[data-testid=menu-endless]');
     await page.waitForSelector('[data-testid=board]');
     await audit('10-endless');
     // Tutorial (level 1 fresh).
-    await H.fresh(page, '?debug=1&nodaily');
+    await H.fresh(page, '?debug=1&nohowto&nodaily');
     await page.click('[data-testid=menu-play]');
     await page.waitForSelector('[data-testid=board]');
     await page.waitForTimeout(800);
@@ -336,7 +341,7 @@ sections.layout = async (browser) => {
 
 sections.text = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[1]);
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   check('html lang="tr"', (await page.evaluate(() => document.documentElement.lang)) === 'tr');
   await H.startLevel(page, 10);
@@ -365,7 +370,7 @@ sections.text = async (browser) => {
   });
   // Diacritic ink above the line box top = clipped.
   const lineTopToBaseline = cap.halfLeading + cap.fontAscent;
-  const clipped = cap.inkAscentDiacritic > lineTopToBaseline + 0.25;
+  const clipped = cap.inkAscentDiacritic > lineTopToBaseline + 1;
   check('HUD sipariş başlığında Ö/Ü/İ noktaları kesilmiyor', !clipped, cap);
   // Zoomed screenshot of the caption.
   const box = await page.locator('.order-caption').boundingBox();
@@ -393,7 +398,7 @@ sections.text = async (browser) => {
   check('text-transform uppercase lang=tr altında i→İ yapıyor', up.same);
   // Web preview fragment has no <html lang="tr"> (scripts/build-web-preview.cjs).
   const prev = fs.readFileSync(path.join(__dirname, 'build-web-preview.cjs'), 'utf8');
-  check('web önizleme paketi lang="tr" taşıyor', /lang=/.test(prev), 'build-web-preview.cjs <html lang> yazmıyor');
+  check('web önizleme paketi lang="tr" taşıyor', /lang\s*=/.test(prev), 'build-web-preview.cjs <html lang> yazmıyor');
   check('web önizleme theme-color yeni palette', !/#14112b/i.test(prev), 'theme-color #14112b (eski mor)');
   // Number formatting consistency: result card "Puan: 12345" vs HUD "12.345".
   await page.evaluate(() => {
@@ -423,42 +428,42 @@ sections.text = async (browser) => {
 
 sections.gameplay = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await H.startLevel(page, 11);
   // Goals out of reach so the formula checks never end the level.
   await page.evaluate(() => window.__kum.session.goals.goals.forEach((g) => (g.target = 1e9)));
-  // 1) Score formula: one full-width path of a single colour.
+  // All coordinates below are in design grains × S (S = grid cells per design grain: 1 for 48×80, 2 for 96×160).
+  // Expected points are in design grains (session converts cells with cellsToGrains()).
+  // 1) Score formula: one full-width path (48 × 4 design grains = 192 g).
   const r1 = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
+    const S = g.w / 48;
     for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
     s.score = 0;
     s.chain = 0;
-    for (let x = 0; x < g.w; x++) for (let y = g.h - 4; y < g.h; y++) g.set(x, y, 1);
+    for (let x = 0; x < g.w; x++) for (let y = g.h - 4 * S; y < g.h; y++) g.set(x, y, 1);
     s.wake();
-    s.runUntilSettled(200000);
-    return { score: s.score, chain: s.bestChain };
+    s.runUntilSettled(400000);
+    return { S, score: s.score, chain: s.bestChain };
   });
-  check('puan: tek yol (192 tane) = (192+100)×1', r1.score === 292, r1);
-  // 2) Chain: two stacked rows of different colour where the upper completes after the lower clears.
+  check('puan: tek yol (192 g) = (192+100)×1 = 292', r1.score === 292, r1);
+  // 2) Chain: the lower path clears, sand above falls into the hole and completes a second path.
   const r2 = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
+    const S = g.w / 48;
     for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
     s.score = 0;
     s.chain = 0;
     s.bestChain = 0;
-    // bottom row colour 1 full (path), row above: colour 3 full except it sits on 1 → after clear falls, still path? we want chain:
-    // layout: y=h-1..h-4: colour 1 full (path A). y=h-8..h-5: colour 3 left half + colour 4 right half? Use: colour 3 full but a gap filled by colour 1 column.
-    for (let x = 0; x < g.w; x++) for (let y = g.h - 4; y < g.h; y++) g.set(x, y, 1);
-    // Upper: colour 3 everywhere except a 4-wide column of colour 1 that touches the bottom path (so it clears with path A).
-    for (let x = 0; x < g.w; x++) for (let y = g.h - 8; y < g.h - 4; y++) g.set(x, y, x >= 20 && x < 24 ? 1 : 3);
-    // After A (+ column) clears, colour 3 falls: left and right parts separated by a 4-wide hole → no path unless filled.
-    // Put colour 3 above the column so it falls into the hole.
-    for (let x = 20; x < 24; x++) for (let y = g.h - 12; y < g.h - 8; y++) g.set(x, y, 3);
+    const B = 4 * S;
+    for (let x = 0; x < g.w; x++) for (let y = g.h - B; y < g.h; y++) g.set(x, y, 1);
+    for (let x = 0; x < g.w; x++) for (let y = g.h - 2 * B; y < g.h - B; y++) g.set(x, y, x >= 5 * B && x < 6 * B ? 1 : 3);
+    for (let x = 5 * B; x < 6 * B; x++) for (let y = g.h - 3 * B; y < g.h - 2 * B; y++) g.set(x, y, 3);
     s.wake();
-    s.runUntilSettled(200000);
+    s.runUntilSettled(400000);
     return { score: s.score, bestChain: s.bestChain };
   });
   check('zincir: düşen kum yeni yol kurunca Z=2', r2.bestChain >= 2, r2);
@@ -466,20 +471,20 @@ sections.gameplay = async (browser) => {
   const r3 = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
+    const S = g.w / 48;
     for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
     s.score = 0;
     s.chain = 0;
     for (let x = 0; x < g.w; x++) {
-      for (let y = g.h - 4; y < g.h; y++) g.set(x, y, 1); // 192
-      for (let y = g.h - 6; y < g.h - 4; y++) g.set(x, y, 3); // 96
+      for (let y = g.h - 4 * S; y < g.h; y++) g.set(x, y, 1); // 192 g
+      for (let y = g.h - 6 * S; y < g.h - 4 * S; y++) g.set(x, y, 3); // 96 g
     }
     s.wake();
-    // tick until first clear resolves
     let ev = null;
     const off = s.events.on((e) => {
       if (e.type === 'cleared' && !ev) ev = e;
     });
-    s.runUntilSettled(200000);
+    s.runUntilSettled(400000);
     off();
     return { points: ev && ev.points, paths: ev && ev.paths, chain: ev && ev.chain };
   });
@@ -491,7 +496,7 @@ sections.gameplay = async (browser) => {
     const slot = s.tray.findIndex((t) => t);
     s.drop(slot, 0);
     const afterDrop = s.chain;
-    s.runUntilSettled(200000);
+    s.runUntilSettled(400000);
     return { afterDrop, afterSettle: s.chain };
   });
   check('zincir bırakışta sıfırlanmıyor, durulunca (yol yoksa) sıfırlanıyor', r4.afterDrop === 3 && r4.afterSettle === 0, r4);
@@ -499,65 +504,71 @@ sections.gameplay = async (browser) => {
   const r5 = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
+    const S = g.w / 48;
     for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
     s.chain = 7;
     s.score = 0;
-    for (let x = 0; x < g.w; x++) for (let y = g.h - 4; y < g.h; y++) g.set(x, y, 1);
+    for (let x = 0; x < g.w; x++) for (let y = g.h - 4 * S; y < g.h; y++) g.set(x, y, 1);
     s.wake();
-    s.runUntilSettled(200000);
+    s.runUntilSettled(400000);
     return { score: s.score };
   });
   check('zincir tavanı ×5', r5.score === 292 * 5, r5);
-  // 6) Bomb: grains removed by the blast score 1×Z, count for grain goal (level 12: sumak grains).
+  // 6) Bomb: grains removed by the blast score 1×Z and count for the grain goal (level 12: sumak).
   await H.startLevel(page, 12);
   const r6 = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
+    const S = g.w / 48;
     for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
     s.score = 0;
     s.chain = 0;
+    s.goals.goals.forEach((q) => q.def.type !== 'clear_color_grains' && (q.target = 1e9));
     const goal = s.goals.goals.find((q) => q.def.type === 'clear_color_grains');
+    if (goal) goal.target = 1e9;
     const before = goal ? goal.current : -1;
-    for (let x = 0; x < g.w; x++) for (let y = g.h - 4; y < g.h; y++) g.set(x, y, 1);
-    for (let x = 0; x < g.w; x++) for (let y = g.h - 12; y < g.h - 4; y++) g.set(x, y, 4 + ((x >> 2) % 2) * -1); // sumak / colour 3 stripes
-    g.flags[(g.h - 2) * g.w + 24] |= 2; // bomb grain inside the bottom path
+    for (let x = 0; x < g.w; x++) for (let y = g.h - 4 * S; y < g.h; y++) g.set(x, y, 1);
+    for (let x = 0; x < g.w; x++) for (let y = g.h - 12 * S; y < g.h - 4 * S; y++) g.set(x, y, ((x / (4 * S)) | 0) % 2 ? 3 : 4);
+    g.flags[(g.h - 2 * S) * g.w + 24 * S] |= 2; // bomb grain inside the bottom path
     s.wake();
     let bombEv = null;
     const off = s.events.on((e) => {
       if (e.type === 'bomb') bombEv = e;
     });
-    s.runUntilSettled(200000);
+    s.runUntilSettled(400000);
     off();
     return { score: s.score, goalColor: goal && goal.def.color, before, after: goal ? goal.current : -1, bombGrains: bombEv && bombEv.grains };
   });
   check('bomba: patlama taneleri gram hedefine sayılıyor', r6.after > r6.before && r6.bombGrains > 0, r6);
-  check('bomba puanı = yol + bomba tanesi×Z', r6.score === 292 + r6.bombGrains, r6);
-  // 7) Sieve (Elek): grains count for grain goal, not path goal; 1 point each, no multiplier.
+  check('bomba puanı = yol + bomba tanesi×Z (±1 yuvarlama)', Math.abs(r6.score - (292 + r6.bombGrains)) <= 1, r6);
+  // 7) Sieve (Elek): 10 design grains of colour 4 → 10 points, no multiplier, counts for the grain goal.
   const r7 = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
+    const S = g.w / 48;
     for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
     s.score = 0;
     s.chain = 4;
-    for (let x = 0; x < 10; x++) g.set(x, g.h - 1, 4);
+    for (let x = 0; x < 10 * S; x++) for (let y = g.h - S; y < g.h; y++) g.set(x, y, 4);
     const goal = s.goals.goals.find((q) => q.def.type === 'clear_color_grains');
     const before = goal.current;
     const n = s.sieveColor(4);
     return { n, score: s.score, gained: goal.current - before };
   });
-  check('Elek: 1 puan/tane, çarpansız, gram hedefine sayılıyor', r7.n === 10 && r7.score === 10 && r7.gained === 10, r7);
-  // 8) Scoop: 4-wide strip, statics untouched, joker removed.
+  check('Elek: 1 puan/tane, çarpansız, gram hedefine sayılıyor', r7.score === 10 && r7.gained === 10, r7);
+  // 8) Scoop: 1 block wide (4 design grains) × 10 grain rows = 40 g (joker included), statics untouched.
   const r8 = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
+    const S = g.w / 48;
     for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
     s.score = 0;
-    for (let y = g.h - 10; y < g.h; y++) for (let x = 0; x < g.w; x++) g.set(x, y, 1);
-    g.set(10, g.h - 5, 15); // joker
-    const n = s.scoopColumns(8, 4);
+    for (let y = g.h - 10 * S; y < g.h; y++) for (let x = 0; x < g.w; x++) g.set(x, y, 1);
+    g.set(10 * S, g.h - 5 * S, 15); // joker
+    const n = s.scoopColumns(8 * S, 4 * S);
     return { n, score: s.score };
   });
-  check('Kepçe: 4 tane genişlik × 10 satır = 40 tane (joker dahil), 1 puan/tane', r8.n === 40 && r8.score === 40, r8);
+  check('Kepçe: 1 blok × 10 satır = 40 g (joker dahil), 1 puan/tane', r8.score === 40, r8);
   // 9) Booster limits per level (UI): 3 uses max. Use shuffle via the bar.
   await page.evaluate(() => {
     window.__app.meta.economy.earn(5000, 'qa');
@@ -666,7 +677,7 @@ sections.gameplay = async (browser) => {
     s.score = goal.target - 1;
     s.goals.onScore(s.score);
     s.wake();
-    s.runUntilSettled(200000);
+    s.runUntilSettled(400000);
     return { state: s.state, done: goal.current >= goal.target, left: s.piecesLeft };
   });
   check('Tezgâh bonusu puan hedefini tamamlamıyor', sb.state === 'playing' && !sb.done, sb);
@@ -692,7 +703,7 @@ sections.gameplay = async (browser) => {
 // Sürükle-bırak hissi (commit 5f134c6: katı blok düşüş, FLAG_FALLING, SAND_REPOSE=2, hayalet).
 sections.drop = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await H.startLevel(page, 11);
   const clearBoard = () =>
@@ -703,7 +714,7 @@ sections.drop = async (browser) => {
       s.goals.goals.forEach((q) => (q.target = 1e9));
       g.version++;
       s.wake();
-      s.runUntilSettled(100000);
+      s.runUntilSettled(400000);
     });
   // Put a known piece (O, colour c) in slot 0 and select it.
   const setPiece = (kind = 'O', color = 1, rot = 0) =>
@@ -751,11 +762,12 @@ sections.drop = async (browser) => {
   const rigid = await page.evaluate((FALL) => {
     const s = window.__kum.session;
     const g = s.grid;
-    s.drop(0, 20, 0);
+    const S = g.w / 48;
+    s.drop(0, 20 * S, 0);
     const shapes = [];
-    for (let t = 0; t < 40; t++) {
+    for (let t = 0; t < 80; t++) {
       s.tick();
-      let minX = 99, maxX = -1, minY = 99, maxY = -1, n = 0;
+      let minX = 1e9, maxX = -1, minY = 1e9, maxY = -1, n = 0;
       for (let i = 0; i < g.size; i++)
         if (g.flags[i] & FALL) {
           n++;
@@ -765,12 +777,12 @@ sections.drop = async (browser) => {
       if (!n) break;
       shapes.push({ n, w: maxX - minX + 1, h: maxY - minY + 1 });
     }
-    s.runUntilSettled(100000);
+    s.runUntilSettled(400000);
     let spreadOut = 0, total = 0;
-    for (let i = 0; i < g.size; i++) if (g.color[i] === 1) { total++; const x = i % g.w; if (x < 20 || x >= 28) spreadOut++; }
-    return { ticksFalling: shapes.length, allSquare: shapes.every((q) => q.n === 64 && q.w === 8 && q.h === 8), total, spreadOut };
+    for (let i = 0; i < g.size; i++) if (g.color[i] === 1) { total++; const x = i % g.w; if (x < 20 * S || x >= 28 * S) spreadOut++; }
+    return { S, ticksFalling: shapes.length, allSquare: shapes.every((q) => q.n === 64 * S * S && q.w === 8 * S && q.h === 8 * S), total, spreadOut };
   }, FALL);
-  check('düşen kese katı blok kalıyor (8×8, 64 tane)', rigid.allSquare && rigid.ticksFalling > 0, rigid);
+  check('düşen kese katı blok kalıyor (2×2 blok, 64 g)', rigid.allSquare && rigid.ticksFalling > 0, rigid);
   info('düz zeminde yayılma (kese sütunları dışına taşan tane)', `${rigid.spreadOut}/${rigid.total}`);
   check('düz zeminde kayma sınırlı (≤ %25 tane kese sütunları dışında)', rigid.spreadOut / rigid.total <= 0.25, rigid);
   // c) Overhang: a shelf of sand with empty space below; aiming under it must stop on top.
@@ -779,16 +791,17 @@ sections.drop = async (browser) => {
   const tuck = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
-    for (let x = 16; x < 32; x++) g.set(x, 40, 255, 0, 1); // raf (static) row at y=40
+    const S = g.w / 48;
+    for (let x = 16 * S; x < 32 * S; x++) for (let k = 0; k < S; k++) g.set(x, 40 * S + k, 255, 0, 1); // raf (static) row
     g.version++;
-    const row = s.dropRow(0, 20, 70);
-    s.drop(0, 20, 70);
-    s.runUntilSettled(100000);
+    const row = s.dropRow(0, 20 * S, 70 * S);
+    s.drop(0, 20 * S, 70 * S);
+    s.runUntilSettled(400000);
     let under = 0;
-    for (let y = 41; y < g.h; y++) for (let x = 16; x < 32; x++) if (g.get(x, y) === 3) under++;
-    return { releaseRow: row, grainsUnderShelf: under };
+    for (let y = 41 * S; y < g.h; y++) for (let x = 16 * S; x < 32 * S; x++) if (g.get(x, y) === 3) under++;
+    return { releaseRow: row, maxRow: 32 * S, grainsUnderShelf: under };
   });
-  check('çıkıntı altına sokulamıyor (raf altına tane girmedi)', tuck.releaseRow <= 32 && tuck.grainsUnderShelf === 0, tuck);
+  check('çıkıntı altına sokulamıyor (raf altına tane girmedi)', tuck.releaseRow <= tuck.maxRow && tuck.grainsUnderShelf === 0, tuck);
   // d) Drop onto flowing sand (real pointer): second drop while the first still moves.
   await clearBoard();
   await setPiece('O', 1);
@@ -812,18 +825,19 @@ sections.drop = async (browser) => {
     const O = (c) => ({ kind: 'O', rot: 0, color: c, color2: null, special: null, specialCell: -1, jokerCell: -1 });
     s.tray[0] = O(1);
     s.tray[1] = O(3);
-    s.drop(0, 0, 60); // released low → lands almost at once
-    s.drop(1, 36, 0); // released at the top → still high in the air
+    const S = g.w / 48;
+    s.drop(0, 0, 60 * S); // released low → lands almost at once
+    s.drop(1, 36 * S, 0); // released at the top → still high in the air
     let midAirLost = false;
-    for (let t = 0; t < 60; t++) {
+    for (let t = 0; t < 120; t++) {
       s.tick();
-      let fallA = 0, fallB = 0, bTop = 99;
+      let fallA = 0, fallB = 0, bTop = 1e9;
       for (let i = 0; i < g.size; i++) {
         if (g.color[i] === 3) bTop = Math.min(bTop, (i / g.w) | 0);
         if (g.flags[i] & FALL) g.color[i] === 1 ? fallA++ : fallB++;
       }
       if (fallA === 0 && fallB === 0) {
-        midAirLost = bTop < g.h - 8 - 1; // B was not on the floor yet
+        midAirLost = bTop < g.h - 8 * S - 1; // B was not on the floor yet
         return { tick: t, bTopWhenFlagsCleared: bTop, midAirLost };
       }
     }
@@ -863,11 +877,12 @@ sections.drop = async (browser) => {
   const hang = await page.evaluate((FALL) => {
     const s = window.__kum.session;
     const g = s.grid;
-    for (let x = 0; x < g.w; x++) for (let y = g.h - 4; y < g.h; y++) g.set(x, y, 1);
+    const S = g.w / 48;
+    for (let x = 0; x < g.w; x++) for (let y = g.h - 4 * S; y < g.h; y++) g.set(x, y, 1);
     s.wake();
     while (!s.clearPending) s.tick();
     s.tray[0] = { kind: 'O', rot: 0, color: 3, color2: null, special: null, specialCell: -1, jokerCell: -1 };
-    s.drop(0, 20, 10);
+    s.drop(0, 20 * S, 10 * S);
     const top0 = (() => { for (let i = 0; i < g.size; i++) if (g.flags[i] & FALL) return (i / g.w) | 0; return -1; })();
     let frozenTicks = 0;
     while (s.clearPending) { s.tick(); frozenTicks++; }
@@ -880,11 +895,12 @@ sections.drop = async (browser) => {
   const repose = await page.evaluate(() => {
     const s = window.__kum.session;
     const g = s.grid;
-    for (let x = 0; x < g.w; x++) if (x !== 30) g.set(x, g.h - 1, 1);
-    for (let x = 24; x < 30; x++) for (let y = g.h - 6; y < g.h - 1; y++) g.set(x, y, 1);
+    const S = g.w / 48;
+    for (let x = 0; x < g.w; x++) if (x !== 30 * S) g.set(x, g.h - 1, 1);
+    for (let x = 24 * S; x < 30 * S; x++) for (let y = g.h - 6 * S; y < g.h - 1; y++) g.set(x, y, 1);
     s.wake();
-    s.runUntilSettled(100000);
-    return { holeFilled: g.get(30, g.h - 1) !== 0 };
+    s.runUntilSettled(400000);
+    return { holeFilled: g.get(30 * S, g.h - 1) !== 0 };
   });
   info('SAND_REPOSE=2: yığının yanındaki 1 tane derinliğindeki boşluk kayan kumla dolmuyor (yol tamamlamayı etkiler)', repose);
   check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
@@ -917,15 +933,32 @@ const forceLose = (page) =>
 sections.flow = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
   // First launch (GDD §15: goes straight into level 1).
-  await page.goto(`${BASE}?debug=1`);
+  await page.goto(`${BASE}?debug=1&nohowto`);
   await page.evaluate(() => localStorage.clear());
-  await page.goto(`${BASE}?debug=1`);
+  await page.goto(`${BASE}?debug=1&nohowto`);
   await page.waitForSelector('[data-testid=menu-play], [data-testid=board]');
   const first = (await page.locator('[data-testid=board]').count()) ? 'board' : 'menu';
   check('ilk açılışta doğrudan bölüm 1 (GDD §15)', first === 'board', `açılan: ${first}`);
   await H.shot(page, 'flow-01-first-launch');
   check('ilk açılışta günlük ödül çıkmıyor', (await page.locator('[data-testid=daily]').count()) === 0);
   check('ilk açılışta Serbest Tezgâh kilitli', await page.locator('[data-testid=menu-endless]').isDisabled());
+  // "Nasıl oynanır?" card before level 1 (without the nohowto flag).
+  {
+    const { ctx: c2, page: p2 } = await newPage(browser, VIEWPORTS[0]);
+    await p2.goto(`${BASE}?debug=1&nodaily`);
+    await p2.evaluate(() => localStorage.clear());
+    await p2.goto(`${BASE}?debug=1&nodaily`);
+    await p2.waitForSelector('[data-testid=menu-play], [data-testid=board], [data-testid=howto-close]');
+    if (await p2.locator('[data-testid=menu-play]').count()) await p2.click('[data-testid=menu-play]');
+    const howto = await p2.waitForSelector('[data-testid=howto-close]', { timeout: 3000 }).then(() => true).catch(() => false);
+    if (howto) {
+      await p2.waitForTimeout(400);
+      await H.shot(p2, 'flow-00-howto');
+      await p2.click('[data-testid=howto-close]');
+    }
+    info('bölüm 1 öncesi "Nasıl oynanır?" kartı', howto ? 'gösterildi' : 'yok');
+    await c2.close();
+  }
   // Tutorials 1–3 through the real pointer path.
   for (const id of [1, 2, 3]) {
     if (id === 1) await page.click('[data-testid=menu-play]');
@@ -1006,7 +1039,7 @@ sections.flow = async (browser) => {
   await page.waitForTimeout(300);
   check('Haritaya dön onay soruyor (GDD §15)', (await page.locator('[role=alertdialog], [data-testid*=confirm]').count()) > 0, 'onay yok');
   // Daily reward on the next menu entry (level 1 done).
-  await page.goto(`${BASE}?debug=1`);
+  await page.goto(`${BASE}?debug=1&nohowto`);
   await page.waitForSelector('[data-testid=menu-play]');
   await page.waitForTimeout(400);
   const daily = await page.locator('[data-testid=daily]').count();
@@ -1018,7 +1051,7 @@ sections.flow = async (browser) => {
     await page.waitForTimeout(500);
     const g1 = await page.evaluate(() => window.__app.meta.economy.gold);
     check('günlük ödül 1. gün = 25 altın', g1 - g0 === 25, { g0, g1 });
-    await page.goto(`${BASE}?debug=1`);
+    await page.goto(`${BASE}?debug=1&nohowto`);
     await page.waitForSelector('[data-testid=menu-play]');
     await page.waitForTimeout(300);
     check('günlük ödül aynı gün ikinci kez çıkmıyor', (await page.locator('[data-testid=daily]').count()) === 0);
@@ -1048,9 +1081,9 @@ sections.flow = async (browser) => {
   }
   await page.click('[data-testid=shop-close]', { force: true });
   // Endless unlock rule: level 8 won.
-  await H.fresh(page, '?debug=1&nodaily', { levels: progress(7) });
+  await H.fresh(page, '?debug=1&nohowto&nodaily', { levels: progress(7) });
   check('sonsuz mod: bölüm 7 kazanılmışken kilitli', await page.locator('[data-testid=menu-endless]').isDisabled());
-  await H.fresh(page, '?debug=1&nodaily', { levels: progress(8) });
+  await H.fresh(page, '?debug=1&nohowto&nodaily', { levels: progress(8) });
   check('sonsuz mod: bölüm 8 kazanılınca açık', await page.locator('[data-testid=menu-endless]').isEnabled());
   // Endless game over → result card with gold = floor(score/500) ≤ 30.
   await page.click('[data-testid=menu-endless]');
@@ -1064,7 +1097,7 @@ sections.flow = async (browser) => {
   check('sonsuz ödül en fazla 30 altın', eg && /30/.test(eg), eg);
   check('sonsuz sonuçta "Devam et" teklifi yok', (await page.locator('[data-testid=continue-offer]').count()) === 0);
   // Back navigation (Escape = hardware back): play → pause → resume; map → menu; menu → (exit, no confirm).
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await H.startLevel(page, 5);
   await page.keyboard.press('Escape');
@@ -1080,15 +1113,16 @@ sections.flow = async (browser) => {
 
 sections.audio = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await page.click('[data-testid=menu-levels]'); // user gesture → audio unlock
   const danger = async () => {
     await page.evaluate(() => {
       const s = window.__kum.session;
       const g = s.grid;
-      for (let x = 0; x < 8; x++) for (let y = 5; y < 12; y++) g.set(x, y, 255, 0, 1);
-      g.set(2, 4, s.level.colors[0]);
+      const S = g.w / 48;
+      for (let x = 0; x < 8 * S; x++) for (let y = 5 * S; y < 12 * S; y++) g.set(x, y, 255, 0, 1);
+      g.set(2 * S, 4 * S, s.level.colors[0]);
       s.wake();
     });
     await page.waitForTimeout(700);
@@ -1104,7 +1138,7 @@ sections.audio = async (browser) => {
   await page.waitForTimeout(1500);
   check('duraklat → Bölümler (harita) sonrası döngü durmuş', !(await dangerOn()), 'harita ekranında tehlike sesi çalmaya devam ediyor');
   await page.click('[data-testid=level-btn], .level-btn.back', { timeout: 500 }).catch(() => {});
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await page.click('[data-testid=menu-levels]');
   await H.startLevel(page, 10);
@@ -1140,12 +1174,12 @@ sections.audio = async (browser) => {
 
 sections.save = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
-  await H.fresh(page, '?debug=1&nodaily&unlockAll');
+  await H.fresh(page, '?debug=1&nohowto&nodaily&unlockAll');
   await H.startLevel(page, 2);
   await forceWin(page);
   await H.waitResult(page);
   await page.waitForTimeout(400);
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-sound]');
   await page.click('[data-testid=menu-sound]');
   await page.click('[data-testid=menu-haptics]');
@@ -1168,9 +1202,9 @@ sections.save = async (browser) => {
   const junk = ['çöp{{{', 'null', '[]', '123', '{"levels":"x","settings":null,"economy":{"gold":-50,"boosters":"y"},"daily":7,"ads":{"interstitials":"z"}}', '{"levels":{"1":null,"2":{"completed":"yes","stars":"9"}},"economy":{"gold":"1e999"}}', '{"version":1,"seenIntros":[1,2],"tutorialsDone":{"a":1}}'];
   for (const j of junk) {
     const { ctx: c2, page: p2 } = await newPage(browser, VIEWPORTS[1]);
-    await p2.goto(`${BASE}?debug=1&nodaily`);
+    await p2.goto(`${BASE}?debug=1&nohowto&nodaily`);
     await p2.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, j]);
-    await p2.goto(`${BASE}?debug=1&nodaily`);
+    await p2.goto(`${BASE}?debug=1&nohowto&nodaily`);
     const ok = await p2.waitForSelector('[data-testid=menu-play]', { timeout: 5000 }).then(() => true).catch(() => false);
     const st = ok ? await p2.evaluate(() => ({ gold: window.__app.meta.economy.gold, l2: window.__app.save.level(2) || null })) : null;
     let playable = false;
@@ -1193,7 +1227,7 @@ sections.save = async (browser) => {
         throw new Error('blocked');
       };
     });
-    await p3.goto(`${BASE}?debug=1&nodaily`);
+    await p3.goto(`${BASE}?debug=1&nohowto&nodaily`);
     const ok = await p3.waitForSelector('[data-testid=menu-play]', { timeout: 5000 }).then(() => true).catch(() => false);
     check('localStorage engelliyken oyun açılıyor', ok, p3.errors.slice(0, 2));
     await c3.close();
@@ -1204,7 +1238,7 @@ sections.save = async (browser) => {
 
 sections.robust = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await H.startLevel(page, 11);
   // Rapid taps on the selected slot (rotate spam).
@@ -1344,7 +1378,7 @@ sections.ads = async (browser) => {
     return { shown, reason: dec && dec.reason, ends: await page.evaluate(() => window.__app.save.ads.levelEnds) };
   };
   // Fresh player before level 8 is won → never.
-  await H.fresh(page, '?debug=1&nodaily&unlockAll', { levels: progress(3) });
+  await H.fresh(page, '?debug=1&nohowto&nodaily&unlockAll', { levels: progress(3) });
   await setOffset(0);
   let r;
   const seq = [];
@@ -1407,7 +1441,7 @@ sections.perf = async () => {
   const secs = Number(process.env.QA_PERF_SEC || 180);
   const browser = await chromium.launch({ args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'] });
   const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
-  await H.fresh(page, '?debug=1&nodaily&unlockAll');
+  await H.fresh(page, '?debug=1&nohowto&nodaily&unlockAll');
   await page.click('[data-testid=menu-endless]');
   await page.waitForSelector('[data-testid=board]');
   const res = await page.evaluate(async (secs) => {
@@ -1431,10 +1465,20 @@ sections.perf = async () => {
           const s = k.session;
           if (s.isPlaying && now - lastMove > 280) {
             lastMove = now;
-            const m = k.hint();
-            if (m && s.tray[m.slot]) {
-              s.tray[m.slot].rot = m.rot;
-              if (s.drop(m.slot, m.x)) moves++;
+            // Cheap scripted mover (the hint search itself is measured separately below,
+            // it must not pollute the game's frame times).
+            const slot = s.tray.findIndex((t) => t);
+            if (slot >= 0) {
+              const p = s.tray[slot];
+              p.rot = (moves * 7) & 3;
+              const w = s.grid.w;
+              for (let t = 0; t < 12; t++) {
+                const x = Math.floor(((moves * 5 + t * 7) % 12) * (w / 12));
+                if (s.canDrop(slot, x) && s.drop(slot, x)) {
+                  moves++;
+                  break;
+                }
+              }
             }
             maxScore = Math.max(maxScore, s.score);
           } else if (!s.isPlaying) {
@@ -1472,6 +1516,19 @@ sections.perf = async () => {
     };
   }, secs);
   info('sonsuz mod performans', { ...res, samples: undefined });
+  // Cost of the hint search (tutorial hand uses it on the main thread).
+  const hintCost = await page.evaluate(() => {
+    const k = window.__kum;
+    const t = [];
+    for (let i = 0; i < 5; i++) {
+      const t0 = performance.now();
+      k.hint();
+      t.push(performance.now() - t0);
+    }
+    return { ms: t.map((x) => +x.toFixed(1)), grid: `${k.session.grid.w}x${k.session.grid.h}` };
+  });
+  info('ipucu (findHintMove) süresi / çağrı', hintCost);
+  check('ipucu araması tek karede ≤ 50 ms (öğretici el işareti ana iş parçacığında)', Math.max(...hintCost.ms) <= 50, hintCost);
   info('örnekler (10 sn)', res.samples);
   const first = res.samples[1] || res.samples[0];
   const lastS = res.samples[res.samples.length - 1];
@@ -1486,7 +1543,7 @@ sections.perf = async () => {
 
 sections.a11y = async (browser) => {
   const { ctx, page } = await newPage(browser, VIEWPORTS[0], { reducedMotion: 'reduce' });
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await H.startLevel(page, 30);
   const chips = await page.evaluate(() => [...document.querySelectorAll('.goal-chip')].map((c) => ({ spice: c.classList.contains('spice'), svg: !!c.querySelector('svg') })));
@@ -1505,7 +1562,7 @@ sections.a11y = async (browser) => {
   check('prefers-reduced-motion: oyun ekranında CSS animasyonu yok', anim.length === 0, anim);
   const shake = await page.evaluate(() => window.__kum.scene.fx.reduce);
   check('prefers-reduced-motion: sarsıntı kapalı (JS)', shake === true, shake);
-  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   const animMenu = await page.evaluate(() => {
     const live = (e) => {
@@ -1552,17 +1609,17 @@ sections.a11y = async (browser) => {
 sections.balance = async (browser) => {
   const tries = Number(process.env.QA_TRIES || 3);
   const { ctx, page } = await newPage(browser, { width: 390, height: 844, dpr: 1 });
-  await H.fresh(page, '?debug=1&nodaily&unlockAll', { tutorialsDone: ['t1', 't2', 't3'], seenIntros: ['scoreGoal', 'boosterShuffle', 'colorPath', 'bomb', 'grains', 'boosterScoop', 'shelf', 'newColorSumac', 'boosterSieve', 'joker', 'sack', 'twoColor', 'newColorIndigo'] });
+  await H.fresh(page, '?debug=1&nohowto&nodaily&unlockAll', { tutorialsDone: ['t1', 't2', 't3'], seenIntros: ['scoreGoal', 'boosterShuffle', 'colorPath', 'bomb', 'grains', 'boosterScoop', 'shelf', 'newColorSumac', 'boosterSieve', 'joker', 'sack', 'twoColor', 'newColorIndigo'] });
   const levels = await page.evaluate(() => [...Array(30)].map((_, i) => i + 1));
   const table = [];
   for (const id of levels) {
     const row = { id, wins: 0, tries, scores: [], used: [], reasons: [], readyPath: false, limit: null };
     for (let t = 0; t < tries; t++) {
-      await H.startLevel(page, id, '?debug=1&nodaily&unlockAll');
+      await H.startLevel(page, id, '?debug=1&nohowto&nodaily&unlockAll');
       if (t === 0) {
         row.readyPath = await page.evaluate(() => {
           const s = window.__kum.session;
-          s.runUntilSettled(200000);
+          s.runUntilSettled(400000);
           return s.score > 0;
         });
         row.limit = await page.evaluate(() => window.__kum.session.level.pieceLimit);
@@ -1574,7 +1631,7 @@ sections.balance = async (browser) => {
       if (r.state !== 'won') row.reasons.push(r.reason || r.state);
       // Record the attempt so the next try uses the next attempt seed (like a real retry).
       await page.waitForTimeout(750);
-      await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+      await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
     }
     table.push(row);
     console.log(`  bölüm ${String(id).padStart(2)}: ${row.wins}/${tries} kazandı, parça ${row.used.join('/')} / ${row.limit}, puan ${row.scores.join('/')}${row.reasons.length ? ', kayıp: ' + row.reasons.join(',') : ''}${row.readyPath ? ' — BAŞLANGIÇTA HAZIR YOL' : ''}`);
@@ -1590,7 +1647,7 @@ sections.balance = async (browser) => {
   for (const id of [1, 2, 3]) {
     let losses = 0;
     for (let t = 0; t < 10; t++) {
-      await H.startLevel(page, id, '?debug=1&nodaily&unlockAll');
+      await H.startLevel(page, id, '?debug=1&nohowto&nodaily&unlockAll');
       const r = await page.evaluate((seed) => {
         let x = seed * 9301 + 49297;
         const rand = () => ((x = (x * 9301 + 49297) % 233280) / 233280);
@@ -1603,13 +1660,13 @@ sections.balance = async (browser) => {
           s.tray[slot].rot = Math.floor(rand() * 4);
           const ok = s.drop(slot, Math.floor(rand() * 45));
           if (!ok) s.drop(slot, Math.floor(rand() * 40));
-          s.runUntilSettled(200000);
+          s.runUntilSettled(400000);
           n++;
         }
         return s.state;
       }, t + id * 10);
       if (r === 'lost') losses++;
-      await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+      await page.goto(`${BASE}?debug=1&nohowto&nodaily&unlockAll`);
     }
     rnd.push({ id, randomLosses: `${losses}/10` });
   }

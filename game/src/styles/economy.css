@@ -107,6 +107,8 @@ button.gold-badge { cursor: pointer; min-height: var(--tap); }
 .shop-text small { color: var(--muted); }
 .shop-text .badge { align-self: flex-start; margin-top: 2px; }
 .shop-buy { flex: none; min-width: 88px; padding: 0 12px; font-size: 0.95rem; }
+/* QA-001: main.css `.card .btn { width: 100% }` is more specific; keep shop buttons compact. */
+.card .shop-buy, .card .shop-head .btn-icon { width: auto; }
 .shop-buy-gold { display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
 .shop-sub { margin: 6px 0 0; font-size: 1rem; color: var(--muted); }
 .shop-restore { font-size: 0.9rem; }
