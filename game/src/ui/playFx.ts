@@ -4,7 +4,7 @@
 // the audio uses for the `sneeze` sound, fx/feedback.ts). Everything is skipped or toned
 // down under prefers-reduced-motion.
 import { zerde, setZerdePose, type ZerdePose } from '../art/zerde';
-import { BLOCK, BOMB_RADIUS } from '../config';
+import { BLOCK, BOMB_RADIUS, SUB } from '../config';
 import type { SessionEvent } from '../core/events';
 import { JOKER } from '../engine/grid';
 import { blockColor, pieceShape } from '../engine/pieces';
@@ -66,15 +66,21 @@ export class PlayFx {
     this.peek.remove();
   }
 
-  /** Scene-local CSS position of a grain coordinate. */
+  /** Scene-local CSS position of a cell coordinate. */
   private at(gx: number, gy: number): { x: number; y: number } {
     const p = this.host.renderer.grainToClient(gx, gy);
     const r = this.host.sceneEl.getBoundingClientRect();
     return { x: p.x - r.left, y: p.y - r.top };
   }
 
-  private grainPx(): number {
+  /** CSS px per simulation cell (for converting cell distances: rects, radii). */
+  private cellPx(): number {
     return this.host.renderer.cssPerGrain;
+  }
+
+  /** CSS px per design grain (particle sizes stay the same at any SUB). */
+  private grainPx(): number {
+    return this.host.renderer.cssPerGrain * SUB;
   }
 
   shake(amp: number, ms: number): void {
@@ -114,7 +120,7 @@ export class PlayFx {
         const gp = this.grainPx();
         for (let k = 0; k < 12; k++) {
           const c = sandCss(blockColor(e.piece, k % 4), k % 3);
-          this.layer.spawn(PK.Dust, p.x + (Math.random() - 0.5) * shape.w * BLOCK * gp, p.y, (Math.random() - 0.5) * 160, -40 - Math.random() * 90, 0.45, gp * 1.4, c);
+          this.layer.spawn(PK.Dust, p.x + (Math.random() - 0.5) * shape.w * BLOCK * this.cellPx(), p.y, (Math.random() - 0.5) * 160, -40 - Math.random() * 90, 0.45, gp * 1.4, c);
         }
         break;
       }
@@ -167,7 +173,7 @@ export class PlayFx {
       case 'bomb': {
         const p = this.at(e.x + 0.5, e.y + 0.5);
         const gp = this.grainPx();
-        const r = BOMB_RADIUS * gp;
+        const r = BOMB_RADIUS * this.cellPx();
         this.layer.ring(RK.Glow, p.x, p.y, r * 0.4, r * 2.2, 0.4, 'rgba(255,120,40,0.9)');
         this.layer.ring(RK.Ring, p.x, p.y, gp, r * 1.5, 0.3, '#ffb347', gp * 1.6);
         const sparks = this.reduce ? 10 : 30;
@@ -184,8 +190,8 @@ export class PlayFx {
         const gp = this.grainPx();
         const p = this.at(e.x + e.w / 2, e.y + 1);
         for (let k = 0; k < 6; k++)
-          this.layer.spawn(PK.Dust, p.x + (Math.random() - 0.5) * e.w * gp, p.y, (Math.random() - 0.5) * 120, -30 - Math.random() * 60, 0.5, gp * 1.6, theme().sack[1]);
-        this.layer.spawn(PK.Grain, p.x, p.y + e.h * gp * 0.6, (Math.random() - 0.5) * 200, -320, 0.7, Math.max(3, gp * 1.2), theme().sackKnot);
+          this.layer.spawn(PK.Dust, p.x + (Math.random() - 0.5) * e.w * this.cellPx(), p.y, (Math.random() - 0.5) * 120, -30 - Math.random() * 60, 0.5, gp * 1.6, theme().sack[1]);
+        this.layer.spawn(PK.Grain, p.x, p.y + e.h * this.cellPx() * 0.6, (Math.random() - 0.5) * 200, -320, 0.7, Math.max(3, gp * 1.2), theme().sackKnot);
         break;
       }
       case 'sackBreak': {
@@ -195,10 +201,10 @@ export class PlayFx {
         for (let k = 0; k < 4; k++) {
           const dx = k % 2 ? 1 : -1;
           const dy = k < 2 ? -1 : 0.3;
-          this.layer.spawn(PK.Cloth, c.x + dx * e.w * gp * 0.25, c.y + dy * e.h * gp * 0.2, dx * (120 + Math.random() * 120), dy * 180 - 120, 0.9, gp * 2.2, t.sack[k % 3]);
+          this.layer.spawn(PK.Cloth, c.x + dx * e.w * this.cellPx() * 0.25, c.y + dy * e.h * this.cellPx() * 0.2, dx * (120 + Math.random() * 120), dy * 180 - 120, 0.9, gp * 2.2, t.sack[k % 3]);
         }
         for (let k = 0; k < 12; k++)
-          this.layer.spawn(PK.Dust, c.x + (Math.random() - 0.5) * e.w * gp, c.y + (Math.random() - 0.5) * e.h * gp, (Math.random() - 0.5) * 140, -40 - Math.random() * 80, 0.7, gp * 2, t.sack[1]);
+          this.layer.spawn(PK.Dust, c.x + (Math.random() - 0.5) * e.w * this.cellPx(), c.y + (Math.random() - 0.5) * e.h * this.cellPx(), (Math.random() - 0.5) * 140, -40 - Math.random() * 80, 0.7, gp * 2, t.sack[1]);
         this.shake(3, 150);
         break;
       }

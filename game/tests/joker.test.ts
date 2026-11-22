@@ -6,7 +6,7 @@ import { blockColor, PieceBag, stamp, type Piece } from '../src/engine/pieces';
 import { GoalTracker } from '../src/game/goals';
 import { Session } from '../src/game/session';
 import { validateLevel } from '../src/levels/schema';
-import { makeLevel } from './helpers';
+import { designH, designW, makeLevel, S, setGrain } from './helpers';
 
 function row(g: SandGrid, y: number, color: number, from = 0, to = g.w) {
   for (let x = from; x < to; x++) g.set(x, y, color);
@@ -72,23 +72,23 @@ describe('joker grains (Karışık Baharat, GDD §5.2)', () => {
   });
 
   it('a joker-bridged path in a session scores and counts for colour paths', () => {
-    const s = new Session(makeLevel({ colors: [1, 2], goals: [{ type: 'clear_paths', count: 1, color: 1 }] }), { gridW: 16, gridH: 24 });
+    const s = new Session(makeLevel({ colors: [1, 2], goals: [{ type: 'clear_paths', count: 1, color: 1 }] }), { gridW: 16 * S, gridH: 24 * S });
     const g = s.grid;
-    for (let x = 0; x < g.w; x++) g.set(x, g.h - 1, x === 8 ? JOKER : 1);
+    for (let x = 0; x < designW(g); x++) setGrain(g, x, designH(g) - 1, x === 8 ? JOKER : 1);
     s.runUntilSettled();
     expect(s.goals.goals[0].current).toBe(1);
     expect(s.score - s.endBonus).toBe(16 + 100);
   });
 
   it('a piece joker block stamps joker grains', () => {
-    const g = new SandGrid(16, 16);
+    const g = new SandGrid(16 * S, 16 * S);
     const p: Piece = { kind: 'I', rot: 0, color: 2, special: null, specialCell: -1, jokerCell: 1 };
     expect(blockColor(p, 0)).toBe(2);
     expect(blockColor(p, 1)).toBe(JOKER);
     stamp(g, p, 0, 0, new Rng(1));
     expect(g.get(0, 0)).toBe(2);
-    expect(g.get(4, 0)).toBe(JOKER);
-    expect(g.countColor(JOKER)).toBe(16);
+    expect(g.get(4 * S, 0)).toBe(JOKER);
+    expect(g.countColor(JOKER)).toBe(16 * S * S);
   });
 
   it('jokerChance deals one joker block per piece', () => {

@@ -20,7 +20,8 @@ export const ICONS = {
   lock: S('<path d="M8 10.5 V8 a4 4 0 0 1 8 0 V10.5" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="5.5" y="10" width="13" height="10" rx="2.2" fill="currentColor"/>'),
   check: S('<path d="M5 12.5 L10 17.5 L19 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'),
   star: S(`<path d="${SYMBOL_PATHS[JOKER]}" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>`),
-  path: S('<path d="M2.5 15 C7 15 7 9 12 9 C17 9 17 15 21.5 15" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/><circle cx="2.8" cy="15" r="2" fill="currentColor"/><circle cx="21.2" cy="15" r="2" fill="currentColor"/>'),
+  /** Wall-to-wall path "|↔|" (the core rule). */
+  path: S('<rect x="1.5" y="4" width="2.6" height="16" rx="1" fill="currentColor"/><rect x="19.9" y="4" width="2.6" height="16" rx="1" fill="currentColor"/><path d="M7 12 H17" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M5.6 12 L9.4 8.4 V15.6 Z M18.4 12 L14.6 8.4 V15.6 Z" fill="currentColor"/>'),
   coins: S('<ellipse cx="12" cy="16" rx="7.5" ry="3.2" fill="currentColor" opacity=".55"/><ellipse cx="12" cy="12.5" rx="7.5" ry="3.2" fill="currentColor" opacity=".8"/><ellipse cx="12" cy="9" rx="7.5" ry="3.2" fill="currentColor"/>'),
   sack: S('<path d="M6 9 C3.5 14 4 20.5 12 20.5 C20 20.5 20.5 14 18 9 Z" fill="currentColor"/><path d="M7.5 8.5 Q12 10.5 16.5 8.5 L17.5 4.5 L14.5 6 L12 3.5 L9.5 6 L6.5 4.5 Z" fill="currentColor" opacity=".75"/><path d="M7 14 h10 M7.5 17 h9" stroke="rgba(0,0,0,.25)" stroke-width="1.2" stroke-dasharray="1.6 1.4"/>'),
 };

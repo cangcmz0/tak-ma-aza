@@ -1,15 +1,15 @@
 // Booster bar under the tray (GDD §10.1 / §15): Yenile / Kepçe / Elek with a count badge
 // (or the gold price when none is left) + the gold balance. Kepçe: tap a column → confirm.
 // Elek: tap a grain. Both can be cancelled (button or back key). Max 3 uses each per level.
+import { grainLen } from '../config';
 import { FLAG_STATIC, JOKER } from '../engine/grid';
 import { BOOSTER_IDS, BOOSTERS, boosterUnlocked, MAX_BOOSTER_USES_PER_LEVEL, SCOOP_WIDTH, type BoosterId } from '../game/economy';
 import type { Session } from '../game/session';
 import { fmt, strings } from '../i18n';
 import type { App } from './app';
 import { h } from './dom';
-import { boosterIcon, coinIcon, goldBadge } from './econWidgets';
+import { boosterIcon, coinIcon, goldBadge, openGoldInfo } from './econWidgets';
 import { BoosterOfferScene } from './boosterOffer';
-import { ShopScene } from './shop';
 
 /** What the bar needs from the play scene. */
 export interface BoosterHost {
@@ -27,7 +27,7 @@ export interface BoosterHost {
 }
 
 /** Elek picks the nearest grain within this many grains of the tap. */
-const SIEVE_REACH = 3;
+const SIEVE_REACH = grainLen(3); // cells (3 design grains)
 
 type Targeting = { id: 'scoop'; x0: number | null } | { id: 'sieve' };
 
@@ -67,12 +67,53 @@ export class BoosterBar {
       goldBadge(app, () => {
         if (!this.host.isActive()) return;
         this.cancel();
-        app.audio.play('ui_tap');
-        app.scenes.push(new ShopScene(app));
+        openGoldInfo(app);
       }),
     );
     this.offEconomy = app.meta.economy.events.on(() => this.paint());
     this.paint();
+    this.explainNew();
+  }
+
+  /**
+   * One-time bubble over a booster the player sees for the first time (level 4 / 7 / 12):
+   * its name and what it does. Goes away when tapped, when the booster is used or after
+   * two drops.
+   */
+  private explainNew(): void {
+    const id = [...this.buttons.keys()].find((b) => !this.app.save.hasSeenIntro(`booster:${b}`));
+    if (!id) return;
+    this.app.save.markIntroSeen(`booster:${id}`);
+    const s = strings();
+    const btn = this.buttons.get(id)?.btn;
+    if (!btn) return;
+    const tip = h(
+      'button',
+      { class: 'booster-tip', type: 'button', 'data-testid': 'booster-tip' },
+      h('b', { text: fmt(s.goldInfo.boosterNew, { name: s.boosters.names[id] }) }),
+      h('span', { text: s.boosters.desc[id] }),
+      h('small', { text: s.goldInfo.gotIt }),
+    );
+    let drops = 0;
+    const close = () => {
+      tip.remove();
+      off();
+      btn.removeEventListener('click', close);
+    };
+    const off = this.host.session.events.on((e) => {
+      if (e.type === 'placed' && ++drops >= 2) close();
+    });
+    tip.addEventListener('click', close);
+    btn.addEventListener('click', close);
+    btn.classList.add('is-new');
+    this.el.append(tip);
+    // Sit beside the button inside the bar (never over the tray above it).
+    const place = () => {
+      if (!tip.isConnected) return;
+      if (!btn.offsetWidth) return void requestAnimationFrame(place);
+      tip.style.left = `${btn.offsetLeft + btn.offsetWidth + 12}px`;
+    };
+    requestAnimationFrame(place);
   }
 
   /** Targeting mode active (pointer input on the board is off). */

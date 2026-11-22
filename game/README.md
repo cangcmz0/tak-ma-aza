@@ -22,11 +22,12 @@ NODE_PATH=$(npm root -g) node scripts/smoke.cjs /tmp/ekranlar
 NODE_PATH=$(npm root -g) node scripts/wave2-smoke.cjs /tmp/ekranlar   # öğretici, sürükleme, Çifte/zincir, tehlike, çuval/joker/ikili, sonsuz mod
 NODE_PATH=$(npm root -g) node scripts/economy-smoke.cjs /tmp/ekranlar # günlük ödül, mağaza, booster'lar, kaybet → devam (sahte reklam)
 NODE_PATH=$(npm root -g) node scripts/art-smoke.cjs /tmp/ekranlar     # tüm ekranlar 390×844 + 360×740, efektler, kare süresi ölçümü
+NODE_PATH=$(npm root -g) node scripts/clarity-smoke.cjs /tmp/ekranlar # nasıl oynanır, "İşte böyle!", yol ilerlemesi, altın bilgisi, booster balonu
 ```
 
 Hata ayıklama: URL'ye `?debug=1` ekle → `window.__app`, oynarken `window.__kum.session` / `window.__kum.scene` / `window.__kum.hint()` (öğretici el işaretinin önerdiği hamle).
 Tahtayı elle değiştirdikten sonra `session.wake()` çağır (fizik + yol kontrolü yeniden çalışır).
-`?debug=1&unlockAll` tüm bölümleri açar. Masaüstü tuşları: ←/→ kaydır, ↑ veya R döndür, Boşluk/↓ bırak, 1–3 parça seç, Esc duraklat.
+`?debug=1&unlockAll` tüm bölümleri açar; `&nohowto` bölüm 1 öncesi "Nasıl oynanır?" kartını atlar (otomatik testler için). Masaüstü tuşları: ←/→ kaydır, ↑ veya R döndür, Boşluk/↓ bırak, 1–3 parça seç, Esc duraklat.
 
 ### Android
 
@@ -48,7 +49,7 @@ Android projesi `android/` klasöründe (Capacitor 8, appId `com.takmaaza.kumbul
 
 ```
 src/
-  config.ts               Sabitler: ızgara 48×80 tane, blok 4×4, sim tick hızı, adım/tick, flaş süresi, puan
+  config.ts               Sabitler: `SUB` (2) alt-bölüm; ızgara 96×160 hücre (= 48×80 tasarım tanesi), blok 8×8 hücre (= 4×4 tane), sim tick hızı, adım/tick, flaş süresi, puan; `cellsToGrains()`
   main.ts                 Açılış: tema, kayıt, servisler, sahne yığını, rAF döngüsü, resize, arka plana geçince duraklat
   core/rng.ts             mulberry32 seed'li RNG + deriveSeed (bağımsız akışlar)
   core/events.ts          Tipli event emitter + tüm oyun olayları (`SessionEvent`, `LoseReason`)
@@ -67,7 +68,7 @@ src/
   levels/levels.ts        levels/data/*.json otomatik yüklenir (import.meta.glob), doğrulanır, id'ye göre sıralanır
   levels/data/*.json      Bölümler (Bölüm Tasarımcısı)
   render/theme.ts         Tüm renkler + CSS değişkenleri (tasarım token'ları) tek yerde; ImageData için alt-tane varyantlı paket palet
-  render/boardRenderer.ts Tane başına 3×3 piksel ImageData (vurgu, gölge köşe, üst yüzey ışığı, renk sınırı dikişi) → en yakın komşu büyütme;
+  render/boardRenderer.ts Hücre başına TEX×TEX texel ImageData (TEX = ekrandaki hücre boyuna göre 3/2/1; vurgu, gölge köşe, üst yüzey ışığı, renk sınırı dikişi) → en yakın komşu büyütme; yalnızca değişen satırlar yeniden boyanır/yüklenir;
                           ceviz tepsi zemini (boyutlanınca bir kez çizilir), raf ahşap damarı, çuval jüt dokusu + bağ/can düğümleri, hayalet
   render/piecePreview.ts  Kese çizimi (dikişli kumaş silüet, benek, ip bağı, renk körü sembolü, acı biber, joker çizgileri) — tepsi + sürüklenen kese
   render/symbols.ts       Renk körü sembolleri (▲ ● yaprak ◆ ■ ✚ ★): tek yol seti, canvas (Path2D) + SVG
@@ -79,6 +80,10 @@ src/
   ui/playFx.ts            Oyun olayları → efektler: patlama + ışık bandı, siparişe uçan taneler, bomba şok dalgası, çuval, puf, sarsıntı, Zerde hapşırığı
   ui/hud.ts               Üst bar: duraklat, sipariş kartı (avatar + satırlar + ilerleme), kese sayacı, yıldızlı puan çubuğu
   ui/resultArt.ts         Sonuç kartı görselleri: yıldız damgası, konfeti, Zerde, kaybedince sipariş ilerlemesi
+  game/pathProgress.ts    Canlı yol ilerlemesi: renk başına sol/sağ duvara değen bölgenin ulaştığı sütun (BFS, joker dahil; kum durulunca bir kez)
+  ui/pathHint.ts          Tahta üstü ipucu katmanı: duvar şeritleri (çerçevede) + en yakın 2 renk için eksik boşluk (kesik çizgi, oklar, "%80")
+  ui/howTo.ts             "Nasıl oynanır?" kartı (3 animasyonlu adım); bölüm 1'den önce bir kez + Duraklat menüsünde
+  ui/goldInfo.ts          "Altın ne işe yarar?" penceresi (her altın rozetine dokununca); booster ilk görünüşte tek seferlik balon (boosterBar), ilk altında ipucu (rewardPanel)
   input/pointer.ts        Tepsiden sürükle-bırak, tahtaya dokun-kaydır-bırak, seçili parçaya tekrar dokun = döndür; tek parmak takibi
   input/keyboard.ts       Masaüstü tuşları
   ui/app.ts               App bağlamı + SceneManager (replace/push/pop, overlay)
@@ -107,9 +112,19 @@ scripts/wave2-smoke.cjs   Dalga 2 oynanış smoke testi
 scripts/art-smoke.cjs     Sanat geçişi: tüm ekranların iki telefon boyutunda görüntüsü + tahta kare süresi
 ```
 
+### Birimler: hücre ve tasarım tanesi (`SUB`)
+
+Kum ızgarası tasarım biriminden `SUB` (= 2) kat ince: **1 tasarım tanesi = SUB×SUB hücre**.
+- **Bölüm JSON'ları, puan, gram hedefleri, olaylardaki `grains`/`total`/`points` sayıları ve `revived.rows`** tasarım tanesi cinsindendir (eski 48×80 tahta). Hücre sayısını tane/grama çeviren tek yer `cellsToGrains()` (`config.ts`; yuvarlar). Yol puanı `(cellsToGrains(yolHücresi) + 100) × Z`; böylece bölüm dengesi SUB'dan bağımsızdır.
+- **Motor içi her şey hücre**: `SandGrid` (`GRID_W × GRID_H`), `BLOCK`, parça/hayalet `x`, olaylardaki koordinatlar (`x/y/w/h/cx/cy`, `cells` indeksleri), `BOMB_RADIUS`, `DANGER_ROWS`, `SCOOP_WIDTH`, `renderer.cssPerGrain` (adı tarihsel: **hücre** başına CSS px; bir tane için `× SUB`).
+- Yükleyici ölçekler (`levels/schema.ts` doğrulamayı tasarım biriminde yapar, `game/setup.ts` + `obstacleRect()` hücreye çevirir): `prefill.random.rows × SUB`, 48 karakterlik pattern satırında her karakter SUB×SUB hücre, 12 karakterlik blok satırları `BLOCK` ile, `obstacles` `unit:"grain"` değerleri × SUB.
+- Dekoratif boyutlar (parçacık, çuval bağı, perçin, kesik çizgi) tasarım tanesine göre (`cssPerGrain × SUB`) ölçeklenir; konumlar hücreyle.
+- Testlerde geometri tasarım tanesiyle yazılır: `tests/helpers.ts` → `S`, `setGrain()`, `designW/H()`.
+
 ### Oyun döngüsü kuralları
 
-- Simülasyon `SIM_TICK_HZ` (60) sabit tick'le ilerler, her tick `SIM_STEPS_PER_TICK` (3) fizik geçişi; ekran yenileme hızından bağımsız.
+- Simülasyon `SIM_TICK_HZ` (60) sabit tick'le ilerler, her tick `SIM_STEPS_PER_TICK` (3 × `SUB` = 6) fizik geçişi (bir geçişte tane 1 hücre iner; ekrandaki düşme hızı SUB'dan bağımsız); ekran yenileme hızından bağımsız.
+  Sim yalnızca "aktif" satır aralığını tarar: bir adımda tane hareket eden satırlar [en üst − 2, en alt] bir sonraki adımda taranır; dışarıdan değişiklik (`grid.version` artışı) tam taramayı tetikler.
   Sıcak döngüde bellek ayırma yok (typed array'ler, önceden ayrılmış tamponlar).
 - Parça her zaman tahtanın **en üstüne** (y=0) seçilen sütuna damgalanır, sonra kuma dönüşüp akar.
 - Parça çakışırsa bırakma **reddedilir** (`blocked` olayı, "Kum akıyor…" / "Buraya sığmıyor" uyarısı). Çakışma asla tek başına kaybettirmez.
@@ -121,7 +136,7 @@ scripts/art-smoke.cjs     Sanat geçişi: tüm ekranların iki telefon boyutunda
 - **Çuval** (`SACK` = 254, statik): bir temizleme olayında (bir kontrol) en fazla 1 hasar alır — temizlenen bir taneye 4-komşuysa ya da bomba dairesi çuvala değerse. Can 0 → hücreler boşalır, kum akar, `SACK_BREAK_POINTS` (200, çarpansız) ve `clear_obstacles` +1. Bomba artık engelleri (raf/çuval) silmez.
 - **İkili kese**: blok 0–1 renk A, 2–3 renk B (I sol/sağ, O üst/alt, diğerleri ilk/son iki); döndürme dağılımı korur.
 - **Yardım kuralı**: `lossStreak` 3'ün katıysa (3, 6, …) o deneme hedef renklerinin torba ağırlığı ×1,5 (torbada 2 yerine 3 kopya). Oyuncuya gösterilmez (`session.helped`).
-- **Tehlike**: kum durulduğunda en üstteki (statik olmayan) tane üstten `DANGER_ROWS` (8) satır içindeyse `danger {on, first}`; tahta çerçevesinin üstü kırmızı nabız atar, ilk seferde "Tezgâh doluyor!".
+- **Tehlike**: kum durulduğunda en üstteki (statik olmayan) tane üstten `DANGER_ROWS` (8 tane = 8 × SUB hücre) satır içindeyse `danger {on, first}`; tahta çerçevesinin üstü kırmızı nabız atar, ilk seferde "Tezgâh doluyor!".
 - **Sonsuz mod**: `new Session(makeEndlessLevel(seed), { endless: true })`. Hedef yok, kazanılmaz, yalnızca `no_space` ile biter; renk sayısı 3/4/5 (0/3000/8000 puan), bomba 0,05 (2000+), joker 0,03 (5000+). Rekor `save.endlessBest`. Menüde bölüm `ENDLESS_UNLOCK_LEVEL` (8) kazanılınca açılır (`?debug=1&unlockAll` hep açık).
 - Tepsi: 3 yuva, üçü de bitince yeniden dolar (limit < 3 kaldıysa kalan kadar). Parçalar **adil torbadan** gelir: şekiller karıştırılmış torba (izinli şekiller), renkler her renk 2 kez olan torba (`PieceBag`).
 - Döndürme: seçili tepsi parçasına tekrar dokun. Ayrı "Döndür" düğmesi `SHOW_ROTATE_BUTTON` ile açılır (GDD §4.3 gereği varsayılan kapalı).
@@ -179,7 +194,7 @@ scripts/art-smoke.cjs     Sanat geçişi: tüm ekranların iki telefon boyutunda
 - `type: "sack"` = Çuval: `hp` 1–3 (vars. 1), `w`/`h` vars. 2 blok (8×8 tane). Can düğümleri tahtada gösterilir.
 - Hedef `{ "type": "clear_obstacles", "count": 3, "kind": "sack" }` — `count` bölümdeki çuval sayısını aşamaz (doğrulayıcı reddeder).
 
-**specials** — hepsi 0..1, vars. 0. `bombChance`: parçanın bir bloğu bomba (yol temizlenince `BOMB_RADIUS` = 8 tane içindeki tüm kum/joker silinir, çuvallara 1 hasar; zincirleme). `jokerChance`: bir blok joker. `twoColorChance`: ikili kese (bölümde ≥ 2 renk gerekir). Diğer anahtarlar korunur.
+**specials** — hepsi 0..1, vars. 0. `bombChance`: parçanın bir bloğu bomba (yol temizlenince `BOMB_RADIUS` = 8 tane (8 × SUB hücre) içindeki tüm kum/joker silinir, çuvallara 1 hasar; zincirleme). `jokerChance`: bir blok joker. `twoColorChance`: ikili kese (bölümde ≥ 2 renk gerekir). Diğer anahtarlar korunur.
 Renk id'leri 1..14 (15 = joker ayrılmış).
 
 Doğrulama: `validateLevel()` hatalı bölümü atlar ve konsola yazar; `npm test` tüm bölümlerin geçerli olduğunu, hazır yol olmadığını ve botun her bölümü sonuçlandırdığını kontrol eder.

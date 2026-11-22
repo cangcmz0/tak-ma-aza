@@ -36,6 +36,17 @@ export class SandGrid {
   /** Incremented on every mutation; renderers use it to skip redundant uploads. */
   version = 0;
 
+  // Simulation bookkeeping (engine/sim.ts). Any mutation that bumps `version` outside the
+  // sim makes the next step rescan the whole board.
+  /** `version` right after the last sim step. */
+  simVersion = -1;
+  /** Rows the next sim step must scan (inclusive; lo > hi = nothing can move). */
+  scanLo = 0;
+  scanHi = -1;
+  /** Row range holding FLAG_FALLING grains (lo > hi = none). */
+  fallLo = 0;
+  fallHi = -1;
+
   constructor(w: number, h: number) {
     this.w = w;
     this.h = h;

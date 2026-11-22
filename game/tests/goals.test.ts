@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { ClearResult, findClears } from '../src/engine/clear';
 import { SandGrid } from '../src/engine/grid';
 import { computeStars, GoalTracker, validateGoal } from '../src/game/goals';
+import { S, setGrain } from './helpers';
 
 function clearWithPaths(colors: number[]): ClearResult {
-  const g = new SandGrid(4, colors.length * 2);
+  const g = new SandGrid(4 * S, colors.length * 2 * S);
   colors.forEach((c, i) => {
-    for (let x = 0; x < 4; x++) g.set(x, i * 2, c);
+    for (let x = 0; x < 4; x++) setGrain(g, x, i * 2, c);
   });
   const res = ClearResult.for(g);
   findClears(g, res);

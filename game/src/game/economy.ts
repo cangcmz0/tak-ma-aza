@@ -6,6 +6,7 @@
 // - Every change goes through earn()/spend()/addBooster()/consumeBooster(); invalid amounts
 //   (NaN, negative, fractions, Infinity) are refused, a spend larger than the balance is refused
 //   without changing anything.
+import { BLOCK } from '../config';
 import { Emitter } from '../core/events';
 
 export type BoosterId = 'shuffle' | 'scoop' | 'sieve';
@@ -35,8 +36,8 @@ export const START_GOLD = 200;
 export const GOLD_CAP = 999_999_999;
 /** Each booster at most this many times per level attempt (GDD §10.1). */
 export const MAX_BOOSTER_USES_PER_LEVEL = 3;
-/** Scoop strip width in grains (1 block, GDD §10.1). */
-export const SCOOP_WIDTH = 4;
+/** Scoop strip width in cells (1 block, GDD §10.1). */
+export const SCOOP_WIDTH = BLOCK;
 
 /** Gold for the first win by stars (index = stars, GDD §9.3). */
 export const FIRST_WIN_GOLD = [0, 20, 30, 40] as const;
@@ -52,7 +53,7 @@ export const ENDLESS_GOLD_MAX = 30;
 
 /** Continue (+5 pieces) on the lose screen (GDD §10.1 / §11.1). */
 export const CONTINUE_PIECES = 5;
-/** Lost with "no space": the top 20 grain rows (5 blocks) are emptied too. */
+/** Lost with "no space": the top 20 design-grain rows (5 blocks) are emptied too (Session.revive scales to cells). */
 export const CONTINUE_CLEAR_ROWS = 20;
 /** Gold price of the 1st / 2nd continue in one attempt; no 3rd. */
 export const CONTINUE_PRICES = [300, 600] as const;

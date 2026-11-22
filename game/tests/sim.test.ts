@@ -101,3 +101,29 @@ describe('sand sim', () => {
     expect(mk()).toEqual(mk());
   });
 });
+
+describe('sim active-range optimisation', () => {
+  it('a board settled with partial scans is also settled for a full rescan', () => {
+    for (let seed = 1; seed <= 5; seed++) {
+      const g = new SandGrid(40, 60);
+      const r = new Rng(seed);
+      for (let i = 0; i < 600; i++) g.set(r.int(40), r.int(30), 1 + r.int(3));
+      for (let x = 5; x < 15; x++) g.setStone(x, 40);
+      expect(settle(g, r)).toBe(true);
+      g.version++; // force a full rescan
+      expect(step(g, r)).toBe(0);
+    }
+  });
+
+  it('wakes up after an outside edit (removed support)', () => {
+    const g = new SandGrid(10, 20);
+    for (let x = 0; x < 10; x++) g.set(x, 19, 1);
+    g.set(5, 18, 2);
+    settle(g, new Rng(1));
+    expect(step(g, new Rng(1))).toBe(0);
+    g.clearCell(g.idx(5, 19));
+    g.version++;
+    settle(g, new Rng(2));
+    expect(g.get(5, 19)).toBe(2);
+  });
+});

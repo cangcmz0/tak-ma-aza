@@ -4,6 +4,7 @@ import { feedbackToggles } from '../fx/settingsToggle';
 import { strings } from '../i18n';
 import type { App, Scene } from './app';
 import { h } from './dom';
+import { HowToScene } from './howTo';
 import { LevelSelectScene } from './levelSelect';
 import { MenuScene } from './menu';
 import { PlayScene, type PlayMode } from './play';
@@ -54,6 +55,12 @@ export class PauseScene implements Scene {
           },
           icon(endless ? 'home' : 'map'),
           h('span', { text: endless ? s.menu : s.levels }),
+        ),
+        h(
+          'button',
+          { class: 'btn btn-ghost howto-btn', type: 'button', 'data-testid': 'pause-howto', onclick: tap(() => app.scenes.push(new HowToScene(app))) },
+          h('span', { class: 'howto-q', 'aria-hidden': 'true', text: '?' }),
+          h('span', { text: strings().howTo.button }),
         ),
         feedbackToggles(app),
       ),

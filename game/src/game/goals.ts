@@ -1,5 +1,6 @@
 // Level goals. Each goal type registers a validator and a factory in GOAL_TYPES.
 // To add a new goal type: add its def to GoalDef, register it below, add HUD text in ui/goalText.ts.
+import { cellsToGrains } from '../config';
 import type { ClearResult } from '../engine/clear';
 
 export interface ClearPathsGoalDef {
@@ -101,12 +102,15 @@ const clearColorGrains: GoalTypeDef<ClearColorGrainsGoalDef> = {
     return e;
   },
   create(def) {
+    // Count exact cells, report design grains (grams): SUB×SUB cells = 1 g.
+    let cells = 0;
     return {
       def,
       target: def.count,
       current: 0,
       onClear(res) {
-        this.current += res.colorCounts[def.color];
+        cells += res.colorCounts[def.color];
+        this.current = cellsToGrains(cells);
       },
       onScore() {},
     };

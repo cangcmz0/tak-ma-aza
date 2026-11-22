@@ -20,6 +20,8 @@ const URL = process.argv[3] || 'http://localhost:4173/?debug=1';
   await page.screenshot({ path: `${OUT}/02-levels.png` });
   await page.click('[data-testid=level-1]');
   await page.waitForSelector('[data-testid=board]');
+  // First lesson opens the "Nasıl oynanır?" card first.
+  await page.waitForSelector('[data-testid=howto-close]', { timeout: 2000 }).then(() => page.click('[data-testid=howto-close]')).catch(() => null);
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${OUT}/03-play-start.png` });
 

@@ -1,13 +1,15 @@
 // Draws the sand board.
 //
-// Grains go through a small ImageData buffer (SUB×SUB pixels per grain) that is scaled up
-// with nearest-neighbour onto the board canvas. The sub-grain pixels give each spice grain
-// a soft highlight, a shaded corner, a lit top surface facing empty space and a dark seam
-// where two colours touch (colour regions stay readable). Shelves get stable wood grain,
-// sacks a jute weave. The buffer is rebuilt only when the grid (or the joker / ember
-// phase) changes; the walnut tray background is pre-rendered once per resize.
+// Cells go through a small ImageData buffer (TEX×TEX texels per simulation cell) that is
+// scaled up with nearest-neighbour onto the board canvas. TEX adapts to the on-screen cell
+// size (3 on a sharp phone screen, 2 / 1 when cells get small) so the per-grain texture —
+// soft highlight, shaded corner, lit top surface facing empty space, dark seam where two
+// colours touch — reads as fine spice dust instead of turning into noise. Shelves get stable
+// wood grain, sacks a jute weave. Only rows that changed since the last upload are repainted
+// and uploaded (dirty-row tracking against a shadow copy of the grid); the walnut tray
+// background is pre-rendered once per resize.
 // Per frame: two drawImage calls + small vector overlays (sack ties, ghost). No allocation.
-import { BLOCK } from '../config';
+import { BLOCK, SUB } from '../config';
 import { JOKER, SACK, STONE } from '../engine/grid';
 import { blockColor, pieceShape, type Piece } from '../engine/pieces';
 import { SPECIAL_MASK } from '../engine/specials';
@@ -16,16 +18,21 @@ import { jokerPhase, mixHex, packedPalette, sandCss, theme, VARIANTS, V_EDGE, V_
 
 export interface Ghost {
   piece: Piece;
-  /** Grain column of the piece's left edge. */
+  /** Cell column of the piece's left edge. */
   x: number;
-  /** Grain row of the piece's top edge (where it will be released). */
+  /** Cell row of the piece's top edge (where it will be released). */
   y: number;
   /** Whether the drop is currently possible. */
   ok: boolean;
 }
 
-/** Image pixels per grain side. */
-const SUB = 3;
+/** Device pixels per cell needed for 3 / 2 texels per cell side (else 1). */
+const TEX3_MIN_PX = 9;
+const TEX2_MIN_PX = 5;
+/** Width of the joker shimmer bands, in cells (4 design grains). */
+const JOKER_BAND = 4 * SUB;
+/** Shelf plank joint every 3 blocks. */
+const PLANK_CELLS = 3 * BLOCK;
 /** Ember flicker period of bomb grains (ms). */
 const SPARK_MS = 140;
 /** Sack hit flash / wobble length (ms). */
@@ -36,8 +43,10 @@ export class BoardRenderer {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly off: HTMLCanvasElement;
   private readonly octx: CanvasRenderingContext2D;
-  private readonly img: ImageData;
-  private readonly px: Uint32Array;
+  private img: ImageData;
+  private px: Uint32Array;
+  /** Texels per cell side in the offscreen buffer. */
+  private tex = 0;
   private bg: HTMLCanvasElement | null = null;
   private lastVersion = -1;
   private lastFlashOn = false;
@@ -45,12 +54,22 @@ export class BoardRenderer {
   private lastSpark = -1;
   private hasJokers = false;
   private hasBombs = false;
+  private needFull = true;
+  // Shadow copy of the grid as last painted + per-row bookkeeping (dirty rows, specials).
+  private readonly prevColor: Uint8Array;
+  private readonly prevShade: Uint8Array;
+  private readonly prevFlags: Uint8Array;
+  private readonly rowDirty: Uint8Array;
+  private readonly rowJoker: Uint8Array;
+  private readonly rowBomb: Uint8Array;
   private gw: number;
   private gh: number;
-  /** Device pixels per grain. */
+  /** Device pixels per cell. */
   private scale = 1;
   /** performance.now() of the last hit per sack index. */
   private sackHitAt: number[] = [];
+  /** Rows repainted by the last upload (perf stats / tests). */
+  lastPaintedRows = 0;
 
   constructor(canvas: HTMLCanvasElement, gridW: number, gridH: number) {
     this.canvas = canvas;
@@ -60,23 +79,41 @@ export class BoardRenderer {
     if (!ctx) throw new Error('2D canvas not supported');
     this.ctx = ctx;
     this.off = document.createElement('canvas');
-    this.off.width = gridW * SUB;
-    this.off.height = gridH * SUB;
     const octx = this.off.getContext('2d');
     if (!octx) throw new Error('2D canvas not supported');
     this.octx = octx;
-    this.img = octx.createImageData(gridW * SUB, gridH * SUB);
+    const n = gridW * gridH;
+    this.prevColor = new Uint8Array(n);
+    this.prevShade = new Uint8Array(n);
+    this.prevFlags = new Uint8Array(n);
+    this.rowDirty = new Uint8Array(gridH);
+    this.rowJoker = new Uint8Array(gridH);
+    this.rowBomb = new Uint8Array(gridH);
+    this.img = this.setTex(3);
     this.px = new Uint32Array(this.img.data.buffer);
   }
 
+  /** (Re)allocate the offscreen buffer for `t` texels per cell. */
+  private setTex(t: number): ImageData {
+    this.tex = t;
+    this.off.width = this.gw * t;
+    this.off.height = this.gh * t;
+    this.img = this.octx.createImageData(this.gw * t, this.gh * t);
+    this.px = new Uint32Array(this.img.data.buffer);
+    this.needFull = true;
+    return this.img;
+  }
+
   /**
-   * Fit the board into a CSS box. Uses an integer number of device pixels per grain
+   * Fit the board into a CSS box. Uses an integer number of device pixels per cell
    * when possible so grains stay crisp. Returns the CSS size used.
    */
   fit(availCssW: number, availCssH: number, dpr: number): { w: number; h: number } {
     const cssCell = Math.max(1, Math.min(availCssW / this.gw, availCssH / this.gh));
     let dev = cssCell * dpr;
-    if (dev >= 2) dev = Math.floor(dev);
+    // Whole device pixels per design grain (SUB cells): same board size as the 48×80 layout,
+    // grains stay crisp; the TEX texels inside a cell absorb the remaining fraction.
+    if (dev * SUB >= 2) dev = Math.floor(dev * SUB) / SUB;
     this.scale = dev;
     const devW = Math.round(dev * this.gw);
     const devH = Math.round(dev * this.gh);
@@ -85,6 +122,9 @@ export class BoardRenderer {
       this.canvas.height = devH;
       this.bg = this.renderBackground(devW, devH);
     }
+    const t = dev >= TEX3_MIN_PX ? 3 : dev >= TEX2_MIN_PX ? 2 : 1;
+    if (t !== this.tex) this.setTex(t);
+    this.needFull = true;
     const w = devW / dpr;
     const h = devH / dpr;
     this.canvas.style.width = `${w}px`;
@@ -102,6 +142,8 @@ export class BoardRenderer {
     if (!c) return cv;
     const t = theme();
     const sc = this.scale;
+    // Decorative sizes follow the design grain (SUB cells) so the tray looks the same at any SUB.
+    const gs = sc * SUB;
     let seed = 1234567;
     const rnd = () => {
       seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
@@ -116,10 +158,10 @@ export class BoardRenderer {
       c.fillStyle = t.boardWood[p % 3];
       c.fillRect(x0, 0, plankW, H);
       // Wavy grain lines.
-      c.lineWidth = Math.max(1, sc * 0.18);
+      c.lineWidth = Math.max(1, gs * 0.18);
       for (let k = 0; k < 9; k++) {
         const lx = x0 + rnd() * plankW;
-        const amp = (0.4 + rnd() * 1.2) * sc;
+        const amp = (0.4 + rnd() * 1.2) * gs;
         const freq = 0.004 + rnd() * 0.01;
         const ph = rnd() * 6.28;
         c.strokeStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.16)' : 'rgba(255,214,170,0.035)';
@@ -138,19 +180,19 @@ export class BoardRenderer {
         c.strokeStyle = 'rgba(0,0,0,0.18)';
         for (let r = 1; r <= 3; r++) {
           c.beginPath();
-          c.ellipse(kx, ky, r * sc * 0.55, r * sc * 1.3, 0, 0, Math.PI * 2);
+          c.ellipse(kx, ky, r * gs * 0.55, r * gs * 1.3, 0, 0, Math.PI * 2);
           c.stroke();
         }
       }
       if (p > 0) {
         c.fillStyle = 'rgba(0,0,0,0.42)';
-        c.fillRect(x0 - Math.max(1, sc * 0.15), 0, Math.max(1, sc * 0.3), H);
+        c.fillRect(x0 - Math.max(1, gs * 0.15), 0, Math.max(1, gs * 0.3), H);
         c.fillStyle = 'rgba(255,220,180,0.05)';
-        c.fillRect(x0 + Math.max(1, sc * 0.15), 0, Math.max(1, sc * 0.2), H);
+        c.fillRect(x0 + Math.max(1, gs * 0.15), 0, Math.max(1, gs * 0.2), H);
       }
     }
     // Copper rivets along both walls (paths run wall to wall).
-    const rr = Math.max(1.2, sc * 0.42);
+    const rr = Math.max(1.2, gs * 0.42);
     for (let y = 2 * BLOCK; y < this.gh; y += 2 * BLOCK) {
       for (const x of [rr * 1.6, W - rr * 1.6]) {
         c.fillStyle = 'rgba(0,0,0,0.45)';
@@ -173,11 +215,11 @@ export class BoardRenderer {
     g.addColorStop(1, 'rgba(0,0,0,0.42)');
     c.fillStyle = g;
     c.fillRect(0, 0, W, H);
-    const top = c.createLinearGradient(0, 0, 0, sc * 5);
+    const top = c.createLinearGradient(0, 0, 0, gs * 5);
     top.addColorStop(0, 'rgba(0,0,0,0.45)');
     top.addColorStop(1, 'rgba(0,0,0,0)');
     c.fillStyle = top;
-    c.fillRect(0, 0, W, sc * 5);
+    c.fillRect(0, 0, W, gs * 5);
     return cv;
   }
 
@@ -185,131 +227,241 @@ export class BoardRenderer {
     const g = s.grid;
     const jokerChanged = this.hasJokers && phase !== this.lastJokerPhase;
     const sparkChanged = this.hasBombs && spark !== this.lastSpark;
-    if (g.version === this.lastVersion && flashOn === this.lastFlashOn && !jokerChanged && !sparkChanged) return;
+    const flashChanged = flashOn !== this.lastFlashOn;
+    if (!this.needFull && g.version === this.lastVersion && !flashChanged && !jokerChanged && !sparkChanged) return;
     this.lastVersion = g.version;
     this.lastFlashOn = flashOn;
     this.lastJokerPhase = phase;
     this.lastSpark = spark;
-    const pal = packedPalette();
-    const jl = pal.joker.length;
     const { color, shade, flags } = g;
     const gw = this.gw;
     const gh = this.gh;
-    const W3 = gw * SUB;
-    const px = this.px;
-    const marked = s.clear.marked;
+    const dirty = this.rowDirty;
+    const pc = this.prevColor;
+    const ps = this.prevShade;
+    const pf = this.prevFlags;
+    let lo = gh;
+    let hi = -1;
+    if (this.needFull) {
+      dirty.fill(1);
+      lo = 0;
+      hi = gh - 1;
+    } else {
+      dirty.fill(0);
+      if (flashChanged) {
+        // Blink on/off: only rows holding marked cells change.
+        const res = s.clear;
+        for (let k = 0; k < res.cellCount; k++) {
+          const yy = (res.cells[k] / gw) | 0;
+          dirty[yy] = 1;
+          if (yy < lo) lo = yy;
+          if (yy > hi) hi = yy;
+        }
+      }
+      // A cell's look depends on its up / right / below neighbours: a changed row also
+      // repaints the rows above and below it.
+      for (let y = 0; y < gh; y++) {
+        const r0 = y * gw;
+        let changed = (jokerChanged && this.rowJoker[y] === 1) || (sparkChanged && this.rowBomb[y] === 1);
+        if (!changed)
+          for (let i = r0, e = r0 + gw; i < e; i++) {
+            if (color[i] !== pc[i] || shade[i] !== ps[i] || flags[i] !== pf[i]) {
+              changed = true;
+              break;
+            }
+          }
+        if (!changed) continue;
+        const a = y > 0 ? y - 1 : 0;
+        const b = y < gh - 1 ? y + 1 : y;
+        for (let yy = a; yy <= b; yy++) dirty[yy] = 1;
+        if (a < lo) lo = a;
+        if (b > hi) hi = b;
+      }
+    }
+    this.needFull = false;
+    pc.set(color);
+    ps.set(shade);
+    pf.set(flags);
+    if (hi < 0) {
+      this.lastPaintedRows = 0;
+      return;
+    }
     const flashing = flashOn && s.clearPending;
+    let rows = 0;
+    for (let y = lo; y <= hi; y++) {
+      if (!dirty[y]) continue;
+      rows++;
+      this.paintRow(s, y, flashing, phase, spark);
+    }
+    this.lastPaintedRows = rows;
     let jokers = false;
     let bombs = false;
     for (let y = 0; y < gh; y++) {
-      const rowO = y * SUB * W3;
-      for (let x = 0; x < gw; x++) {
-        const i = y * gw + x;
-        const c = color[i];
-        const o = rowO + x * SUB;
-        const o1 = o + W3;
-        const o2 = o1 + W3;
-        if (c === 0) {
-          px[o] = px[o + 1] = px[o + 2] = px[o1] = px[o1 + 1] = px[o1 + 2] = px[o2] = px[o2 + 1] = px[o2 + 2] = 0;
-          continue;
-        }
-        if (c === STONE) {
-          this.woodCell(color, i, x, y, o, W3);
-          continue;
-        }
-        if (c === SACK) {
-          this.juteCell(color, i, x, y, o, W3);
-          continue;
-        }
-        if (flashing && marked[i]) {
-          const f = pal.flash;
-          px[o] = px[o + 1] = px[o + 2] = px[o1] = px[o1 + 1] = px[o1 + 2] = px[o2] = px[o2 + 1] = f;
-          px[o2 + 2] = pal.flashLo;
-          continue;
-        }
-        if (c === JOKER) {
-          jokers = true;
-          // Diagonal shimmer bands; shade offsets the phase so a joker block glitters.
-          const col = pal.joker[(phase + shade[i] * 2 + ((x + y) >> 2)) % jl];
-          px[o] = px[o + 1] = px[o + 2] = px[o1] = px[o1 + 2] = px[o2] = px[o2 + 1] = px[o2 + 2] = col;
-          px[o1 + 1] = ((Math.imul(i, 2654435761) + phase * 977) >>> 0) % 11 === 0 ? pal.flash : col;
-          continue;
-        }
-        const bomb = (flags[i] & SPECIAL_MASK) !== 0;
-        if (bomb) bombs = true;
-        const tab = bomb ? pal.bomb : pal.grain;
-        const sh = shade[i];
-        const b = (c * 4 + sh) * VARIANTS;
-        const vb = tab[b];
-        const lo = tab[b + V_LO];
-        const edge = tab[b + V_EDGE];
-        const upEmpty = y > 0 && color[i - gw] === 0;
-        const right = x < gw - 1 ? color[i + 1] : c;
-        const below = y < gh - 1 ? color[i + gw] : c;
-        const rd = right !== 0 && right !== c;
-        const bd = below !== 0 && below !== c;
+      if (this.rowJoker[y]) jokers = true;
+      if (this.rowBomb[y]) bombs = true;
+    }
+    this.hasJokers = jokers;
+    this.hasBombs = bombs;
+    const t = this.tex;
+    this.octx.putImageData(this.img, 0, 0, 0, lo * t, gw * t, (hi - lo + 1) * t);
+  }
+
+  /** Paint one cell row into the texel buffer (TEX×TEX texels per cell). */
+  private paintRow(s: Session, y: number, flashing: boolean, phase: number, spark: number): void {
+    const g = s.grid;
+    const pal = packedPalette();
+    const jl = pal.joker.length;
+    const { color, shade, flags } = g;
+    const marked = s.clear.marked;
+    const gw = this.gw;
+    const gh = this.gh;
+    const t = this.tex;
+    const W = gw * t;
+    const px = this.px;
+    const mid = t >> 1;
+    const last = t - 1;
+    const rowO = y * t * W;
+    let jokers = 0;
+    let bombs = 0;
+    for (let x = 0; x < gw; x++) {
+      const i = y * gw + x;
+      const c = color[i];
+      const o = rowO + x * t;
+      if (c === 0) {
+        if (t === 3) {
+          px[o] = px[o + 1] = px[o + 2] = 0;
+          px[o + W] = px[o + W + 1] = px[o + W + 2] = 0;
+          px[o + 2 * W] = px[o + 2 * W + 1] = px[o + 2 * W + 2] = 0;
+        } else for (let r = 0, ro = o; r < t; r++, ro += W) for (let k = 0; k < t; k++) px[ro + k] = 0;
+        continue;
+      }
+      if (c === STONE) {
+        this.woodCell(color, i, x, y, o, W);
+        continue;
+      }
+      if (c === SACK) {
+        this.juteCell(color, i, x, y, o, W);
+        continue;
+      }
+      if (flashing && marked[i]) {
+        const f = pal.flash;
+        for (let r = 0, ro = o; r < t; r++, ro += W) for (let k = 0; k < t; k++) px[ro + k] = f;
+        if (t > 1) px[o + last * W + last] = pal.flashLo;
+        continue;
+      }
+      if (c === JOKER) {
+        jokers = 1;
+        // Diagonal shimmer bands; shade offsets the phase so a joker block glitters.
+        const col = pal.joker[(phase + shade[i] * 2 + (((x + y) / JOKER_BAND) | 0)) % jl];
+        for (let r = 0, ro = o; r < t; r++, ro += W) for (let k = 0; k < t; k++) px[ro + k] = col;
+        if (((Math.imul(i, 2654435761) + phase * 977) >>> 0) % 11 === 0) px[o + mid * W + mid] = pal.flash;
+        continue;
+      }
+      const bomb = (flags[i] & SPECIAL_MASK) !== 0;
+      if (bomb) bombs = 1;
+      const tab = bomb ? pal.bomb : pal.grain;
+      const sh = shade[i];
+      const b = (c * 4 + sh) * VARIANTS;
+      const vb = tab[b];
+      const upEmpty = y > 0 && color[i - gw] === 0;
+      const sparkOn = bomb && ((Math.imul(i, 2654435761) + spark * 40503) >>> 0) % 7 === 0;
+      if (t === 1) {
+        // Too small for sub-cell detail: tone only (lit surface, light / dark grains).
+        px[o] = sparkOn ? pal.spark : upEmpty ? tab[b + V_RIM] : sh === 1 ? tab[b + V_HI] : sh === 2 ? tab[b + V_LO] : vb;
+        continue;
+      }
+      const right = x < gw - 1 ? color[i + 1] : c;
+      const below = y < gh - 1 ? color[i + gw] : c;
+      const rd = right !== 0 && right !== c;
+      const bd = below !== 0 && below !== c;
+      const edge = tab[b + V_EDGE];
+      const o1 = o + W;
+      if (t === 3) {
+        // Unrolled 3×3: the common case on phones.
+        const o2 = o1 + W;
         if (upEmpty) {
           const rim = tab[b + V_RIM];
           px[o] = px[o + 1] = rim;
           px[o + 2] = rd ? edge : rim;
         } else {
-          // Highlight / shaded corner only on the light / dark tone grains: irregular, dusty texture.
           px[o] = sh === 1 ? tab[b + V_HI] : vb;
           px[o + 1] = vb;
           px[o + 2] = rd ? edge : vb;
         }
         px[o1] = vb;
-        px[o1 + 1] = bomb && ((Math.imul(i, 2654435761) + spark * 40503) >>> 0) % 7 === 0 ? pal.spark : vb;
+        px[o1 + 1] = sparkOn ? pal.spark : vb;
         px[o1 + 2] = rd ? edge : vb;
         if (bd) px[o2] = px[o2 + 1] = px[o2 + 2] = edge;
         else {
           px[o2] = vb;
           px[o2 + 1] = vb;
-          px[o2 + 2] = rd ? edge : sh === 2 ? lo : vb;
+          px[o2 + 2] = rd ? edge : sh === 2 ? tab[b + V_LO] : vb;
+        }
+      } else {
+        // 2×2
+        if (upEmpty) {
+          const rim = tab[b + V_RIM];
+          px[o] = rim;
+          px[o + 1] = rd ? edge : rim;
+        } else {
+          px[o] = sparkOn ? pal.spark : sh === 1 ? tab[b + V_HI] : vb;
+          px[o + 1] = rd ? edge : vb;
+        }
+        if (bd) px[o1] = px[o1 + 1] = edge;
+        else {
+          px[o1] = vb;
+          px[o1 + 1] = rd ? edge : sh === 2 ? tab[b + V_LO] : vb;
         }
       }
     }
-    this.hasJokers = jokers;
-    this.hasBombs = bombs;
-    this.octx.putImageData(this.img, 0, 0);
+    this.rowJoker[y] = jokers;
+    this.rowBomb[y] = bombs;
   }
 
   /** Shelf ("Raf") wood: lit top edge, dark underside, horizontal grain streaks, plank joints. */
-  private woodCell(color: Uint8Array, i: number, x: number, y: number, o: number, W3: number): void {
+  private woodCell(color: Uint8Array, i: number, x: number, y: number, o: number, W: number): void {
     const gw = this.gw;
+    const t = this.tex;
     const w = packedPalette().wood;
     const up = y > 0 && color[i - gw] === STONE;
     const dn = y < this.gh - 1 && color[i + gw] === STONE;
     const lf = x > 0 && color[i - 1] === STONE;
     const rt = x < gw - 1 && color[i + 1] === STONE;
+    const joint = x % PLANK_CELLS === PLANK_CELLS - 1;
+    // Streak pattern keyed to design-grain rows so it keeps its scale at any SUB / TEX.
+    const gx = ((x / SUB) | 0) >> 2;
     const px = this.px;
-    for (let r = 0; r < SUB; r++) {
-      const gy = y * SUB + r;
-      let col = ((Math.imul(gy, 73856093) ^ Math.imul((x >> 2) + (gy % 5), 19349663)) >>> 0) % 5 === 0 ? w[2] : w[0];
+    for (let r = 0; r < t; r++) {
+      const gy = (((y * t + r) * SUB) / t) | 0;
+      let col = ((Math.imul(gy, 73856093) ^ Math.imul(gx + (gy % 5), 19349663)) >>> 0) % 5 === 0 ? w[2] : w[0];
       if (!up && r === 0) col = w[1];
-      else if (!dn && r === SUB - 1) col = w[3];
-      const ro = o + r * W3;
-      px[ro] = !lf ? w[2] : col;
-      px[ro + 1] = col;
-      px[ro + 2] = !rt || (x % 12 === 11 && r > 0) ? w[3] : col;
+      else if (!dn && r === t - 1) col = w[3];
+      const ro = o + r * W;
+      for (let k = 0; k < t; k++) {
+        let c = col;
+        if (k === 0 && !lf) c = w[2];
+        else if (k === t - 1 && (!rt || (joint && r > 0))) c = w[3];
+        px[ro + k] = c;
+      }
     }
   }
 
   /** Sack ("Çuval") jute: checker weave with a stitched seam along the outline. */
-  private juteCell(color: Uint8Array, i: number, x: number, y: number, o: number, W3: number): void {
+  private juteCell(color: Uint8Array, i: number, x: number, y: number, o: number, W: number): void {
     const gw = this.gw;
+    const t = this.tex;
     const j = packedPalette().jute;
     const up = y > 0 && color[i - gw] === SACK;
     const dn = y < this.gh - 1 && color[i + gw] === SACK;
     const lf = x > 0 && color[i - 1] === SACK;
     const rt = x < gw - 1 && color[i + 1] === SACK;
     const px = this.px;
-    for (let r = 0; r < SUB; r++) {
-      const gy = y * SUB + r;
-      for (let k = 0; k < SUB; k++) {
-        const gx = x * SUB + k;
-        const border = (!up && r === 0) || (!dn && r === SUB - 1) || (!lf && k === 0) || (!rt && k === SUB - 1);
-        px[o + r * W3 + k] = border ? ((gx + gy) % 3 === 0 ? j[3] : j[2]) : ((gx + gy) & 1 ? j[0] : j[1]);
+    for (let r = 0; r < t; r++) {
+      const gy = y * t + r;
+      for (let k = 0; k < t; k++) {
+        const gx = x * t + k;
+        const border = (!up && r === 0) || (!dn && r === t - 1) || (!lf && k === 0) || (!rt && k === t - 1);
+        px[o + r * W + k] = border ? ((gx + gy) % 3 === 0 ? j[3] : j[2]) : ((gx + gy) & 1 ? j[0] : j[1]);
       }
     }
   }
@@ -335,39 +487,40 @@ export class BoardRenderer {
   /** Sack tie (twine bow at the cinched neck) and hp knots: filled knots = hp left. */
   private drawSacks(s: Session, now: number): void {
     const ctx = this.ctx;
-    const sc = this.scale;
+    const sc = this.scale; // device px per cell (rect positions)
+    const gs = sc * SUB; // device px per design grain (decoration sizes)
     const t = theme();
     s.sacks.list.forEach((sack, idx) => {
       if (sack.hp <= 0) return;
       const hitAge = now - (this.sackHitAt[idx] ?? -1e9);
       const hit = hitAge < SACK_HIT_MS ? 1 - hitAge / SACK_HIT_MS : 0;
-      const wob = hit ? Math.sin(hitAge * 0.06) * hit * sc * 0.6 : 0;
+      const wob = hit ? Math.sin(hitAge * 0.06) * hit * gs * 0.6 : 0;
       const x0 = sack.x * sc;
       const y0 = sack.y * sc;
       const w = sack.w * sc;
       const h = sack.h * sc;
       // Cinch band.
-      const by = y0 + sc * 1.8;
+      const by = y0 + gs * 1.8;
       ctx.fillStyle = 'rgba(60,36,14,0.35)';
-      ctx.fillRect(x0 + sc * 0.6, by - sc * 0.5, w - sc * 1.2, sc);
+      ctx.fillRect(x0 + gs * 0.6, by - gs * 0.5, w - gs * 1.2, gs);
       // Bow.
       const cx = x0 + w / 2 + wob;
-      ctx.lineWidth = Math.max(1, sc * 0.45);
+      ctx.lineWidth = Math.max(1, gs * 0.45);
       ctx.strokeStyle = t.twine[1];
       ctx.fillStyle = t.twine[0];
       for (const d of [-1, 1]) {
         ctx.beginPath();
-        ctx.ellipse(cx + d * sc * 1.1, by - sc * 0.2, sc * 1.05, sc * 0.6, d * 0.5, 0, Math.PI * 2);
+        ctx.ellipse(cx + d * gs * 1.1, by - gs * 0.2, gs * 1.05, gs * 0.6, d * 0.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
       }
       // HP knots along the band.
       const n = sack.maxHp;
-      const span = w - sc * 3;
-      const r = Math.max(1.5, sc * 0.62);
+      const span = w - gs * 3;
+      const r = Math.max(1.5, gs * 0.62);
       for (let k = 0; k < n; k++) {
-        const kx = n === 1 ? cx : x0 + sc * 1.5 + (span * k) / (n - 1);
-        const ky = y0 + h - sc * 1.9;
+        const kx = n === 1 ? cx : x0 + gs * 1.5 + (span * k) / (n - 1);
+        const ky = y0 + h - gs * 1.9;
         const alive = k < sack.hp;
         ctx.beginPath();
         ctx.arc(kx, ky, r, 0, Math.PI * 2);
@@ -387,13 +540,13 @@ export class BoardRenderer {
     });
   }
 
-  /** CSS px per grain (for overlays positioned over the canvas). */
+  /** CSS px per simulation cell (for overlays positioned over the canvas; ×SUB for a design grain). */
   get cssPerGrain(): number {
     const r = this.canvas.getBoundingClientRect();
     return r.width / this.gw;
   }
 
-  /** Client coordinates of a grain position (x, y may be fractional). */
+  /** Client coordinates of a cell position (x, y may be fractional). */
   grainToClient(x: number, y: number): { x: number; y: number } {
     const r = this.canvas.getBoundingClientRect();
     return { x: r.left + (x / this.gw) * r.width, y: r.top + (y / this.gh) * r.height };
@@ -421,8 +574,9 @@ export class BoardRenderer {
     }
     ctx.globalAlpha = 1;
     ctx.strokeStyle = gh.ok ? t.ghostOk : t.ghostBad;
-    ctx.lineWidth = Math.max(1, sc * 0.35);
-    ctx.setLineDash([sc * 0.9, sc * 0.6]);
+    const gs = sc * SUB;
+    ctx.lineWidth = Math.max(1, gs * 0.35);
+    ctx.setLineDash([gs * 0.9, gs * 0.6]);
     for (let c = 0; c < shape.cells.length; c++) {
       const [bx, by] = shape.cells[c];
       ctx.strokeRect(gh.x * sc + bx * bw + 1, gh.y * sc + by * bw + 1, bw - 2, bw - 2);
@@ -430,7 +584,7 @@ export class BoardRenderer {
     ctx.setLineDash([]);
   }
 
-  /** Convert a client X coordinate to a grain column (float). */
+  /** Convert a client X coordinate to a cell column (float). */
   clientToGrainX(clientX: number): number {
     const r = this.canvas.getBoundingClientRect();
     return ((clientX - r.left) / r.width) * this.gw;

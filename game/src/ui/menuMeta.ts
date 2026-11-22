@@ -19,7 +19,7 @@ export function menuMetaBar(app: App): HTMLElement {
   return h(
     'div',
     { class: 'menu-meta', 'data-testid': 'menu-meta' },
-    goldBadge(app, openShop),
+    goldBadge(app), // tap → "Altın ne işe yarar?" (ui/goldInfo.ts)
     streak > 0
       ? h('span', { class: 'streak-chip', 'aria-label': fmt(s.streakAria, { n: streak }), 'data-testid': 'streak' }, h('span', { class: 'brazier', 'aria-hidden': 'true' }), fmt(s.streak, { n: streak }))
       : null,

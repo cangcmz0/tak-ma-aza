@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/rng';
 import { PieceBag } from '../src/engine/pieces';
 import { Session, type SessionEvent } from '../src/game/session';
-import { makeLevel } from './helpers';
+import { designH, designW, makeLevel, S, setGrain } from './helpers';
 
-const small = { gridW: 16, gridH: 24 };
+const small = { gridW: 16 * S, gridH: 24 * S };
 
 function collect(s: Session): SessionEvent[] {
   const ev: SessionEvent[] = [];
@@ -23,10 +23,10 @@ describe('Session', () => {
 
   it('identical inputs give identical boards (deterministic replay)', () => {
     const run = () => {
-      const s = new Session(makeLevel({ pieceLimit: 30 }), { gridW: 32, gridH: 48 });
+      const s = new Session(makeLevel({ pieceLimit: 30 }), { gridW: 32 * S, gridH: 48 * S });
       for (let k = 0; k < 4; k++) {
         const slot = s.tray.findIndex((t) => t);
-        s.drop(slot, k * 4);
+        s.drop(slot, k * 4 * S);
         for (let t = 0; t < 10; t++) s.tick();
       }
       s.runUntilSettled();
@@ -72,7 +72,7 @@ describe('Session', () => {
   });
 
   it('loses when the piece limit is used up without reaching goals', () => {
-    const s = new Session(makeLevel({ pieceLimit: 1, pieces: ['O'] }), { gridW: 24, gridH: 24 });
+    const s = new Session(makeLevel({ pieceLimit: 1, pieces: ['O'] }), { gridW: 24 * S, gridH: 24 * S });
     expect(s.tray.filter((t) => t).length).toBe(1);
     s.drop(0, 0);
     s.runUntilSettled();
@@ -101,9 +101,11 @@ describe('Session', () => {
   it('several paths in one check are separate chain steps, largest first', () => {
     const s = new Session(makeLevel({ colors: [1, 2], goals: [{ type: 'clear_paths', count: 5 }] }), small);
     const g = s.grid;
-    for (let x = 0; x < g.w; x++) g.set(x, g.h - 1, 1);
-    for (let x = 0; x < g.w; x++) g.set(x, g.h - 2, 2);
-    g.set(0, g.h - 3, 2); // makes the colour-2 path bigger (17 grains)
+    const W = designW(g);
+    const H = designH(g);
+    for (let x = 0; x < W; x++) setGrain(g, x, H - 1, 1);
+    for (let x = 0; x < W; x++) setGrain(g, x, H - 2, 2);
+    setGrain(g, 0, H - 3, 2); // makes the colour-2 path bigger (17 grains)
     const ev = collect(s);
     s.runUntilSettled();
     const c = ev.find((e) => e.type === 'cleared');
@@ -114,7 +116,8 @@ describe('Session', () => {
   it('chain multiplier is capped', () => {
     const s = new Session(makeLevel({ colors: [1, 2, 3], goals: [{ type: 'clear_paths', count: 9 }] }), small);
     const g = s.grid;
-    for (let y = 0; y < 7; y++) for (let x = 0; x < g.w; x++) g.set(x, g.h - 1 - y * 2, 1 + (y % 3));
+    const H = designH(g);
+    for (let y = 0; y < 7; y++) for (let x = 0; x < designW(g); x++) setGrain(g, x, H - 1 - y * 2, 1 + (y % 3));
     s.runUntilSettled();
     // 7 equal paths: multipliers 1,2,3,4,5,5,5
     expect(s.score).toBe((16 + 100) * (1 + 2 + 3 + 4 + 5 + 5 + 5));
@@ -123,11 +126,12 @@ describe('Session', () => {
   it('a cascade of clears raises the chain multiplier', () => {
     const s = new Session(makeLevel({ colors: [1, 2], goals: [{ type: 'clear_paths', count: 5 }] }), small);
     const g = s.grid;
-    const H = g.h;
-    for (let x = 1; x < g.w; x++) g.set(x, H - 1, 2);
-    g.set(0, H - 1, 1);
-    for (let x = 0; x < g.w; x++) g.set(x, H - 2, 1);
-    g.set(0, H - 3, 2); // falls into the gap after the first clear
+    const W = designW(g);
+    const H = designH(g);
+    for (let x = 1; x < W; x++) setGrain(g, x, H - 1, 2);
+    setGrain(g, 0, H - 1, 1);
+    for (let x = 0; x < W; x++) setGrain(g, x, H - 2, 1);
+    setGrain(g, 0, H - 3, 2); // falls into the gap after the first clear
     const ev = collect(s);
     s.runUntilSettled();
     const cleared = ev.filter((e) => e.type === 'cleared');
@@ -158,7 +162,7 @@ describe('Session', () => {
   });
 
   it('pieces left counts down', () => {
-    const s = new Session(makeLevel({ pieceLimit: 4, pieces: ['O'] }), { gridW: 32, gridH: 32 });
+    const s = new Session(makeLevel({ pieceLimit: 4, pieces: ['O'] }), { gridW: 32 * S, gridH: 32 * S });
     expect(s.piecesLeft).toBe(4);
     s.drop(0, 0);
     expect(s.piecesLeft).toBe(3);

@@ -1,4 +1,9 @@
 // Falling-sand cellular automaton. Allocation-free; operates in place.
+//
+// Active-range optimisation: a grain in row y can only start moving when something changed in
+// rows y..y+2 (below, diagonal below, and the repose check one row further). So each step
+// records the rows where grains moved and the next step scans only [movedLo - 2, movedHi].
+// Any outside mutation (detected via SandGrid.version) forces a full rescan.
 import { SAND_REPOSE } from '../config';
 import type { Rng } from '../core/rng';
 import { EMPTY, FLAG_FALLING, FLAG_STATIC, type SandGrid } from './grid';
@@ -12,6 +17,21 @@ function move(g: SandGrid, a: number, b: number): void {
   g.flags[a] = 0;
 }
 
+/** Locate the rows of FLAG_FALLING grains (full scan; after outside mutations). */
+function findFalling(g: SandGrid): void {
+  const { w, flags, size } = g;
+  let lo = g.h;
+  let hi = -1;
+  for (let i = 0; i < size; i++) {
+    if ((flags[i] & FLAG_FALLING) === 0) continue;
+    const y = (i / w) | 0;
+    if (y < lo) lo = y;
+    hi = y;
+  }
+  g.fallLo = lo;
+  g.fallHi = hi;
+}
+
 /**
  * One physics pass, bottom-up. A grain falls straight down if possible,
  * otherwise slides diagonally (random side when both are free).
@@ -20,10 +40,38 @@ function move(g: SandGrid, a: number, b: number): void {
  */
 export function step(g: SandGrid, rng: Rng, repose: number = SAND_REPOSE): number {
   const { w, h, color, flags } = g;
-  let moved = stepFalling(g);
-  for (let y = h - 2; y >= 0; y--) {
+  let lo: number;
+  let hi: number;
+  if (g.version !== g.simVersion) {
+    findFalling(g);
+    lo = 0;
+    hi = h - 2;
+  } else {
+    lo = g.scanLo;
+    hi = g.scanHi;
+  }
+  let mLo = h;
+  let mHi = -1;
+  let moved = 0;
+  if (g.fallLo <= g.fallHi) {
+    const a = g.fallLo;
+    const b = g.fallHi;
+    moved = stepFalling(g);
+    // Rows the falling piece occupied (and moved into) may hold loose sand now.
+    const bb = moved ? b + 1 : b;
+    if (a - 2 < lo) lo = a - 2;
+    if (bb > hi) hi = bb;
+    if (moved) {
+      mLo = a;
+      mHi = bb;
+    }
+  }
+  if (lo < 0) lo = 0;
+  if (hi > h - 2) hi = h - 2;
+  for (let y = hi; y >= lo; y--) {
     const ltr = rng.next() < 0.5;
     const row = y * w;
+    let rowMoved = false;
     for (let k = 0; k < w; k++) {
       const x = ltr ? k : w - 1 - k;
       const i = row + x;
@@ -32,6 +80,7 @@ export function step(g: SandGrid, rng: Rng, repose: number = SAND_REPOSE): numbe
       if (color[below] === EMPTY) {
         move(g, i, below);
         moved++;
+        rowMoved = true;
         continue;
       }
       const deep = repose >= 2 && y + 2 < h;
@@ -39,48 +88,68 @@ export function step(g: SandGrid, rng: Rng, repose: number = SAND_REPOSE): numbe
       const dr = x < w - 1 && color[below + 1] === EMPTY && (repose < 2 || (deep && color[below + 1 + w] === EMPTY));
       if (dl && dr) {
         move(g, i, rng.next() < 0.5 ? below - 1 : below + 1);
-        moved++;
       } else if (dl) {
         move(g, i, below - 1);
-        moved++;
       } else if (dr) {
         move(g, i, below + 1);
-        moved++;
-      }
+      } else continue;
+      moved++;
+      rowMoved = true;
+    }
+    if (rowMoved) {
+      if (y < mLo) mLo = y;
+      if (y + 1 > mHi) mHi = y + 1;
     }
   }
+  if (mHi >= 0) {
+    g.scanLo = mLo - 2 < 0 ? 0 : mLo - 2;
+    g.scanHi = mHi > h - 2 ? h - 2 : mHi;
+  } else {
+    g.scanLo = 1;
+    g.scanHi = 0;
+  }
   if (moved) g.version++;
+  g.simVersion = g.version;
   return moved;
 }
 
 /**
  * A just-dropped piece (FLAG_FALLING grains) moves down one row as a rigid block.
  * As soon as any of its grains is supported, the whole piece turns into loose sand.
+ * Only the rows in [fallLo, fallHi] are touched.
  * @returns number of grains moved
  */
 function stepFalling(g: SandGrid): number {
   const { w, h, color, flags } = g;
-  let any = false;
+  const i0 = g.fallLo * w;
+  const i1 = (g.fallHi + 1) * w;
   let canFall = true;
-  for (let i = 0; i < g.size; i++) {
+  for (let i = i0; i < i1; i++) {
     if ((flags[i] & FLAG_FALLING) === 0) continue;
-    any = true;
     const below = i + w;
     if (i >= w * (h - 1) || (color[below] !== EMPTY && (flags[below] & FLAG_FALLING) === 0)) {
       canFall = false;
       break;
     }
   }
-  if (!any) return 0;
   if (!canFall) {
-    for (let i = 0; i < g.size; i++) flags[i] &= ~FLAG_FALLING;
+    for (let i = i0; i < i1; i++) flags[i] &= ~FLAG_FALLING;
+    g.fallLo = 0;
+    g.fallHi = -1;
     return 0;
   }
   let moved = 0;
-  for (let i = w * (h - 1) - 1; i >= 0; i--) {
+  for (let i = i1 - 1; i >= i0; i--) {
     if ((flags[i] & FLAG_FALLING) === 0) continue;
     move(g, i, i + w);
     moved++;
+  }
+  if (moved === 0) {
+    g.fallLo = 0;
+    g.fallHi = -1;
+  } else {
+    g.fallLo++;
+    g.fallHi++;
   }
   return moved;
 }

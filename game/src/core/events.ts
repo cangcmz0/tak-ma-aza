@@ -24,8 +24,9 @@ export type LoseReason = 'out_of_pieces' | 'no_space';
 
 /**
  * Everything a Session announces (sound, haptics, juice, analytics, tutorial listen here).
- * Coordinates are in grains (x right, y down, origin top-left of the board); `cells` are
- * grain indices (i = y * grid.w + x).
+ * Coordinates (x/y/w/h, cx/cy) are in simulation cells (x right, y down, origin top-left of
+ * the board); `cells` are cell indices (i = y * grid.w + x). Counts named `grains` / `total`
+ * and all points are in design grains (SUB×SUB cells = 1 grain = 1 g; see config.cellsToGrains).
  *
  * Order within one resolved clear: grainsToGoal* → joker? → bomb? → cleared →
  * double? → chainWord? → sackHit/sackBreak* → goalComplete*.
@@ -70,7 +71,7 @@ export type SessionEvent =
   | { type: 'trayRerolled' }
   /**
    * A lost attempt was resumed ("Devam et +5", economy). `pieces` extra pieces were granted
-   * (a `piecesAdded` follows); `rows` top grain rows were emptied (lost with no space).
+   * (a `piecesAdded` follows); `rows` top design-grain rows were emptied (lost with no space).
    */
   | { type: 'revived'; pieces: number; rows: number; grains: number }
   | { type: 'won'; score: number; stars: number; bonus: number }

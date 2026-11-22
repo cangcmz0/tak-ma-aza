@@ -2,6 +2,7 @@
 // Driven by fixed ticks (tick()) so it is deterministic and testable headless.
 import {
   ATTEMPT_SEED_STEP,
+  cellsToGrains,
   CHAIN_MAX,
   CHAIN_RESET_ON_DROP,
   CLEAR_FLASH_TICKS,
@@ -9,12 +10,14 @@ import {
   END_BONUS_PER_PIECE,
   GRID_H,
   GRID_W,
+  grainLen,
   HELP_COLOR_WEIGHT,
   HELP_LOSS_STREAK,
   PATH_BONUS,
   SACK_BREAK_POINTS,
   SCORE_PER_GRAIN,
   SIM_STEPS_PER_TICK,
+  SUB,
   TRAY_SIZE,
 } from '../config';
 import { Emitter, type LoseReason, type SessionEvent } from '../core/events';
@@ -200,7 +203,7 @@ export class Session {
     this.events.emit({ type: 'trayRefill' });
   }
 
-  /** Whether the piece in `slot` could be stamped at grain column x right now. */
+  /** Whether the piece in `slot` could be stamped at cell column x right now. */
   canDrop(slot: number, x: number): boolean {
     const p = this.tray[slot];
     return !!p && this.isPlaying && canStamp(this.grid, pieceShape(p), x, 0);
@@ -275,9 +278,9 @@ export class Session {
   }
 
   /**
-   * Remove all sand in grain columns [x0, x0 + w) ("Kepçe"). Grains count for colour goals,
-   * score 1 point each without multiplier (GDD §4.7). Refused while a clear is blinking.
-   * @returns grains removed
+   * Remove all sand in cell columns [x0, x0 + w) ("Kepçe"). Grains count for colour goals,
+   * score 1 point per design grain without multiplier (GDD §4.7). Refused while a clear is blinking.
+   * @returns design grains removed
    */
   scoopColumns(x0: number, w: number): number {
     if (!this.isPlaying || this.clearPending) return 0;
@@ -296,7 +299,7 @@ export class Session {
   /**
    * Remove every grain of one sand colour ("Elek"). Counts for grain goals (not path goals),
    * 1 point per grain without multiplier (GDD §4.7). Jokers / obstacles cannot be sieved.
-   * Refused while a clear is blinking. @returns grains removed
+   * Refused while a clear is blinking. @returns design grains removed
    */
   sieveColor(color: number): number {
     if (!this.isPlaying || this.clearPending || color <= 0 || color >= JOKER) return 0;
@@ -310,8 +313,9 @@ export class Session {
   /** Shared tail of the tool clears: remove marked cells, score, goals, events. */
   private removeToolMarks(): number {
     const res = this.clear;
-    const n = res.cellCount;
-    if (n > 0) {
+    const cells = res.cellCount;
+    const n = cells > 0 ? Math.max(1, cellsToGrains(cells)) : 0;
+    if (cells > 0) {
       removeMarked(this.grid, res);
       this.score += n;
       this.goals.onClear(res);
@@ -326,14 +330,14 @@ export class Session {
 
   /**
    * Resume a lost attempt ("Devam et", GDD §10.1): +`pieces` pieces and, when the loss was
-   * "no space", the top `clearRows` grain rows are emptied (grains do not count for goals or
-   * score). @returns false if the attempt is not lost
+   * "no space", the top `clearRows` design-grain rows are emptied (grains do not count for goals
+   * or score). @returns false if the attempt is not lost
    */
   revive(pieces: number, clearRows: number): boolean {
     if (this.state !== 'lost') return false;
     const noSpace = this.loseReason === 'no_space';
     let grains = 0;
-    const rows = noSpace ? Math.max(0, Math.min(this.grid.h, clearRows)) : 0;
+    const rows = noSpace ? Math.max(0, Math.min(this.grid.h, grainLen(clearRows))) : 0;
     const g = this.grid;
     for (let i = 0; i < rows * g.w; i++) {
       if (g.color[i] !== 0 && !(g.flags[i] & FLAG_STATIC)) {
@@ -346,7 +350,7 @@ export class Session {
     this.loseReason = null;
     this.continues++;
     this.chain = 0;
-    this.events.emit({ type: 'revived', pieces, rows, grains });
+    this.events.emit({ type: 'revived', pieces, rows: rows / SUB, grains: cellsToGrains(grains) });
     this.addPieces(pieces);
     this.wake();
     return true;
@@ -379,7 +383,7 @@ export class Session {
     const paths = findClears(this.grid, this.clear);
     if (paths > 0) {
       this.flashTicks = CLEAR_FLASH_TICKS;
-      this.events.emit({ type: 'clearStart', paths, grains: this.clear.cellCount });
+      this.events.emit({ type: 'clearStart', paths, grains: cellsToGrains(this.clear.cellCount) });
       return;
     }
     this.settled = true;
@@ -443,11 +447,12 @@ export class Session {
         if (g.color[i] !== color) continue;
         if (seen++ % stride === 0) cells.push(i);
       }
-      this.events.emit({ type: 'grainsToGoal', goal: gi, color, total, cells });
+      this.events.emit({ type: 'grainsToGoal', goal: gi, color, total: cellsToGrains(total), cells });
     });
     const jokers = res.jokerPathGrains(g);
-    if (jokers > 0) this.events.emit({ type: 'joker', grains: jokers });
-    if (bomb >= 0) this.events.emit({ type: 'bomb', grains: res.cellCount - res.pathCellCount, x: bomb % w, y: (bomb / w) | 0 });
+    if (jokers > 0) this.events.emit({ type: 'joker', grains: Math.max(1, cellsToGrains(jokers)) });
+    if (bomb >= 0)
+      this.events.emit({ type: 'bomb', grains: cellsToGrains(res.cellCount - res.pathCellCount), x: bomb % w, y: (bomb / w) | 0 });
     return { cx: sx / n, cy: sy / n };
   }
 
@@ -476,10 +481,10 @@ export class Session {
       colors.push(res.regionColor[order[k]]);
       this.chain++;
       const z = Math.min(this.chain, CHAIN_MAX);
-      points += (res.regionLen[order[k]] * SCORE_PER_GRAIN + PATH_BONUS) * z;
+      points += (cellsToGrains(res.regionLen[order[k]]) * SCORE_PER_GRAIN + PATH_BONUS) * z;
     }
     // Grains removed by specials (bombs): per grain at the current multiplier, no path bonus.
-    points += (res.cellCount - res.pathCellCount) * SCORE_PER_GRAIN * Math.min(this.chain, CHAIN_MAX);
+    points += cellsToGrains(res.cellCount - res.pathCellCount) * SCORE_PER_GRAIN * Math.min(this.chain, CHAIN_MAX);
     // Torn sacks: flat points, no multiplier.
     let broken = 0;
     for (const hit of sackHits) if (hit.broken) broken++;
@@ -489,7 +494,7 @@ export class Session {
     this.goals.onClear(res);
     for (let k = 0; k < broken; k++) this.goals.onObstacle('sack');
     this.goals.onScore(this.score);
-    this.events.emit({ type: 'cleared', paths: n, grains: res.cellCount, chain: this.chain, points, cx, cy, colors });
+    this.events.emit({ type: 'cleared', paths: n, grains: cellsToGrains(res.cellCount), chain: this.chain, points, cx, cy, colors });
     if (n >= 2) this.events.emit({ type: 'double', paths: n });
     if (this.chain >= 2) this.events.emit({ type: 'chainWord', chain: Math.min(this.chain, CHAIN_MAX) });
     for (const { index, sack: s, broken: b } of sackHits) {

@@ -9,9 +9,9 @@ import { endlessParams, makeEndlessLevel, ENDLESS_PREFILL_PIECES } from '../src/
 import { findHintMove } from '../src/game/hintMove';
 import { goalColors, scriptedToPiece, Session, shouldHelp } from '../src/game/session';
 import { validateLevel } from '../src/levels/schema';
-import { makeLevel } from './helpers';
+import { designH, designW, makeLevel, S, setGrain } from './helpers';
 
-const small = { gridW: 16, gridH: 24 };
+const small = { gridW: 16 * S, gridH: 24 * S };
 
 function collect(s: Session): SessionEvent[] {
   const ev: SessionEvent[] = [];
@@ -23,21 +23,21 @@ describe('two-colour pieces (İkili Kese, GDD §5.5)', () => {
   it('splits cells 0-1 / 2-3 and keeps the split when rotating', () => {
     const p: Piece = { kind: 'I', rot: 0, color: 1, color2: 2, special: null, specialCell: -1 };
     expect([0, 1, 2, 3].map((c) => blockColor(p, c))).toEqual([1, 1, 2, 2]);
-    const g = new SandGrid(16, 16);
+    const g = new SandGrid(16 * S, 16 * S);
     stamp(g, p, 0, 0, new Rng(1));
     expect(g.get(0, 0)).toBe(1); // I: left two blocks colour A
-    expect(g.get(15, 0)).toBe(2); // right two colour B
+    expect(g.get(16 * S - 1, 0)).toBe(2); // right two colour B
     rotatePiece(p);
-    const g2 = new SandGrid(16, 16);
+    const g2 = new SandGrid(16 * S, 16 * S);
     stamp(g2, p, 0, 0, new Rng(1));
     expect(g2.get(0, 0)).toBe(1); // vertical I: top two A (cells keep their order)
-    expect(g2.get(0, 15)).toBe(2);
-    expect(g2.countColor(1)).toBe(32);
+    expect(g2.get(0, 16 * S - 1)).toBe(2);
+    expect(g2.countColor(1)).toBe(32 * S * S);
     const o: Piece = { kind: 'O', rot: 0, color: 3, color2: 4, special: null, specialCell: -1 };
-    const g3 = new SandGrid(8, 8);
+    const g3 = new SandGrid(8 * S, 8 * S);
     stamp(g3, o, 0, 0, new Rng(1));
     expect(g3.get(0, 0)).toBe(3); // O: top A
-    expect(g3.get(0, 7)).toBe(4); // bottom B
+    expect(g3.get(0, 8 * S - 1)).toBe(4); // bottom B
   });
 
   it('twoColorChance deals pieces with a second, different colour', () => {
@@ -77,10 +77,10 @@ describe('scriptedPieces', () => {
       expect(s.tray[1]).toMatchObject({ color: 1, rot: 1, special: 'bomb', specialCell: 3 });
       expect(s.tray[2]).toMatchObject({ jokerCell: 0 });
     }
-    const s = new Session(lvl, { gridW: 32, gridH: 48 });
+    const s = new Session(lvl, { gridW: 32 * S, gridH: 48 * S });
     s.drop(0, 0);
-    s.drop(1, 12);
-    s.drop(2, 20);
+    s.drop(1, 12 * S);
+    s.drop(2, 20 * S);
     expect(s.tray[0]).toMatchObject({ kind: 'L', color: 1, color2: 3 });
     expect(s.tray[1]).not.toBeNull();
   });
@@ -125,7 +125,7 @@ describe('help rule (GDD §4.2)', () => {
 describe('chain and juice events', () => {
   it('chain no longer resets on drop (GDD §4.7)', () => {
     expect(CHAIN_RESET_ON_DROP).toBe(false);
-    const s = new Session(makeLevel({ colors: [1, 2], pieces: ['O'], goals: [{ type: 'clear_paths', count: 9 }] }), { gridW: 32, gridH: 48 });
+    const s = new Session(makeLevel({ colors: [1, 2], pieces: ['O'], goals: [{ type: 'clear_paths', count: 9 }] }), { gridW: 32 * S, gridH: 48 * S });
     s.chain = 2; // mid-cascade
     s.drop(0, 0);
     expect(s.chain).toBe(2);
@@ -137,8 +137,9 @@ describe('chain and juice events', () => {
       small,
     );
     const g = s.grid;
-    for (let x = 0; x < g.w; x++) g.set(x, g.h - 1, 1);
-    for (let x = 0; x < g.w; x++) g.set(x, g.h - 2, 2);
+    const H = designH(g);
+    for (let x = 0; x < designW(g); x++) setGrain(g, x, H - 1, 1);
+    for (let x = 0; x < designW(g); x++) setGrain(g, x, H - 2, 2);
     const ev = collect(s);
     s.runUntilSettled();
     const types = ev.map((e) => e.type);
@@ -150,11 +151,12 @@ describe('chain and juice events', () => {
       expect(fly.total).toBe(16);
       expect(fly.cells.length).toBeGreaterThan(0);
       expect(fly.cells.length).toBeLessThanOrEqual(24);
-      for (const i of fly.cells) expect(Math.floor(i / g.w)).toBe(g.h - 2);
+      for (const i of fly.cells) expect(Math.floor(i / g.w / S)).toBe(H - 2);
     }
     const c = ev.find((e) => e.type === 'cleared');
     expect(c && c.type === 'cleared' && [...(c.colors ?? [])].sort()).toEqual([1, 2]);
-    expect(c && c.type === 'cleared' && c.cy).toBeCloseTo(g.h - 1.5);
+    // cy is in cells: mean cell row of the two bottom design rows.
+    expect(c && c.type === 'cleared' && c.cy).toBeCloseTo(g.h - S - 0.5);
     expect(types.indexOf('grainsToGoal')).toBeLessThan(types.indexOf('cleared'));
     const word = ev.find((e) => e.type === 'chainWord');
     expect(word && word.type === 'chainWord' && word.chain).toBe(2);
@@ -163,14 +165,16 @@ describe('chain and juice events', () => {
   it('emits bomb and joker events', () => {
     const s = new Session(makeLevel({ colors: [1, 2], goals: [{ type: 'clear_paths', count: 9 }] }), small);
     const g = s.grid;
-    for (let x = 0; x < g.w; x++) g.set(x, g.h - 1, x === 3 ? JOKER : 1);
-    g.flags[(g.h - 1) * g.w + 8] = FLAG_BOMB;
-    g.set(8, g.h - 6, 2); // inside the blast radius
+    const H = designH(g);
+    for (let x = 0; x < designW(g); x++) setGrain(g, x, H - 1, x === 3 ? JOKER : 1, 0, x === 8 ? FLAG_BOMB : 0);
+    setGrain(g, 8, H - 6, 2); // inside the blast radius
     const ev = collect(s);
     s.runUntilSettled();
     expect(ev.find((e) => e.type === 'joker')).toMatchObject({ grains: 1 });
     const b = ev.find((e) => e.type === 'bomb');
-    expect(b).toMatchObject({ x: 8, y: g.h - 1 });
+    // x/y are cells: somewhere inside the bomb grain (design 8, H-1).
+    expect(b && b.type === 'bomb' && Math.floor(b.x / S)).toBe(8);
+    expect(b && b.type === 'bomb' && Math.floor(b.y / S)).toBe(H - 1);
     expect(b && b.type === 'bomb' && b.grains).toBeGreaterThanOrEqual(1);
   });
 
@@ -202,7 +206,7 @@ describe('endless mode (GDD §6)', () => {
     let sand = 0;
     for (let i = 0; i < s.grid.size; i++) if (s.grid.color[i]) sand++;
     expect(sand).toBeGreaterThan(0);
-    expect(sand).toBeLessThanOrEqual(ENDLESS_PREFILL_PIECES * 64);
+    expect(sand).toBeLessThanOrEqual(ENDLESS_PREFILL_PIECES * 64 * S * S);
     expect(findClears(s.grid, ClearResult.for(s.grid))).toBe(0);
     expect(s.piecesLeft).toBe(Infinity);
     expect(s.goals.goals.length).toBe(0);
@@ -211,7 +215,7 @@ describe('endless mode (GDD §6)', () => {
   });
 
   it('applies the difficulty after a clear raises the score', () => {
-    const s = new Session(makeEndlessLevel(9), { endless: true, gridW: 16, gridH: 24 });
+    const s = new Session(makeEndlessLevel(9), { endless: true, ...small });
     s.grid.reset();
     s.score = 7999;
     for (let x = 0; x < s.grid.w; x++) s.grid.set(x, s.grid.h - 1, 1);
@@ -223,7 +227,7 @@ describe('endless mode (GDD §6)', () => {
   });
 
   it('ends only when no piece fits', () => {
-    const s = new Session(makeEndlessLevel(5), { endless: true, gridW: 16, gridH: 24 });
+    const s = new Session(makeEndlessLevel(5), { endless: true, ...small });
     for (let x = 0; x < s.grid.w; x += 3) s.grid.set(x, 0, 255, 0, 1);
     s.wake();
     s.runUntilSettled();
@@ -234,7 +238,7 @@ describe('endless mode (GDD §6)', () => {
 
 describe('external session actions (economy wave)', () => {
   it('addPieces raises the budget and refills an empty tray', () => {
-    const s = new Session(makeLevel({ pieceLimit: 1, pieces: ['O'], goals: [{ type: 'clear_paths', count: 9 }] }), { gridW: 32, gridH: 32 });
+    const s = new Session(makeLevel({ pieceLimit: 1, pieces: ['O'], goals: [{ type: 'clear_paths', count: 9 }] }), { gridW: 32 * S, gridH: 32 * S });
     s.drop(0, 0);
     expect(s.tray.every((t) => t === null)).toBe(true);
     s.addPieces(5);
@@ -255,8 +259,9 @@ describe('external session actions (economy wave)', () => {
   it('scoopColumns removes sand, scores 1/grain and feeds colour goals', () => {
     const s = new Session(makeLevel({ colors: [1, 2], goals: [{ type: 'clear_color_grains', color: 2, count: 8 }] }), small);
     const g = s.grid;
-    for (let y = g.h - 4; y < g.h; y++) for (let x = 0; x < 8; x++) g.set(x, y, x < 4 ? 1 : 2);
-    expect(s.scoopColumns(4, 4)).toBe(16);
+    const H = designH(g);
+    for (let y = H - 4; y < H; y++) for (let x = 0; x < 8; x++) setGrain(g, x, y, x < 4 ? 1 : 2);
+    expect(s.scoopColumns(4 * S, 4 * S)).toBe(16);
     expect(s.score).toBe(16);
     expect(s.goals.goals[0].current).toBe(16);
     expect(g.countColor(2)).toBe(0);
@@ -269,11 +274,12 @@ describe('tutorial hint move', () => {
     const g = s.grid;
     // Left half: yellow block with a red floor row; right half empty. A red O (8 grains wide)
     // dropped at x = 8 completes the red floor row from wall to wall.
-    for (let y = g.h - 8; y < g.h; y++) for (let x = 0; x < 8; x++) g.set(x, y, y === g.h - 1 ? 1 : 2);
+    const H = designH(g);
+    for (let y = H - 8; y < H; y++) for (let x = 0; x < 8; x++) setGrain(g, x, y, y === H - 1 ? 1 : 2);
     s.wake();
     const m = findHintMove(s, [0]);
     expect(m).not.toBeNull();
-    expect(m!.x).toBe(8);
+    expect(m!.x).toBe(8 * S);
     expect(m!.clears).toBe(true);
   });
 });

@@ -17,9 +17,11 @@ import { drawPieceBlocks, drawPiecePreview } from '../render/piecePreview';
 import type { App, Scene } from './app';
 import { BoosterBar } from './boosterBar';
 import { h } from './dom';
+import { HOWTO_SEEN, HowToScene } from './howTo';
 import { PlayHud } from './hud';
 import { LevelIntroScene, unseenIntros } from './levelIntro';
 import { LevelSelectScene } from './levelSelect';
+import { PathHint } from './pathHint';
 import { PauseScene } from './pause';
 import { PlayFx } from './playFx';
 import { ResultScene } from './result';
@@ -47,6 +49,8 @@ export class PlayScene implements Scene {
   private readonly hud: PlayHud;
   /** Juice: particles, shake, Zerde's sneeze (ui/playFx.ts). */
   private readonly fx: PlayFx;
+  /** Wall strips + live path progress over the board (ui/pathHint.ts). */
+  private readonly pathHint: PathHint;
   private readonly toastEl: HTMLElement;
   private readonly wordEl: HTMLElement;
   private readonly dragEl: HTMLElement;
@@ -161,6 +165,7 @@ export class PlayScene implements Scene {
       renderer: this.renderer,
       goalTarget: (i) => this.hud.goalEls[i]?.chip ?? null,
     });
+    this.pathHint = new PathHint({ session: this.session, boardFrame: this.boardFrame, renderer: this.renderer });
     this.ghost = { piece: this.session.tray[0] ?? { kind: 'O', rot: 0, color: 1, special: null, specialCell: -1 }, x: 0, y: 0, ok: true };
     this.centerGhost();
   }
@@ -219,6 +224,10 @@ export class PlayScene implements Scene {
     const showIntro = wantsIntro && (!tutorialOn || unseenIntros(this.app, level.intro).length > 0);
     if (showIntro) this.app.scenes.push(new LevelIntroScene(this.app, this.session, () => this.app.scenes.replace(new LevelSelectScene(this.app))));
     else if (level.hint && !tutorialOn) this.toast(level.hint, 3000);
+    // First lesson: the 3-step "Nasıl oynanır?" card comes first (also in the pause menu).
+    // (?debug=1&nohowto skips it for automated runs.)
+    const noHowTo = this.app.debug && new URLSearchParams(location.search).has('nohowto');
+    if (this.mode.kind === 'level' && level.tutorial === 't1' && !noHowTo && !this.app.save.hasSeenIntro(HOWTO_SEEN)) this.app.scenes.push(new HowToScene(this.app));
     if (this.gifts.length) {
       const e = strings();
       this.toast(fmt(e.economy.giftToast, { list: this.gifts.map((id) => e.boosters.names[id]).join(', ') }), 2200);
@@ -243,6 +252,7 @@ export class PlayScene implements Scene {
     if (r.width < 10 || r.height < 10) return;
     this.renderer.fit(r.width - 14, r.height - 14, window.devicePixelRatio || 1);
     this.fx.resize();
+    this.pathHint.resize();
     this.trayDirty = true;
     this.tutorial?.relayout();
     this.draw();
@@ -392,6 +402,7 @@ export class PlayScene implements Scene {
     feedbackFor(e, this.app.audio, this.app.haptics);
     this.tutorial?.onEvent(e);
     this.fx.onEvent(e);
+    this.pathHint.onEvent(e);
     switch (e.type) {
       case 'blocked':
         this.toast(this.session.settled ? s.noRoom : s.wait, 900);

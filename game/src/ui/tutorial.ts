@@ -44,6 +44,10 @@ interface Step {
   focus?: boolean;
   /** Darken the screen 60 % except the board (+ active pouch) or the pieces counter (GDD §13). */
   dim?: 'board' | 'pieces';
+  /** Big "İşte böyle!" moment over the board with a wall-to-wall arrow (first pop). */
+  aha?: boolean;
+  /** Make the wall strips glow strongly (paths run wall to wall). */
+  walls?: boolean;
   /** Advance on this event, or after `ms` when 'timer'. */
   until: SessionEventType | 'timer';
   /** Timer length, or max wait for an event. */
@@ -59,9 +63,9 @@ function pieceColorName(s: Session, slot: number): string {
 
 export const TUTORIAL_STEPS: Record<TutorialId, Step[]> = {
   t1: [
-    { text: () => T().t1_drag, hand: 'move', slot: 0, focus: true, dim: 'board', until: 'cleared' },
-    { text: () => T().t1_great, until: 'timer', ms: 2600 },
-    { text: (s) => fmt(T().t1_next, { color: pieceColorName(s, 1) }), hand: 'move', slot: 1, focus: true, dim: 'board', until: 'cleared' },
+    { text: () => T().t1_drag, hand: 'move', slot: 0, focus: true, dim: 'board', walls: true, until: 'cleared' },
+    { text: () => T().t1_great, aha: true, walls: true, until: 'timer', ms: 3200 },
+    { text: (s) => fmt(T().t1_next, { color: pieceColorName(s, 1) }), hand: 'move', slot: 1, focus: true, dim: 'board', walls: true, until: 'cleared' },
     { text: () => T().t1_done, until: 'timer', ms: 2200 },
   ],
   t2: [
@@ -87,6 +91,10 @@ export class Tutorial {
   private readonly bubble: HTMLElement;
   private readonly bubbleText: HTMLElement;
   private readonly dim: SVGSVGElement;
+  private readonly aha: HTMLElement;
+  private readonly ahaText: HTMLElement;
+  /** Row (grains) of the last popped path, for placing the "İşte böyle!" banner. */
+  private lastClearY = -1;
   private anim: Animation | null = null;
   private pulsed: HTMLElement | null = null;
   private finished = false;
@@ -103,6 +111,19 @@ export class Tutorial {
     this.bubbleText = h('span', { class: 'tut-text' });
     this.bubble = h('div', { class: 'tut-bubble', role: 'status', 'data-testid': 'tutorial-text' }, zerde('happy', 'tut-zerde'), this.bubbleText);
     this.dim = svgEl('<svg class="tut-dim" aria-hidden="true" data-testid="tutorial-dim"><path fill-rule="evenodd"/></svg>');
+    this.ahaText = h('span', { class: 'aha-text' });
+    this.aha = h(
+      'div',
+      { class: 'tut-aha', 'aria-live': 'polite', 'data-testid': 'tutorial-aha' },
+      h('b', { class: 'aha-title' }),
+      svgEl(`<svg class="aha-arrow" viewBox="0 0 300 40" preserveAspectRatio="none" aria-hidden="true">
+        <rect x="0" y="2" width="8" height="36" rx="2" fill="#ffd261"/><rect x="292" y="2" width="8" height="36" rx="2" fill="#ffd261"/>
+        <path d="M30 20 H270" stroke="#fff4d6" stroke-width="7" stroke-linecap="round"/>
+        <path d="M14 20 L36 6 V34 Z M286 20 L264 6 V34 Z" fill="#fff4d6"/>
+      </svg>`),
+      this.ahaText,
+    );
+    host.bubbleRoot.append(this.aha);
     host.overlayRoot.append(this.dim, this.hand);
     host.bubbleRoot.append(this.bubble);
     this.goto(0);
@@ -128,7 +149,9 @@ export class Tutorial {
     if (!st) return this.finish(true);
     const text = st.text?.(this.host.session) ?? '';
     this.bubbleText.textContent = text;
-    this.bubble.classList.toggle('show', !!text);
+    this.bubble.classList.toggle('show', !!text && !st.aha);
+    this.showAha(st.aha ? text : null);
+    this.host.bubbleRoot.querySelector('.board-frame')?.classList.toggle('walls-hint', !!st.walls);
     this.updateFocus();
     this.updateDim();
     this.setPulse(st.hand === 'pieces' ? this.host.piecesEl : null);
@@ -138,6 +161,26 @@ export class Tutorial {
     const st = this.step;
     const slot = st?.focus && st.slot !== undefined && this.host.session.tray[st.slot] ? st.slot : null;
     this.host.setFocusSlot(slot);
+  }
+
+  private showAha(text: string | null): void {
+    if (!text) {
+      this.aha.classList.remove('show');
+      return;
+    }
+    (this.aha.firstElementChild as HTMLElement).textContent = T().t1_aha;
+    this.ahaText.textContent = text;
+    const g = this.host.session.grid;
+    const root = this.host.bubbleRoot.getBoundingClientRect();
+    const y = this.lastClearY >= 0 ? this.host.grainToClient(0, this.lastClearY).y - root.top : root.height * 0.6;
+    this.aha.style.top = `${Math.max(70, Math.min(root.height - 70, y))}px`;
+    const left = this.host.grainToClient(0, 0).x - root.left;
+    const right = this.host.grainToClient(g.w, 0).x - root.left;
+    this.aha.style.setProperty('--aha-l', `${left}px`);
+    this.aha.style.setProperty('--aha-w', `${right - left}px`);
+    this.aha.classList.remove('show');
+    void this.aha.offsetWidth;
+    this.aha.classList.add('show');
   }
 
   /** Spotlight: a 60 % dark sheet with holes over the board (+ focused pouch) or the counter. */
@@ -181,6 +224,7 @@ export class Tutorial {
 
   onEvent(e: SessionEvent): void {
     if (this.finished) return;
+    if (e.type === 'cleared' && e.cy !== undefined) this.lastClearY = e.cy;
     if (e.type === 'won' || e.type === 'lost') return this.finish(e.type === 'won');
     if (e.type === 'settled' || e.type === 'trayRefill' || e.type === 'rotated' || e.type === 'placed') {
       this.handDirty = true;
@@ -327,5 +371,7 @@ export class Tutorial {
     this.hand.remove();
     this.bubble.remove();
     this.dim.remove();
+    this.aha.remove();
+    this.host.bubbleRoot.querySelector('.board-frame')?.classList.remove('walls-hint');
   }
 }

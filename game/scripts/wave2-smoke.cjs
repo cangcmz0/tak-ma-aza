@@ -22,7 +22,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2-gameplay-${na
   async function dragSlotToGrain(slot, grainCenterX, { hold = false } = {}) {
     const s = await page.locator(`[data-testid=slot-${slot}]`).boundingBox();
     const board = await page.locator('[data-testid=board]').boundingBox();
-    const tx = board.x + (grainCenterX / 48) * board.width;
+    const tx = board.x + (grainCenterX / (await page.evaluate(() => window.__kum.session.grid.w))) * board.width;
     const ty = board.y + board.height * 0.25;
     const sx = s.x + s.width / 2, sy = s.y + s.height / 2;
     await page.mouse.move(sx, sy);
@@ -40,7 +40,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2-gameplay-${na
       await page.evaluate((m) => { const s = window.__kum.session; const p = s.tray[m.slot]; if (p) p.rot = m.rot; window.__kum.scene.trayDirty = true; }, m);
       const kind = (await state()).tray[m.slot];
       const w = await page.evaluate((m) => { const s = window.__kum.session; const p = s.tray[m.slot]; return p ? (p.rot % 2 === 0 ? { I: 4, O: 2, T: 3, L: 2, J: 2, S: 3, Z: 3 } : { I: 1, O: 2, T: 2, L: 3, J: 3, S: 2, Z: 2 })[p.kind] : 1; }, m);
-      await dragSlotToGrain(m.slot, m.x + (w * 4) / 2);
+      await dragSlotToGrain(m.slot, m.x + (w * (await page.evaluate(() => window.__kum.session.grid.w / 12))) / 2);
       await page.waitForTimeout(150);
       await settle();
       log('move', n, kind, 'x', m.x, JSON.stringify(await state()));
@@ -57,6 +57,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2-gameplay-${na
   // 2) Level 1 tutorial: hand hint, lifted drag piece, hinted play to the end.
   await page.click('[data-testid=menu-play]');
   await page.waitForSelector('[data-testid=board]');
+  await page.waitForSelector('[data-testid=howto-close]', { timeout: 2000 }).then(() => page.click('[data-testid=howto-close]')).catch(() => null);
   await page.waitForTimeout(700);
   const tutText = await page.locator('[data-testid=tutorial-text]').textContent().catch(() => null);
   log('tutorial text:', tutText);

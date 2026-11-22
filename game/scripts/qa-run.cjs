@@ -6,6 +6,7 @@
 //   layout    4 ekran boyutunda tüm ekranlar: taşma, kesilen metin, <44px dokunma hedefi, çakışan düğmeler
 //   text      Türkçe büyük harf / lang / yazım kontrolleri (HUD "BÖLÜM" kesilmesi dahil)
 //   gameplay  puan formülü, zincir, gram/yol/çuval sayaçları, booster sınırları, devam kuralları
+//   drop      sürükle-bırak hissi: bırakma yüksekliği, katı blok düşüş, çıkıntı altı, akan kuma bırakma, tahta dışı
 //   flow      ilk açılış → öğretici 1–3 → harita → kazan/kaybet → devam → ödül → mağaza → günlük ödül → sonsuz kilit
 //   audio     duraklat/menü/yeniden başla sonrası tehlike döngüsü (ses döngüsü sızıntısı)
 //   save      yenileme sonrası kayıt, bozuk kayıt ile açılış
@@ -27,7 +28,7 @@ const opt = (name, def) => {
 const OUT = opt('--out', process.env.QA_OUT || '/tmp/qa1');
 const BASE = opt('--base', 'http://localhost:4173/');
 const positional = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
-const ALL = ['layout', 'text', 'gameplay', 'flow', 'audio', 'save', 'robust', 'ads', 'perf', 'a11y', 'balance'];
+const ALL = ['layout', 'text', 'gameplay', 'drop', 'flow', 'audio', 'save', 'robust', 'ads', 'perf', 'a11y', 'balance'];
 const SECTIONS = positional[0] ? positional[0].split(',') : ALL;
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -130,7 +131,18 @@ const H = {
   },
   /** Play one hinted move through the real pointer path. */
   async hintedMove(page) {
-    const m = await page.evaluate(() => (window.__kum.session.isPlaying ? window.__kum.hint() : null));
+    // Tutorial focus: only the focused slot is usable — ask the hint for that slot alone.
+    const m = await page.evaluate(() => {
+      const k = window.__kum;
+      if (!k.session.isPlaying) return null;
+      const f = k.scene.focusSlot;
+      if (f === null || f === undefined || !k.session.tray[f]) return k.hint();
+      const saved = k.session.tray.slice();
+      saved.forEach((p, i) => i !== f && (k.session.tray[i] = null));
+      const mv = k.hint();
+      saved.forEach((p, i) => (k.session.tray[i] = p));
+      return mv;
+    });
     if (!m) return false;
     const w = await page.evaluate((m) => {
       const p = window.__kum.session.tray[m.slot];
@@ -191,12 +203,23 @@ async function layoutAudit(page) {
     const scenes = [...document.querySelectorAll('#app > .scene')];
     const top = scenes[scenes.length - 1] || document.body;
     if (document.documentElement.scrollWidth > vw + 1) issues.overflowX.push(`document scrollWidth ${document.documentElement.scrollWidth} > ${vw}`);
-    const all = [...top.querySelectorAll('*')].filter((el) => !el.closest('[aria-hidden=true]') && !(el instanceof SVGElement) && visible(el));
+    const all = [...top.querySelectorAll('*')].filter((el) => !el.closest('[aria-hidden=true], .sr-only') && !(el instanceof SVGElement) && visible(el));
+    const scrollAncestor = (el) => {
+      for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+        const o = getComputedStyle(p).overflowY;
+        if ((o === 'auto' || o === 'scroll') && p.scrollHeight > p.clientHeight + 1) return p;
+      }
+      return null;
+    };
+    issues.belowFold = [];
     for (const el of all) {
       const r = el.getBoundingClientRect();
       const inScroll = el.closest('.map-scroll, .shop-scroll, [data-scroll]');
       if (!inScroll && (r.right > vw + 1 || r.left < -1) && el.children.length === 0 && (el.innerText || '').trim()) issues.offscreen.push(`${desc(el)} x:${Math.round(r.left)}..${Math.round(r.right)}`);
-      if (!inScroll && r.bottom > vh + 1 && (el.matches('button') || ((el.innerText || '').trim() && el.children.length === 0))) issues.offscreen.push(`${desc(el)} y:${Math.round(r.top)}..${Math.round(r.bottom)} > ${vh}`);
+      if (!inScroll && r.bottom > vh + 1 && (el.matches('button') || ((el.innerText || '').trim() && el.children.length === 0))) {
+        if (scrollAncestor(el)) issues.belowFold.push(`${desc(el)} y:${Math.round(r.top)} (kaydırınca görünür)`);
+        else issues.offscreen.push(`${desc(el)} y:${Math.round(r.top)}..${Math.round(r.bottom)} > ${vh}`);
+      }
       // Text clipping: leaf-ish text node container whose content is wider/taller than its box while overflow clips.
       const cs = getComputedStyle(el);
       const txt = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
@@ -301,9 +324,10 @@ sections.layout = async (browser) => {
     await audit('11-tutorial-1');
 
     for (const [name, iss] of Object.entries(screens)) {
-      const n = Object.values(iss).reduce((a, b) => a + b.length, 0);
+      const n = iss.overflowX.length + iss.offscreen.length + iss.clipped.length + iss.overlap.length;
       check(`${tag} ${name} yerleşim`, iss.overflowX.length + iss.offscreen.length + iss.clipped.length + iss.overlap.length === 0, n ? iss : undefined);
       if (iss.smallTap.length) info(`${tag} ${name} <44px dokunma hedefleri`, iss.smallTap);
+      if (iss.belowFold.length) info(`${tag} ${name} ekran altında kalan (kaydırmalı kart) öğeler`, iss.belowFold);
     }
     check(`${tag} konsol hatası yok`, page.errors.length === 0, page.errors.slice(0, 5));
     await ctx.close();
@@ -646,7 +670,950 @@ sections.gameplay = async (browser) => {
     return { state: s.state, done: goal.current >= goal.target, left: s.piecesLeft };
   });
   check('Tezgâh bonusu puan hedefini tamamlamıyor', sb.state === 'playing' && !sb.done, sb);
+  // Restart from the pause menu: is it a new attempt (different pieces, GDD §4.2)?
+  await H.startLevel(page, 13);
+  const seqA = await page.evaluate(() => {
+    const s = window.__kum.session;
+    return { tray: s.tray.map((t) => t && t.kind + t.color).join(','), attempts: (window.__app.save.level(13) || {}).attempts || 0 };
+  });
+  await page.click('[data-testid=pause]');
+  await page.click('[data-testid=pause-restart]');
+  await page.waitForTimeout(300);
+  const seqB = await page.evaluate(() => {
+    const s = window.__kum.session;
+    return { tray: s.tray.map((t) => t && t.kind + t.color).join(','), attempts: (window.__app.save.level(13) || {}).attempts || 0 };
+  });
+  check('duraklat → yeniden başla yeni deneme sayılıyor (farklı kese dizisi)', seqA.tray !== seqB.tray || seqB.attempts > seqA.attempts, { seqA, seqB });
   check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+
+// Sürükle-bırak hissi (commit 5f134c6: katı blok düşüş, FLAG_FALLING, SAND_REPOSE=2, hayalet).
+sections.drop = async (browser) => {
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  await H.startLevel(page, 11);
+  const clearBoard = () =>
+    page.evaluate(() => {
+      const s = window.__kum.session;
+      const g = s.grid;
+      for (let i = 0; i < g.size; i++) if (!(g.flags[i] & 1)) g.clearCell(i);
+      s.goals.goals.forEach((q) => (q.target = 1e9));
+      g.version++;
+      s.wake();
+      s.runUntilSettled(100000);
+    });
+  // Put a known piece (O, colour c) in slot 0 and select it.
+  const setPiece = (kind = 'O', color = 1, rot = 0) =>
+    page.evaluate(
+      ([kind, color, rot]) => {
+        const k = window.__kum;
+        k.session.tray[0] = { kind, rot, color, color2: null, special: null, specialCell: -1, jokerCell: -1 };
+        k.scene.sel = 0;
+        k.scene.trayDirty = true;
+      },
+      [kind, color, rot],
+    );
+  const FALL = 128; // FLAG_FALLING
+  // a) Release height follows the finger (top edge = finger − 64px lift − piece height).
+  const heights = [];
+  for (const fy of [0.15, 0.45, 0.75]) {
+    await clearBoard();
+    await setPiece('O', 1);
+    const board = await page.locator('[data-testid=board]').boundingBox();
+    await H.dragSlotToGrain(page, 0, 24, { ty: board.y + board.height * fy, hold: true });
+    await page.waitForTimeout(120);
+    const pre = await page.evaluate(() => ({ ghostY: window.__kum.scene.ghost.y, wantY: window.__kum.scene.wantY, floatOpacity: window.__kum.scene.dragEl.style.opacity }));
+    if (fy === 0.45) await H.shot(page, 'drop-ghost-hold');
+    await page.mouse.up();
+    // Sample the first frame after release: where are the falling grains?
+    const post = await page.evaluate((FALL) => {
+      const g = window.__kum.session.grid;
+      let top = -1;
+      let n = 0;
+      for (let i = 0; i < g.size; i++)
+        if (g.flags[i] & FALL) {
+          n++;
+          if (top < 0) top = (i / g.w) | 0;
+        }
+      return { fallingTop: top, fallingGrains: n };
+    }, FALL);
+    heights.push({ fy, ...pre, ...post });
+  }
+  info('bırakma yüksekliği (parmak y oranı → hayalet/çıkış satırı)', heights);
+  check('farklı yüksekliklerde bırakınca çıkış satırı parmağı izliyor', heights[0].wantY < heights[1].wantY && heights[1].wantY < heights[2].wantY, heights.map((h) => h.wantY));
+  check('tahta üstünde yüzen kopya gizleniyor (hayalet tek gösterge)', heights.every((h) => h.floatOpacity === '0'), heights.map((h) => h.floatOpacity));
+  // b) Rigid fall: the O stays an 8×8 square while falling, then turns to sand.
+  await clearBoard();
+  await setPiece('O', 1);
+  const rigid = await page.evaluate((FALL) => {
+    const s = window.__kum.session;
+    const g = s.grid;
+    s.drop(0, 20, 0);
+    const shapes = [];
+    for (let t = 0; t < 40; t++) {
+      s.tick();
+      let minX = 99, maxX = -1, minY = 99, maxY = -1, n = 0;
+      for (let i = 0; i < g.size; i++)
+        if (g.flags[i] & FALL) {
+          n++;
+          const x = i % g.w, y = (i / g.w) | 0;
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+        }
+      if (!n) break;
+      shapes.push({ n, w: maxX - minX + 1, h: maxY - minY + 1 });
+    }
+    s.runUntilSettled(100000);
+    let spreadOut = 0, total = 0;
+    for (let i = 0; i < g.size; i++) if (g.color[i] === 1) { total++; const x = i % g.w; if (x < 20 || x >= 28) spreadOut++; }
+    return { ticksFalling: shapes.length, allSquare: shapes.every((q) => q.n === 64 && q.w === 8 && q.h === 8), total, spreadOut };
+  }, FALL);
+  check('düşen kese katı blok kalıyor (8×8, 64 tane)', rigid.allSquare && rigid.ticksFalling > 0, rigid);
+  info('düz zeminde yayılma (kese sütunları dışına taşan tane)', `${rigid.spreadOut}/${rigid.total}`);
+  check('düz zeminde kayma sınırlı (≤ %25 tane kese sütunları dışında)', rigid.spreadOut / rigid.total <= 0.25, rigid);
+  // c) Overhang: a shelf of sand with empty space below; aiming under it must stop on top.
+  await clearBoard();
+  await setPiece('O', 3);
+  const tuck = await page.evaluate(() => {
+    const s = window.__kum.session;
+    const g = s.grid;
+    for (let x = 16; x < 32; x++) g.set(x, 40, 255, 0, 1); // raf (static) row at y=40
+    g.version++;
+    const row = s.dropRow(0, 20, 70);
+    s.drop(0, 20, 70);
+    s.runUntilSettled(100000);
+    let under = 0;
+    for (let y = 41; y < g.h; y++) for (let x = 16; x < 32; x++) if (g.get(x, y) === 3) under++;
+    return { releaseRow: row, grainsUnderShelf: under };
+  });
+  check('çıkıntı altına sokulamıyor (raf altına tane girmedi)', tuck.releaseRow <= 32 && tuck.grainsUnderShelf === 0, tuck);
+  // d) Drop onto flowing sand (real pointer): second drop while the first still moves.
+  await clearBoard();
+  await setPiece('O', 1);
+  await H.dragSlotToGrain(page, 0, 12);
+  const moving = await page.evaluate(() => !window.__kum.session.settled);
+  await page.evaluate(() => {
+    const k = window.__kum;
+    const slot = k.session.tray.findIndex((t) => t);
+    k.scene.sel = slot;
+  });
+  const slot2 = await page.evaluate(() => window.__kum.scene.sel);
+  const placedBefore = await page.evaluate(() => window.__kum.session.placed);
+  await H.dragSlotToGrain(page, slot2, 36);
+  const placedAfter = await page.evaluate(() => window.__kum.session.placed);
+  check('akan kuma (ilk kese hareket ederken) ikinci kese bırakılabiliyor', moving && placedAfter === placedBefore + 1, { moving, placedBefore, placedAfter });
+  // e) Two pieces in the air: when the first lands, does the second lose its rigid flag mid-air?
+  await clearBoard();
+  const twin = await page.evaluate((FALL) => {
+    const s = window.__kum.session;
+    const g = s.grid;
+    const O = (c) => ({ kind: 'O', rot: 0, color: c, color2: null, special: null, specialCell: -1, jokerCell: -1 });
+    s.tray[0] = O(1);
+    s.tray[1] = O(3);
+    s.drop(0, 0, 60); // released low → lands almost at once
+    s.drop(1, 36, 0); // released at the top → still high in the air
+    let midAirLost = false;
+    for (let t = 0; t < 60; t++) {
+      s.tick();
+      let fallA = 0, fallB = 0, bTop = 99;
+      for (let i = 0; i < g.size; i++) {
+        if (g.color[i] === 3) bTop = Math.min(bTop, (i / g.w) | 0);
+        if (g.flags[i] & FALL) g.color[i] === 1 ? fallA++ : fallB++;
+      }
+      if (fallA === 0 && fallB === 0) {
+        midAirLost = bTop < g.h - 8 - 1; // B was not on the floor yet
+        return { tick: t, bTopWhenFlagsCleared: bTop, midAirLost };
+      }
+    }
+    return { midAirLost };
+  }, FALL);
+  check('iki kese havadayken biri yere değince diğeri katılığını korumalı', !twin.midAirLost, twin);
+  // f) Drop outside the board → back to the tray, no piece used.
+  await clearBoard();
+  await setPiece('O', 1);
+  const before = await page.evaluate(() => ({ placed: window.__kum.session.placed, tray: !!window.__kum.session.tray[0] }));
+  const sb = await page.locator('[data-testid=slot-0]').boundingBox();
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sb.x + sb.width / 2, sb.y - 30, { steps: 4 });
+  await page.mouse.move(2, 400, { steps: 6 }); // board edge? go far left outside the board
+  const board = await page.locator('[data-testid=board]').boundingBox();
+  await page.mouse.move(board.x - 6 > 0 ? board.x - 6 : 1, board.y + board.height + 30, { steps: 4 });
+  await page.mouse.up();
+  const after = await page.evaluate(() => ({ placed: window.__kum.session.placed, tray: !!window.__kum.session.tray[0], dragShown: window.__kum.scene.dragEl.classList.contains('show') }));
+  check('tahta dışına bırakınca kese tepsiye dönüyor, hak harcanmıyor', after.placed === before.placed && after.tray && !after.dragShown, { before, after });
+  // g) Stale release height: drag low over the board, leave the board, release; then keyboard drop.
+  await clearBoard();
+  await setPiece('O', 1);
+  await H.dragSlotToGrain(page, 0, 24, { ty: board.y + board.height * 0.8, hold: true });
+  await page.mouse.move(board.x + board.width / 2, board.y + board.height + 60, { steps: 4 });
+  await page.mouse.up();
+  const stale = await page.evaluate(() => window.__kum.scene.wantY);
+  await page.keyboard.press('Space');
+  const kb = await page.evaluate((FALL) => {
+    const g = window.__kum.session.grid;
+    for (let i = 0; i < g.size; i++) if (g.flags[i] & FALL) return (i / g.w) | 0;
+    return -1;
+  }, FALL);
+  check('iptal edilen sürüklemeden sonra çıkış yüksekliği sıfırlanıyor (klavye/dokunma bırakışı tepeden)', stale === 0, { wantYAfterCancel: stale, keyboardDropTopRow: kb });
+  // h) Piece dropped during a clear flash hangs in the air for the whole flash (sim paused).
+  await clearBoard();
+  const hang = await page.evaluate((FALL) => {
+    const s = window.__kum.session;
+    const g = s.grid;
+    for (let x = 0; x < g.w; x++) for (let y = g.h - 4; y < g.h; y++) g.set(x, y, 1);
+    s.wake();
+    while (!s.clearPending) s.tick();
+    s.tray[0] = { kind: 'O', rot: 0, color: 3, color2: null, special: null, specialCell: -1, jokerCell: -1 };
+    s.drop(0, 20, 10);
+    const top0 = (() => { for (let i = 0; i < g.size; i++) if (g.flags[i] & FALL) return (i / g.w) | 0; return -1; })();
+    let frozenTicks = 0;
+    while (s.clearPending) { s.tick(); frozenTicks++; }
+    const top1 = (() => { for (let i = 0; i < g.size; i++) if (g.flags[i] & FALL) return (i / g.w) | 0; return -1; })();
+    return { top0, top1, frozenTicks, frozenMs: Math.round((frozenTicks * 1000) / 60) };
+  }, FALL);
+  info('patlama yanıp sönerken bırakılan kese havada donuyor', hang);
+  // Repose: a 1-grain-deep hole next to a pile is never filled by sliding sand (SAND_REPOSE=2).
+  await clearBoard();
+  const repose = await page.evaluate(() => {
+    const s = window.__kum.session;
+    const g = s.grid;
+    for (let x = 0; x < g.w; x++) if (x !== 30) g.set(x, g.h - 1, 1);
+    for (let x = 24; x < 30; x++) for (let y = g.h - 6; y < g.h - 1; y++) g.set(x, y, 1);
+    s.wake();
+    s.runUntilSettled(100000);
+    return { holeFilled: g.get(30, g.h - 1) !== 0 };
+  });
+  info('SAND_REPOSE=2: yığının yanındaki 1 tane derinliğindeki boşluk kayan kumla dolmuyor (yol tamamlamayı etkiler)', repose);
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+
+const SAVE_KEY = 'kumakisi.save.v1';
+const lvl = (stars = 3) => ({ stars, best: 1000, completed: true, attempts: 1, lossStreak: 0 });
+const progress = (n) => {
+  const levels = {};
+  for (let i = 1; i <= n; i++) levels[i] = lvl();
+  return levels;
+};
+const forceWin = (page) =>
+  page.evaluate(() => {
+    const s = window.__kum.session;
+    for (const g of s.goals.goals) g.current = g.target;
+    s.wake();
+  });
+const forceLose = (page) =>
+  page.evaluate(() => {
+    const s = window.__kum.session;
+    const g = s.grid;
+    const [a, b] = s.level.colors;
+    for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (g.get(x, y) === 0) g.set(x, y, (x >> 2) % 2 ? a : b);
+    s.wake();
+  });
+
+sections.flow = async (browser) => {
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
+  // First launch (GDD §15: goes straight into level 1).
+  await page.goto(`${BASE}?debug=1`);
+  await page.evaluate(() => localStorage.clear());
+  await page.goto(`${BASE}?debug=1`);
+  await page.waitForSelector('[data-testid=menu-play], [data-testid=board]');
+  const first = (await page.locator('[data-testid=board]').count()) ? 'board' : 'menu';
+  check('ilk açılışta doğrudan bölüm 1 (GDD §15)', first === 'board', `açılan: ${first}`);
+  await H.shot(page, 'flow-01-first-launch');
+  check('ilk açılışta günlük ödül çıkmıyor', (await page.locator('[data-testid=daily]').count()) === 0);
+  check('ilk açılışta Serbest Tezgâh kilitli', await page.locator('[data-testid=menu-endless]').isDisabled());
+  // Tutorials 1–3 through the real pointer path.
+  for (const id of [1, 2, 3]) {
+    if (id === 1) await page.click('[data-testid=menu-play]');
+    await page.waitForSelector('[data-testid=board]');
+    await page.waitForTimeout(500);
+    if (await page.locator('[data-testid=intro-start]').count()) await page.click('[data-testid=intro-start]');
+    const texts = [];
+    for (let k = 0; k < 20; k++) {
+      const st = await page.evaluate(() => window.__kum.session.state);
+      if (st !== 'playing') break;
+      const t = (await page.locator('[data-testid=tutorial-text]').textContent().catch(() => '')) || '';
+      if (t && !texts.includes(t.trim())) texts.push(t.trim());
+      await H.hintedMove(page);
+      await page.waitForTimeout(150);
+      await H.settle(page);
+      await page.waitForTimeout(250);
+    }
+    const st = await page.evaluate(() => ({ state: window.__kum.session.state, placed: window.__kum.session.placed, score: window.__kum.session.score, stars: window.__kum.session.stars }));
+    info(`öğretici ${id} metinleri`, texts);
+    check(`bölüm ${id} (öğretici) ipucu hamleleriyle kazanılıyor`, st.state === 'won', st);
+    await H.waitResult(page);
+    await page.waitForTimeout(1500);
+    await H.shot(page, `flow-02-won-${id}`);
+    const gold = await page.locator('[data-testid=reward-gold]').textContent().catch(() => null);
+    const expGold = [0, 20, 30, 40][st.stars];
+    check(`bölüm ${id} ödül paneli ilk galibiyet altını (${st.stars}★ → ${expGold})`, gold && gold.includes(String(expGold)), gold);
+    if (id < 3) await page.click('[data-testid=result-next]');
+  }
+  // Result → map.
+  await page.click('[data-testid=result-levels]');
+  await page.waitForSelector('[data-testid=map]');
+  await page.waitForTimeout(400);
+  await H.shot(page, 'flow-03-map-after-3');
+  const stars = await page.locator('.star-total b').textContent();
+  info('harita toplam yıldız', stars);
+  check('harita: bölüm 4 açık, 5 kilitli', (await page.locator('[data-testid=level-4]').isEnabled()) && (await page.locator('[data-testid=level-5]').isDisabled()));
+  // Level 4 intro → mechanic cards + booster bar appears.
+  await page.click('[data-testid=level-4]');
+  await page.waitForSelector('[data-testid=level-intro]');
+  await page.waitForTimeout(400);
+  await H.shot(page, 'flow-04-intro-4');
+  const mech = await page.locator('[data-testid^=intro-]').evaluateAll((els) => els.map((e) => e.getAttribute('data-testid')));
+  check('bölüm 4 tanıtım: scoreGoal + boosterShuffle kartları', mech.includes('intro-scoreGoal') && mech.includes('intro-boosterShuffle'), mech);
+  await page.click('[data-testid=intro-start]');
+  await page.waitForTimeout(300);
+  check('bölüm 4: Yenile görünür, 2 hediye', ((await page.locator('[data-testid=booster-shuffle]').textContent()) || '').includes('2'));
+  // Lose → free continue (level ≤ 5).
+  await forceLose(page);
+  await H.waitResult(page);
+  await page.waitForTimeout(600);
+  await H.shot(page, 'flow-05-lost-free-continue');
+  await page.click('[data-testid=continue-free]');
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() => ({ state: window.__kum.session.state, left: window.__kum.session.piecesLeft }));
+  check('ücretsiz devam sonrası oyun sürüyor', after.state === 'playing', after);
+  // Pause: sound / haptics toggles.
+  await page.click('[data-testid=pause]');
+  await page.waitForSelector('[data-testid=pause-resume]');
+  await H.shot(page, 'flow-06-pause');
+  const toggles = await page.locator('.scene.overlay button').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label') || e.textContent.trim()));
+  info('duraklat düğmeleri', toggles);
+  const soundBtn = page.locator('.scene.overlay button', { hasText: /Ses/ }).first();
+  if (await soundBtn.count()) {
+    await soundBtn.click();
+    const v = await page.evaluate(() => window.__app.save.settings.sound);
+    check('duraklat: ses kapat kaydediliyor', v === false);
+    await soundBtn.click();
+  }
+  // Restart has no confirmation (GDD §15: "İlerleme kaybolacak").
+  const placedBefore = await page.evaluate(() => window.__kum.session.placed);
+  await page.click('[data-testid=pause-restart]');
+  await page.waitForTimeout(300);
+  const confirmShown = (await page.locator('[role=alertdialog], [data-testid*=confirm]').count()) > 0;
+  check('Yeniden başla onay soruyor (GDD §15)', confirmShown, `onay yok; ${placedBefore} kese ilerleme sessizce silindi`);
+  // Pause → exit to map: also no confirmation.
+  await page.click('[data-testid=pause]');
+  await page.click('[data-testid=pause-exit]');
+  await page.waitForTimeout(300);
+  check('Haritaya dön onay soruyor (GDD §15)', (await page.locator('[role=alertdialog], [data-testid*=confirm]').count()) > 0, 'onay yok');
+  // Daily reward on the next menu entry (level 1 done).
+  await page.goto(`${BASE}?debug=1`);
+  await page.waitForSelector('[data-testid=menu-play]');
+  await page.waitForTimeout(400);
+  const daily = await page.locator('[data-testid=daily]').count();
+  check('günlük ödül: bölüm 1 sonrası menüde açılıyor', daily === 1);
+  if (daily) {
+    await H.shot(page, 'flow-07-daily');
+    const g0 = await page.evaluate(() => window.__app.meta.economy.gold);
+    await page.click('[data-testid=daily-claim]');
+    await page.waitForTimeout(500);
+    const g1 = await page.evaluate(() => window.__app.meta.economy.gold);
+    check('günlük ödül 1. gün = 25 altın', g1 - g0 === 25, { g0, g1 });
+    await page.goto(`${BASE}?debug=1`);
+    await page.waitForSelector('[data-testid=menu-play]');
+    await page.waitForTimeout(300);
+    check('günlük ödül aynı gün ikinci kez çıkmıyor', (await page.locator('[data-testid=daily]').count()) === 0);
+  }
+  // Shop: free gold rewarded ad (fake) → +30, then 3/day.
+  await page.click('[data-testid=menu-shop]');
+  await page.waitForSelector('[data-testid=shop]');
+  const g2 = await page.evaluate(() => window.__app.meta.economy.gold);
+  for (let i = 0; i < 4; i++) {
+    const btn = page.locator('[data-testid=shop-free-gold]');
+    if (await btn.isDisabled()) break;
+    await btn.click();
+    await page.waitForSelector('[data-testid=fake-ad-rewarded]', { timeout: 3000 }).catch(() => null);
+    await page.waitForTimeout(1900);
+  }
+  const g3 = await page.evaluate(() => window.__app.meta.economy.gold);
+  check('mağaza: bedava altın günde 3 × 30 = 90', g3 - g2 === 90, { g2, g3 });
+  await H.shot(page, 'flow-08-shop-after-free');
+  // Buying a booster with gold.
+  const buyScoop = page.locator('[data-testid=shop-booster-shuffle]');
+  if (await buyScoop.count()) {
+    const b0 = await page.evaluate(() => ({ g: window.__app.meta.economy.gold, n: window.__app.save.economy.boosters.shuffle }));
+    await buyScoop.click({ force: true });
+    await page.waitForTimeout(300);
+    const b1 = await page.evaluate(() => ({ g: window.__app.meta.economy.gold, n: window.__app.save.economy.boosters.shuffle }));
+    check('mağaza: Yenile 100 altına alınıyor', b0.g - b1.g === 100 && b1.n === b0.n + 1, { b0, b1 });
+  }
+  await page.click('[data-testid=shop-close]', { force: true });
+  // Endless unlock rule: level 8 won.
+  await H.fresh(page, '?debug=1&nodaily', { levels: progress(7) });
+  check('sonsuz mod: bölüm 7 kazanılmışken kilitli', await page.locator('[data-testid=menu-endless]').isDisabled());
+  await H.fresh(page, '?debug=1&nodaily', { levels: progress(8) });
+  check('sonsuz mod: bölüm 8 kazanılınca açık', await page.locator('[data-testid=menu-endless]').isEnabled());
+  // Endless game over → result card with gold = floor(score/500) ≤ 30.
+  await page.click('[data-testid=menu-endless]');
+  await page.waitForSelector('[data-testid=board]');
+  await page.evaluate(() => (window.__kum.session.score = 20000));
+  await forceLose(page);
+  await H.waitResult(page);
+  await page.waitForTimeout(600);
+  await H.shot(page, 'flow-09-endless-over');
+  const eg = await page.locator('[data-testid=reward-gold]').textContent().catch(() => null);
+  check('sonsuz ödül en fazla 30 altın', eg && /30/.test(eg), eg);
+  check('sonsuz sonuçta "Devam et" teklifi yok', (await page.locator('[data-testid=continue-offer]').count()) === 0);
+  // Back navigation (Escape = hardware back): play → pause → resume; map → menu; menu → (exit, no confirm).
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  await H.startLevel(page, 5);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  const paused = await page.locator('[data-testid=pause-resume]').count();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  const resumed = (await page.locator('[data-testid=pause-resume]').count()) === 0;
+  check('geri: oyun → duraklat → devam', paused === 1 && resumed);
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+sections.audio = async (browser) => {
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  await page.click('[data-testid=menu-levels]'); // user gesture → audio unlock
+  const danger = async () => {
+    await page.evaluate(() => {
+      const s = window.__kum.session;
+      const g = s.grid;
+      for (let x = 0; x < 8; x++) for (let y = 5; y < 12; y++) g.set(x, y, 255, 0, 1);
+      g.set(2, 4, s.level.colors[0]);
+      s.wake();
+    });
+    await page.waitForTimeout(700);
+    return page.evaluate(() => window.__app.audio.dangerOn);
+  };
+  const dangerOn = () => page.evaluate(() => window.__app.audio.dangerOn);
+  await H.startLevel(page, 10);
+  check('tehlike döngüsü başlıyor', await danger());
+  await page.click('[data-testid=pause]');
+  await page.waitForTimeout(300);
+  check('duraklatınca tehlike döngüsü duruyor', !(await dangerOn()), 'Duraklat ekranında "küt küt" sürüyor');
+  await page.click('[data-testid=pause-exit]');
+  await page.waitForTimeout(1500);
+  check('duraklat → Bölümler (harita) sonrası döngü durmuş', !(await dangerOn()), 'harita ekranında tehlike sesi çalmaya devam ediyor');
+  await page.click('[data-testid=level-btn], .level-btn.back', { timeout: 500 }).catch(() => {});
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  await page.click('[data-testid=menu-levels]');
+  await H.startLevel(page, 10);
+  await danger();
+  await page.click('[data-testid=pause]');
+  await page.click('[data-testid=pause-restart]');
+  await page.waitForTimeout(1500);
+  const st = await page.evaluate(() => ({ dangerOn: window.__app.audio.dangerOn, sessionDanger: window.__kum.session.danger }));
+  check('yeniden başla sonrası (tahta boş) tehlike döngüsü durmuş', !st.dangerOn, st);
+  // After a lost→continue the danger state is not re-announced.
+  await page.click('[data-testid=pause]').catch(() => {});
+  await page.click('[data-testid=pause-resume]').catch(() => {});
+  // Visibility hidden stops loops (webAudio.onHidden).
+  await danger();
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.waitForTimeout(200);
+  const hid = await page.evaluate(() => ({ dangerOn: window.__app.audio.dangerOn, paused: !!document.querySelector('[data-testid=pause-resume]') }));
+  check('arka plana geçince döngüler duruyor ve oyun duraklıyor', !hid.dangerOn && hid.paused, hid);
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await page.click('[data-testid=pause-resume]');
+  await page.waitForTimeout(1500);
+  const back = await page.evaluate(() => ({ dangerOn: window.__app.audio.dangerOn, sessionDanger: window.__kum.session.danger }));
+  check('ön plana dönüp devam edince tehlike hâlâ varsa döngü yeniden başlıyor', back.dangerOn === back.sessionDanger, back);
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+sections.save = async (browser) => {
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
+  await H.fresh(page, '?debug=1&nodaily&unlockAll');
+  await H.startLevel(page, 2);
+  await forceWin(page);
+  await H.waitResult(page);
+  await page.waitForTimeout(400);
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-sound]');
+  await page.click('[data-testid=menu-sound]');
+  await page.click('[data-testid=menu-haptics]');
+  await page.evaluate(() => window.__app.meta.economy.earn(777, 'qa'));
+  const before = await page.evaluate(() => ({ gold: window.__app.meta.economy.gold, l2: window.__app.save.level(2), settings: { ...window.__app.save.settings } }));
+  await page.waitForTimeout(200);
+  await page.reload();
+  await page.waitForSelector('[data-testid=menu-play]');
+  const after = await page.evaluate(() => ({ gold: window.__app.meta.economy.gold, l2: window.__app.save.level(2), settings: { ...window.__app.save.settings } }));
+  check('yenileme sonrası altın, ilerleme, yıldız, ayarlar korunuyor', JSON.stringify(before) === JSON.stringify(after), { before, after });
+  // Write during play then reload immediately (coalesced async write).
+  await H.startLevel(page, 3);
+  await forceWin(page);
+  await page.waitForTimeout(800); // END_DELAY
+  await page.reload();
+  await page.waitForSelector('[data-testid=menu-play]');
+  const l3 = await page.evaluate(() => window.__app.save.level(3));
+  check('kazandıktan hemen sonra yenileme: bölüm kaydı korunuyor', l3 && l3.completed, l3);
+  // Corrupt saves.
+  const junk = ['çöp{{{', 'null', '[]', '123', '{"levels":"x","settings":null,"economy":{"gold":-50,"boosters":"y"},"daily":7,"ads":{"interstitials":"z"}}', '{"levels":{"1":null,"2":{"completed":"yes","stars":"9"}},"economy":{"gold":"1e999"}}', '{"version":1,"seenIntros":[1,2],"tutorialsDone":{"a":1}}'];
+  for (const j of junk) {
+    const { ctx: c2, page: p2 } = await newPage(browser, VIEWPORTS[1]);
+    await p2.goto(`${BASE}?debug=1&nodaily`);
+    await p2.evaluate(([k, v]) => localStorage.setItem(k, v), [SAVE_KEY, j]);
+    await p2.goto(`${BASE}?debug=1&nodaily`);
+    const ok = await p2.waitForSelector('[data-testid=menu-play]', { timeout: 5000 }).then(() => true).catch(() => false);
+    const st = ok ? await p2.evaluate(() => ({ gold: window.__app.meta.economy.gold, l2: window.__app.save.level(2) || null })) : null;
+    let playable = false;
+    if (ok) {
+      await p2.click('[data-testid=menu-play]');
+      playable = await p2.waitForSelector('[data-testid=board]', { timeout: 4000 }).then(() => true).catch(() => false);
+    }
+    check(`bozuk kayıt açılıyor: ${j.slice(0, 40)}`, ok && playable && p2.errors.length === 0, { st, errors: p2.errors.slice(0, 2) });
+    if (st && st.l2) info('bozuk kayıt onarımı (bölüm 2)', st.l2);
+    await c2.close();
+  }
+  // localStorage throwing (private mode / blocked).
+  {
+    const { ctx: c3, page: p3 } = await newPage(browser, VIEWPORTS[1]);
+    await c3.addInitScript(() => {
+      Storage.prototype.getItem = () => {
+        throw new Error('blocked');
+      };
+      Storage.prototype.setItem = () => {
+        throw new Error('blocked');
+      };
+    });
+    await p3.goto(`${BASE}?debug=1&nodaily`);
+    const ok = await p3.waitForSelector('[data-testid=menu-play]', { timeout: 5000 }).then(() => true).catch(() => false);
+    check('localStorage engelliyken oyun açılıyor', ok, p3.errors.slice(0, 2));
+    await c3.close();
+  }
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+sections.robust = async (browser) => {
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  await H.startLevel(page, 11);
+  // Rapid taps on the selected slot (rotate spam).
+  const sb = await page.locator('[data-testid=slot-0]').boundingBox();
+  const rot0 = await page.evaluate(() => window.__kum.session.tray[0].rot);
+  for (let i = 0; i < 25; i++) await page.mouse.click(sb.x + sb.width / 2, sb.y + sb.height / 2, { delay: 5 });
+  await page.waitForTimeout(200);
+  const rot1 = await page.evaluate(() => window.__kum.session.tray[0].rot);
+  info('25 hızlı dokunuş sonrası dönüş (beklenen (rot0+24 veya 25)%4)', { rot0, rot1 });
+  check('hızlı dokunuşta hata yok', page.errors.length === 0, page.errors.slice(0, 3));
+  // Rapid drags: three pieces dropped back-to-back.
+  const p0 = await page.evaluate(() => window.__kum.session.placed);
+  for (const x of [6, 24, 42]) {
+    const slot = await page.evaluate(() => window.__kum.session.tray.findIndex((t) => t));
+    if (slot < 0) break;
+    await H.dragSlotToGrain(page, slot, x, { steps: 3 });
+  }
+  const p1 = await page.evaluate(() => window.__kum.session.placed);
+  info('art arda 3 hızlı sürükle-bırak', `${p1 - p0} kese yerleşti`);
+  // Multi-touch: finger A drags slot 0, finger B taps slot 1 meanwhile.
+  const cdp = await ctx.newCDPSession(page);
+  await H.settle(page);
+  const before = await page.evaluate(() => ({ placed: window.__kum.session.placed, tray: window.__kum.session.tray.map((t) => !!t) }));
+  const s0 = await page.locator('[data-testid=slot-0]').boundingBox();
+  const s1 = await page.locator('[data-testid=slot-1]').boundingBox();
+  const board = await page.locator('[data-testid=board]').boundingBox();
+  const A = (x, y) => ({ x, y, id: 1 });
+  const B = (x, y) => ({ x, y, id: 2 });
+  const c0 = [s0.x + s0.width / 2, s0.y + s0.height / 2];
+  const c1 = [s1.x + s1.width / 2, s1.y + s1.height / 2];
+  const send = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+  await send('touchStart', [A(...c0)]);
+  await send('touchMove', [A(c0[0], c0[1] - 60)]);
+  await send('touchStart', [A(c0[0], c0[1] - 60), B(...c1)]);
+  await send('touchMove', [A(board.x + board.width * 0.3, board.y + board.height * 0.3), B(c1[0], c1[1] - 120)]);
+  await send('touchMove', [A(board.x + board.width * 0.3, board.y + board.height * 0.3), B(board.x + board.width * 0.8, board.y + board.height * 0.3)]);
+  await send('touchEnd', [A(board.x + board.width * 0.3, board.y + board.height * 0.3)]);
+  await send('touchEnd', []);
+  await page.waitForTimeout(300);
+  const after = await page.evaluate(() => ({ placed: window.__kum.session.placed, tray: window.__kum.session.tray.map((t) => !!t), dragShown: window.__kum.scene.dragEl.classList.contains('show') }));
+  check('çoklu dokunuş: yalnızca bir kese yerleşiyor, sürükleme görseli takılı kalmıyor', after.placed - before.placed <= 1 && !after.dragShown, { before, after });
+  // Pointer cancel mid-drag (e.g. system gesture): drag image must disappear.
+  await H.settle(page);
+  const s2 = await page.evaluate(() => window.__kum.session.tray.findIndex((t) => t));
+  const bb = await page.locator(`[data-testid=slot-${s2}]`).boundingBox();
+  await send('touchStart', [A(bb.x + bb.width / 2, bb.y + bb.height / 2)]);
+  await send('touchMove', [A(bb.x + bb.width / 2, bb.y - 80)]);
+  await send('touchCancel', []);
+  await page.waitForTimeout(200);
+  check('pointercancel sonrası sürüklenen kese kayboluyor', !(await page.evaluate(() => window.__kum.scene.dragEl.classList.contains('show'))));
+  // Window resize mid-game.
+  const w0 = await page.evaluate(() => document.querySelector('[data-testid=board]').getBoundingClientRect().width);
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.waitForTimeout(400);
+  const r1 = await page.evaluate(() => {
+    const b = document.querySelector('[data-testid=board]').getBoundingClientRect();
+    return { w: b.width, h: b.height, bottom: b.bottom, vh: innerHeight, sx: document.documentElement.scrollWidth };
+  });
+  await H.shot(page, 'robust-resize-360x640');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
+  const w2 = await page.evaluate(() => document.querySelector('[data-testid=board]').getBoundingClientRect().width);
+  check('pencere boyutu değişince tahta yeniden ölçekleniyor', r1.w !== w0 && Math.abs(w2 - w0) < 1 && r1.sx <= 360, { w0, r1, w2 });
+  // Drag over the edge of the screen and release outside the window.
+  await H.settle(page);
+  const s3 = await page.evaluate(() => window.__kum.session.tray.findIndex((t) => t));
+  const before3 = await page.evaluate(() => window.__kum.session.placed);
+  const b3 = await page.locator(`[data-testid=slot-${s3}]`).boundingBox();
+  await page.mouse.move(b3.x + 20, b3.y + 20);
+  await page.mouse.down();
+  await page.mouse.move(b3.x + 20, 300, { steps: 5 });
+  await page.mouse.move(-50, 300, { steps: 5 });
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  const after3 = await page.evaluate(() => ({ placed: window.__kum.session.placed, drag: window.__kum.scene.dragEl.classList.contains('show') }));
+  check('ekran dışına bırakma: kese harcanmıyor, görsel takılmıyor', after3.placed === before3 && !after3.drag, { before3, after3 });
+  // Double tap on "Sonraki bölüm".
+  await forceWin(page);
+  await H.waitResult(page);
+  await page.waitForTimeout(400);
+  await page.locator('[data-testid=result-next]').dblclick().catch(() => {});
+  await page.waitForTimeout(800);
+  const depth = await page.evaluate(() => ({ depth: window.__app.scenes.depth, ends: window.__app.save.ads.levelEnds }));
+  check('Sonraki bölüme çift dokunuş tek geçiş/tek bölüm sonu sayıyor', depth.depth <= 2 && depth.ends === 1, depth);
+  // Pause during a drag.
+  if (await page.locator('[data-testid=intro-start]').count()) await page.click('[data-testid=intro-start]');
+  await H.settle(page);
+  const s4 = await page.evaluate(() => window.__kum.session.tray.findIndex((t) => t));
+  await H.dragSlotToGrain(page, s4, 24, { hold: true });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await page.waitForTimeout(200);
+  const pd = await page.evaluate(() => ({ paused: !!document.querySelector('[data-testid=pause-resume]'), drag: window.__kum.scene.dragEl.classList.contains('show') }));
+  check('sürüklerken duraklat: sürükleme iptal, kese yerleşmiyor', pd.paused && !pd.drag, pd);
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+sections.ads = async (browser) => {
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
+  await ctx.addInitScript(() => {
+    const real = Date.now.bind(Date);
+    Date.now = () => real() + (Number(localStorage.getItem('qa.clockOffset')) || 0);
+  });
+  const setOffset = (ms) => page.evaluate((ms) => localStorage.setItem('qa.clockOffset', String(ms)), ms);
+  let offset = 0;
+  const advance = async (ms) => {
+    offset += ms;
+    await setOffset(offset);
+  };
+  // In-app navigation only (a reload would restart the app session, rule 5).
+  const enterFromMap = async (id) => {
+    if (!(await page.locator('[data-testid=map]').count())) {
+      await page.click('[data-testid=menu-levels]');
+      await page.waitForSelector('[data-testid=map]');
+    }
+    await page.locator(`[data-testid=level-${id}]`).scrollIntoViewIfNeeded();
+    await page.click(`[data-testid=level-${id}]`);
+    await page.waitForSelector('[data-testid=board]');
+    await page.waitForTimeout(150);
+    if (await page.locator('[data-testid=intro-start]').count()) await page.click('[data-testid=intro-start]');
+  };
+  const playAndLeave = async (id, how = 'levels', result = 'win') => {
+    if (!(await page.locator('[data-testid=board]').count()) || !(await page.evaluate((id) => window.__kum && window.__kum.session.level.id === id && window.__kum.session.isPlaying, id))) await enterFromMap(id);
+    if (result === 'win') await forceWin(page);
+    else await forceLose(page);
+    await H.waitResult(page);
+    await page.waitForTimeout(250);
+    await page.click(`[data-testid=${how === 'retry' ? 'result-retry' : 'result-levels'}]`);
+    const shown = await page.waitForSelector('[data-testid=fake-ad-interstitial]', { timeout: 1200 }).then(() => true).catch(() => false);
+    if (shown) await page.waitForTimeout(1800);
+    if (how === 'retry') {
+      await page.waitForSelector('[data-testid=board]');
+      await page.waitForTimeout(150);
+    } else await page.waitForSelector('[data-testid=map]');
+    const dec = await page.evaluate(() => window.__app.meta.ads.lastDecision);
+    return { shown, reason: dec && dec.reason, ends: await page.evaluate(() => window.__app.save.ads.levelEnds) };
+  };
+  // Fresh player before level 8 is won → never.
+  await H.fresh(page, '?debug=1&nodaily&unlockAll', { levels: progress(3) });
+  await setOffset(0);
+  let r;
+  const seq = [];
+  for (const id of [4, 5, 6, 7]) seq.push(await playAndLeave(id));
+  check('bölüm 8 kazanılmadan geçiş reklamı yok', seq.every((x) => !x.shown), seq.map((x) => x.reason));
+  // Level 8 won on this end: still locked (must be won BEFORE).
+  r = await playAndLeave(8);
+  check('bölüm 8 sonunda reklam yok (kural: 8 önceden kazanılmış olmalı)', !r.shown && r.reason === 'locked', r);
+  // Session < 3 min.
+  r = await playAndLeave(9);
+  check('oturum < 3 dk iken reklam yok', !r.shown && r.reason === 'session', r);
+  await advance(181_000);
+  r = await playAndLeave(10);
+  check('tüm koşullar sağlanınca geçiş reklamı gösteriliyor', r.shown, r);
+  // Right after: level gap.
+  r = await playAndLeave(12);
+  check('reklam sonrası < 3 bölüm sonu → yok', !r.shown && r.reason === 'level_gap', r);
+  r = await playAndLeave(13);
+  r = await playAndLeave(14);
+  check('3 bölüm sonu ama < 90 sn → yok (cooldown)', !r.shown && r.reason === 'cooldown', r);
+  await advance(91_000);
+  r = await playAndLeave(15);
+  check('90 sn sonra gösteriliyor', r.shown, r);
+  // Retry never shows.
+  for (let k = 0; k < 3; k++) await playAndLeave(16, 'retry', 'lose');
+  await advance(91_000);
+  r = await playAndLeave(16, 'retry', 'lose');
+  check('"Tekrar dene" geçişinde asla yok', !r.shown, r);
+  // Frustration: 3+ losses in a row on this level, then leaving to the map.
+  r = await playAndLeave(16, 'levels', 'lose');
+  check('aynı bölümde art arda 3 kayıp → haritaya geçişte yok', !r.shown && r.reason === 'frustration', r);
+  // Hourly cap: 2 shown so far within the hour; show 2 more then expect cap.
+  let shownCount = 2;
+  for (let k = 0; k < 6 && shownCount < 4; k++) {
+    await advance(91_000);
+    for (let j = 0; j < 2; j++) await playAndLeave(17);
+    await advance(91_000);
+    r = await playAndLeave(18);
+    if (r.shown) shownCount++;
+  }
+  await advance(91_000);
+  for (let j = 0; j < 3; j++) await playAndLeave(19);
+  r = await playAndLeave(19);
+  const inter = await page.evaluate(() => window.__app.save.ads.interstitials.length);
+  check('saatte en fazla 4 geçiş reklamı', !r.shown && r.reason === 'hourly_cap', { r, shownCount, inter, offsetMin: Math.round(offset / 60000) });
+  // Remove ads → never.
+  await page.evaluate(() => {
+    window.__app.save.economy.noAds = true;
+    window.__app.save.commit();
+  });
+  await advance(3_600_000);
+  for (let j = 0; j < 3; j++) await playAndLeave(20);
+  r = await playAndLeave(21);
+  check('Reklamları Kaldır sonrası geçiş reklamı yok', !r.shown && r.reason === 'no_ads', r);
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+sections.perf = async () => {
+  const secs = Number(process.env.QA_PERF_SEC || 180);
+  const browser = await chromium.launch({ args: ['--enable-precise-memory-info', '--js-flags=--expose-gc'] });
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0]);
+  await H.fresh(page, '?debug=1&nodaily&unlockAll');
+  await page.click('[data-testid=menu-endless]');
+  await page.waitForSelector('[data-testid=board]');
+  const res = await page.evaluate(async (secs) => {
+    const frames = [];
+    const samples = [];
+    let games = 0;
+    let moves = 0;
+    let maxScore = 0;
+    let last = performance.now();
+    const t0 = last;
+    const mem = () => (performance.memory ? performance.memory.usedJSHeapSize : null);
+    const nodes = () => document.getElementsByTagName('*').length;
+    let lastMove = 0;
+    let lastSample = 0;
+    await new Promise((resolve) => {
+      const step = (now) => {
+        frames.push(now - last);
+        last = now;
+        const k = window.__kum;
+        if (k && k.session) {
+          const s = k.session;
+          if (s.isPlaying && now - lastMove > 280) {
+            lastMove = now;
+            const m = k.hint();
+            if (m && s.tray[m.slot]) {
+              s.tray[m.slot].rot = m.rot;
+              if (s.drop(m.slot, m.x)) moves++;
+            }
+            maxScore = Math.max(maxScore, s.score);
+          } else if (!s.isPlaying) {
+            const retry = document.querySelector('[data-testid=result-retry]');
+            if (retry) {
+              games++;
+              retry.click();
+            }
+          }
+        }
+        if (now - lastSample > 10000) {
+          lastSample = now;
+          samples.push({ t: Math.round((now - t0) / 1000), heapMB: mem() && +(mem() / 1048576).toFixed(1), nodes: nodes(), particles: document.querySelectorAll('.fx-float').length });
+        }
+        if (now - t0 < secs * 1000) requestAnimationFrame(step);
+        else resolve();
+      };
+      requestAnimationFrame(step);
+    });
+    frames.shift();
+    const sorted = [...frames].sort((a, b) => a - b);
+    const avg = frames.reduce((a, b) => a + b, 0) / frames.length;
+    return {
+      secs,
+      frames: frames.length,
+      avgMs: +avg.toFixed(2),
+      p95Ms: +sorted[Math.floor(sorted.length * 0.95)].toFixed(2),
+      p99Ms: +sorted[Math.floor(sorted.length * 0.99)].toFixed(2),
+      maxMs: +sorted[sorted.length - 1].toFixed(1),
+      over33: frames.filter((f) => f > 33.4).length,
+      games,
+      moves,
+      maxScore,
+      samples,
+    };
+  }, secs);
+  info('sonsuz mod performans', { ...res, samples: undefined });
+  info('örnekler (10 sn)', res.samples);
+  const first = res.samples[1] || res.samples[0];
+  const lastS = res.samples[res.samples.length - 1];
+  check('kare süresi ort. ≤ 17.5 ms (60 fps, headless yazılım çizimi)', res.avgMs <= 17.5, res.avgMs);
+  check('kare süresi p95 ≤ 25 ms', res.p95Ms <= 25, res.p95Ms);
+  check('DOM düğüm sayısı büyümüyor (≤ +15%)', lastS.nodes <= first.nodes * 1.15, { first: first.nodes, last: lastS.nodes });
+  if (first.heapMB) check('JS heap büyümesi ≤ 10 MB', lastS.heapMB - first.heapMB <= 10, { first: first.heapMB, last: lastS.heapMB });
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+  await browser.close();
+};
+
+sections.a11y = async (browser) => {
+  const { ctx, page } = await newPage(browser, VIEWPORTS[0], { reducedMotion: 'reduce' });
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  await H.startLevel(page, 30);
+  const chips = await page.evaluate(() => [...document.querySelectorAll('.goal-chip')].map((c) => ({ spice: c.classList.contains('spice'), svg: !!c.querySelector('svg') })));
+  check('hedef çiplerinde renk körü sembolü (renkli hedef → SVG sembol)', chips.filter((c) => c.spice).every((c) => c.svg) && chips.some((c) => c.spice), chips);
+  // Tray symbols: render one slot big and look for symbol-coloured pixels inside the block (canvas).
+  const box = await page.locator('[data-testid=slot-0]').boundingBox();
+  await page.screenshot({ path: path.join(OUT, 'qa1-a11y-tray-symbols.png'), clip: { x: 0, y: box.y - 4, width: 390, height: box.height + 8 } });
+  const anim = await page.evaluate(() => {
+    const live = (e) => {
+      const cs = getComputedStyle(e);
+      return cs.animationName !== 'none' && cs.animationName !== 'fade' && cs.animationDuration.split(',').some((d) => parseFloat(d) > 0.02);
+    };
+    const cls = (e) => (e.className && e.className.baseVal !== undefined ? e.className.baseVal : String(e.className)).split(' ')[0];
+    return [...document.querySelectorAll('*')].filter(live).map((e) => `${e.tagName.toLowerCase()}.${cls(e)}:${getComputedStyle(e).animationName} ${getComputedStyle(e).animationDuration} ×${getComputedStyle(e).animationIterationCount}`).slice(0, 10);
+  });
+  check('prefers-reduced-motion: oyun ekranında CSS animasyonu yok', anim.length === 0, anim);
+  const shake = await page.evaluate(() => window.__kum.scene.fx.reduce);
+  check('prefers-reduced-motion: sarsıntı kapalı (JS)', shake === true, shake);
+  await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+  await page.waitForSelector('[data-testid=menu-levels]');
+  const animMenu = await page.evaluate(() => {
+    const live = (e) => {
+      const cs = getComputedStyle(e);
+      return cs.animationName !== 'none' && cs.animationName !== 'fade' && cs.animationDuration.split(',').some((d) => parseFloat(d) > 0.02);
+    };
+    const cls = (e) => (e.className && e.className.baseVal !== undefined ? e.className.baseVal : String(e.className)).split(' ')[0];
+    return [...document.querySelectorAll('*')].filter(live).map((e) => `${e.tagName.toLowerCase()}.${cls(e)}:${getComputedStyle(e).animationName} ${getComputedStyle(e).animationDuration} ×${getComputedStyle(e).animationIterationCount}`).slice(0, 10);
+  });
+  check('prefers-reduced-motion: menüde CSS animasyonu yok', animMenu.length === 0, animMenu);
+  // Contrast of key token pairs.
+  const pairs = await page.evaluate(() => {
+    const css = getComputedStyle(document.documentElement);
+    const v = (n) => css.getPropertyValue(n).trim();
+    const rgb = (hex) => {
+      const m = hex.replace('#', '');
+      const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m;
+      return [0, 2, 4].map((i) => parseInt(n.slice(i, i + 2), 16) / 255);
+    };
+    const lum = (hex) => {
+      const [r, g, b] = rgb(hex).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const ratio = (a, b) => {
+      const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+      return +((x + 0.05) / (y + 0.05)).toFixed(2);
+    };
+    const list = [
+      ['--fg', '--bg', 'gövde metni'],
+      ['--muted', '--panel', 'ikincil metin (kart)'],
+      ['--faint', '--bg', 'sürüm / soluk metin'],
+      ['--parchment-muted', '--parchment', 'HUD sipariş başlığı (9.6px)'],
+      ['--parchment-ink', '--parchment', 'sipariş satırları'],
+      ['--on-accent', '--accent', 'birincil düğme'],
+      ['--muted', '--bg', 'PARÇA / PUAN etiketleri'],
+    ];
+    return list.map(([a, b, use]) => ({ use, fg: v(a), bg: v(b), ratio: ratio(v(a), v(b)) }));
+  });
+  for (const p of pairs) check(`kontrast ≥ 4.5: ${p.use} (${p.fg} / ${p.bg})`, p.ratio >= 4.5, p.ratio);
+  check('konsol hatası yok', page.errors.length === 0, page.errors.slice(0, 5));
+  await ctx.close();
+};
+
+sections.balance = async (browser) => {
+  const tries = Number(process.env.QA_TRIES || 3);
+  const { ctx, page } = await newPage(browser, { width: 390, height: 844, dpr: 1 });
+  await H.fresh(page, '?debug=1&nodaily&unlockAll', { tutorialsDone: ['t1', 't2', 't3'], seenIntros: ['scoreGoal', 'boosterShuffle', 'colorPath', 'bomb', 'grains', 'boosterScoop', 'shelf', 'newColorSumac', 'boosterSieve', 'joker', 'sack', 'twoColor', 'newColorIndigo'] });
+  const levels = await page.evaluate(() => [...Array(30)].map((_, i) => i + 1));
+  const table = [];
+  for (const id of levels) {
+    const row = { id, wins: 0, tries, scores: [], used: [], reasons: [], readyPath: false, limit: null };
+    for (let t = 0; t < tries; t++) {
+      await H.startLevel(page, id, '?debug=1&nodaily&unlockAll');
+      if (t === 0) {
+        row.readyPath = await page.evaluate(() => {
+          const s = window.__kum.session;
+          s.runUntilSettled(200000);
+          return s.score > 0;
+        });
+        row.limit = await page.evaluate(() => window.__kum.session.level.pieceLimit);
+      }
+      const r = await H.botPlay(page, 80);
+      if (r.state === 'won') row.wins++;
+      row.scores.push(r.score);
+      row.used.push(r.placed);
+      if (r.state !== 'won') row.reasons.push(r.reason || r.state);
+      // Record the attempt so the next try uses the next attempt seed (like a real retry).
+      await page.waitForTimeout(750);
+      await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+    }
+    table.push(row);
+    console.log(`  bölüm ${String(id).padStart(2)}: ${row.wins}/${tries} kazandı, parça ${row.used.join('/')} / ${row.limit}, puan ${row.scores.join('/')}${row.reasons.length ? ', kayıp: ' + row.reasons.join(',') : ''}${row.readyPath ? ' — BAŞLANGIÇTA HAZIR YOL' : ''}`);
+  }
+  info('denge tablosu (hint botu, ön değerlendirme)', table);
+  check('hiçbir bölüm başlangıçta hazır yol içermiyor', table.every((r) => !r.readyPath), table.filter((r) => r.readyPath).map((r) => r.id));
+  check('öğretici bölümler 1–3 bot ile her denemede kazanılıyor', table.slice(0, 3).every((r) => r.wins === r.tries), table.slice(0, 3).map((r) => `${r.id}:${r.wins}/${r.tries}`));
+  const zero = table.filter((r) => r.wins === 0).map((r) => r.id);
+  info('botun hiç kazanamadığı bölümler (insan için zor/imkânsız adayı)', zero);
+  fs.writeFileSync(path.join(OUT, 'qa-balance.json'), JSON.stringify(table, null, 2));
+  // Random-move player on tutorials: can they be lost?
+  const rnd = [];
+  for (const id of [1, 2, 3]) {
+    let losses = 0;
+    for (let t = 0; t < 10; t++) {
+      await H.startLevel(page, id, '?debug=1&nodaily&unlockAll');
+      const r = await page.evaluate((seed) => {
+        let x = seed * 9301 + 49297;
+        const rand = () => ((x = (x * 9301 + 49297) % 233280) / 233280);
+        const s = window.__kum.session;
+        let n = 0;
+        while (s.isPlaying && n < 60) {
+          const slots = s.tray.map((p, i) => (p ? i : -1)).filter((i) => i >= 0);
+          if (!slots.length) break;
+          const slot = slots[Math.floor(rand() * slots.length)];
+          s.tray[slot].rot = Math.floor(rand() * 4);
+          const ok = s.drop(slot, Math.floor(rand() * 45));
+          if (!ok) s.drop(slot, Math.floor(rand() * 40));
+          s.runUntilSettled(200000);
+          n++;
+        }
+        return s.state;
+      }, t + id * 10);
+      if (r === 'lost') losses++;
+      await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
+    }
+    rnd.push({ id, randomLosses: `${losses}/10` });
+  }
+  info('rastgele oyuncu öğretici bölümlerde', rnd);
   await ctx.close();
 };
 

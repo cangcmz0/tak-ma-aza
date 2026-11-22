@@ -29,7 +29,9 @@ export function goalChip(g: Goal): HTMLElement {
     chip.classList.add('spice');
     chip.style.setProperty('--chip', sandCss(color));
     chip.style.setProperty('--chip-lo', sandCss(color, 2));
-    chip.innerHTML = symbolSvg(color);
+    // Colour paths show the wall-to-wall arrow on the spice colour; grain goals its symbol.
+    if (g.def.type === 'clear_paths') chip.append(icon('path'));
+    else chip.innerHTML = symbolSvg(color);
   } else if (g.def.type === 'score') chip.append(icon('star'));
   else if (g.def.type === 'clear_obstacles') chip.append(icon('sack'));
   else chip.append(icon('path'));

@@ -1,6 +1,6 @@
 // Finds a good move for tutorial hand hints: simulates candidate drops on a scratch grid
 // and prefers moves that complete a path, then moves that widen the piece's colour regions.
-import { BLOCK } from '../config';
+import { BLOCK, SUB } from '../config';
 import { Rng } from '../core/rng';
 import { ClearResult, findClears } from '../engine/clear';
 import { EMPTY, SandGrid } from '../engine/grid';
@@ -98,13 +98,13 @@ function evaluate(sc: Scratch, g: SandGrid, p: Piece, rot: number, x: number): n
   t.copyFrom(g);
   const r0 = p.rot;
   p.rot = rot;
-  // Rigid fall to the first contact, then let it spread (much cheaper than falling 80 rows).
+  // Rigid fall to the first contact, then let it spread (much cheaper than falling the full height).
   const shape = ROTATIONS[p.kind][rot];
   let y = 0;
   while (canStamp(t, shape, x, y + 1)) y++;
   stamp(t, p, x, y, sc.rng);
   p.rot = r0;
-  settle(t, sc.rng, 400);
+  settle(t, sc.rng, 400 * SUB);
   const paths = findClears(t, sc.res);
   if (paths > 0) return 1e6 + sc.res.cellCount;
   let span = 0;

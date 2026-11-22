@@ -49,7 +49,7 @@ async function run(browser, vp) {
   async function dragSlotToGrain(slot, grainCenterX, hold = false) {
     const s = await page.locator(`[data-testid=slot-${slot}]`).boundingBox();
     const board = await page.locator('[data-testid=board]').boundingBox();
-    const tx = board.x + (grainCenterX / 48) * board.width;
+    const tx = board.x + (grainCenterX / (await page.evaluate(() => window.__kum.session.grid.w))) * board.width;
     const ty = board.y + board.height * 0.25;
     const sx = s.x + s.width / 2, sy = s.y + s.height / 2;
     await page.mouse.move(sx, sy);
@@ -65,7 +65,7 @@ async function run(browser, vp) {
       const m = await page.evaluate(() => window.__kum.hint());
       if (!m) return;
       await page.evaluate((m) => { const p = window.__kum.session.tray[m.slot]; if (p) p.rot = m.rot; window.__kum.scene.trayDirty = true; }, m);
-      await dragSlotToGrain(m.slot, m.x + ((await widthOf(m)) * 4) / 2);
+      await dragSlotToGrain(m.slot, m.x + ((await widthOf(m)) * (await page.evaluate(() => window.__kum.session.grid.w / 12))) / 2);
       await page.waitForTimeout(150);
       await settle();
     }
@@ -82,6 +82,7 @@ async function run(browser, vp) {
   // 2) Level 1 tutorial: dim spotlight + hand + Zerde bubble, lifted drag, burst.
   await page.click('[data-testid=menu-play]');
   await page.waitForSelector('[data-testid=board]');
+  await page.waitForSelector('[data-testid=howto-close]', { timeout: 2000 }).then(() => page.click('[data-testid=howto-close]')).catch(() => null);
   await page.waitForTimeout(900);
   log('tutorial dim shown:', await page.locator('[data-testid=tutorial-dim].show').count());
   await shot('02-tutorial');

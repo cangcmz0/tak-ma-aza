@@ -17,6 +17,11 @@ export function rewardPanelEl(app: App, info: SessionEndInfo | undefined): HTMLE
   if (!r && gold <= 0) return null;
   const amount = h('b', { class: 'reward-amount', 'data-testid': 'reward-gold', text: fmt(s.gold, { n: gold }) });
   const kids: (HTMLElement | null)[] = [h('div', { class: 'reward-line' }, coinIcon(), amount)];
+  // First gold ever: say what it is for (once).
+  if (gold > 0 && !app.save.hasSeenIntro('goldTip')) {
+    app.save.markIntroSeen('goldTip');
+    kids.push(h('p', { class: 'gold-tip', 'data-testid': 'gold-tip', text: strings().goldInfo.firstGoldTip }));
+  }
   if (r?.chest)
     kids.push(
       h(

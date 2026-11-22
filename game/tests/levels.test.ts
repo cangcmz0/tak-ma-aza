@@ -1,3 +1,4 @@
+import { BLOCK } from '../src/config';
 import { describe, expect, it } from 'vitest';
 import { ClearResult, findClears } from '../src/engine/clear';
 import { Session } from '../src/game/session';
@@ -66,8 +67,8 @@ describe('level schema', () => {
     if (!r.ok) return;
     const s = new Session(r.level);
     const g = s.grid;
-    expect(g.get(0, g.h - 5)).toBe(255); // stone in the second row from the bottom
+    expect(g.get(0, g.h - BLOCK - 1)).toBe(255); // stone in the second row from the bottom
     expect(g.get(0, g.h - 1)).toBe(1);
-    expect(g.get(4, g.h - 1)).toBe(2);
+    expect(g.get(BLOCK, g.h - 1)).toBe(2);
   });
 });

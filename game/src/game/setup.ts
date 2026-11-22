@@ -1,5 +1,5 @@
 // Builds the initial board for a level: obstacles + prefill, then settles it.
-import { BLOCK, SHADES } from '../config';
+import { BLOCK, DESIGN_W, grainLen, SHADES, SUB } from '../config';
 import type { Rng } from '../core/rng';
 import { ClearResult, findClears, removeMarked } from '../engine/clear';
 import { EMPTY, FLAG_STATIC, JOKER, STONE, type SandGrid } from '../engine/grid';
@@ -38,7 +38,7 @@ function applyObstacles(g: SandGrid, level: LevelDef, rng: Rng, sacks: Sacks): v
 function applyRandom(g: SandGrid, p: Extract<PrefillDef, { type: 'random' }>, colors: number[], rng: Rng, clear: ClearResult): void {
   const palette = p.colors && p.colors.length ? p.colors : colors;
   const density = p.density ?? 1;
-  const top = g.h - p.rows;
+  const top = g.h - grainLen(p.rows); // level data: design-grain rows
   // Colour clumps aligned to the bottom so they line up with dropped blocks.
   for (let y = g.h - BLOCK; y > top - BLOCK; y -= BLOCK) {
     for (let x = 0; x < g.w; x += BLOCK) {
@@ -82,7 +82,8 @@ function applyRandom(g: SandGrid, p: Extract<PrefillDef, { type: 'random' }>, co
 function applyPattern(g: SandGrid, p: Extract<PrefillDef, { type: 'pattern' }>, rng: Rng): void {
   const rows = p.rows;
   if (!rows.length) return;
-  const unit = rows[0].length === g.w ? 1 : BLOCK;
+  // 48-char rows: one char = one design grain (SUB×SUB cells); 12-char rows: one block.
+  const unit = rows[0].length === DESIGN_W ? SUB : BLOCK;
   const legend = p.legend ?? {};
   const top = g.h - rows.length * unit;
   rows.forEach((row, ry) => {

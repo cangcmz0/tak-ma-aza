@@ -1,6 +1,6 @@
 // Level definition type + runtime validation. Unknown fields are preserved
 // (designers may add fields before code supports them).
-import { BLOCK, GRID_H, GRID_W } from '../config';
+import { BLOCK, DESIGN_BLOCK, DESIGN_H, DESIGN_W, SUB } from '../config';
 import { MAX_PLAIN_COLOR } from '../engine/grid';
 import { PIECE_BLOCKS, PIECE_KINDS, type PieceKind } from '../engine/pieces';
 import { validateGoal, type GoalDef } from '../game/goals';
@@ -9,11 +9,11 @@ export type GeoUnit = 'block' | 'grain';
 
 export type PrefillDef =
   | { type: 'none' }
-  /** Fill the bottom `rows` grain rows with random BLOCK×BLOCK colour clumps. */
+  /** Fill the bottom `rows` design-grain rows (4 = one block row) with random block-sized colour clumps. */
   | { type: 'random'; rows: number; density?: number; colors?: number[] }
   /**
-   * Bottom-aligned picture. Each row string is either GRID_W/BLOCK chars (one char = one block)
-   * or GRID_W chars (one char = one grain). '.' empty, '#' stone, '1'..'9' colour id,
+   * Bottom-aligned picture. Each row string is either DESIGN_W/DESIGN_BLOCK (12) chars (one char =
+   * one block) or DESIGN_W (48) chars (one char = one design grain = SUB×SUB cells). '.' empty, '#' stone, '1'..'9' colour id,
    * other chars via `legend` (value: colour id, "stone" or "joker").
    */
   | { type: 'pattern'; rows: string[]; legend?: Record<string, LegendValue> };
@@ -125,7 +125,7 @@ function validatePrefill(v: unknown, colors: number[], e: string[]): PrefillDef 
     case 'none':
       return { type: 'none' };
     case 'random': {
-      if (!isInt(v.rows) || v.rows < 0 || v.rows > GRID_H) e.push(`prefill.rows must be 0..${GRID_H}`);
+      if (!isInt(v.rows) || v.rows < 0 || v.rows > DESIGN_H) e.push(`prefill.rows must be 0..${DESIGN_H}`);
       if (v.density !== undefined && (typeof v.density !== 'number' || v.density < 0 || v.density > 1))
         e.push('prefill.density must be 0..1');
       if (v.colors !== undefined) validateColorList(v.colors, 'prefill.colors', e);
@@ -139,11 +139,11 @@ function validatePrefill(v: unknown, colors: number[], e: string[]): PrefillDef 
       }
       const legend = isObj(v.legend) ? v.legend : {};
       const width = (rows[0] as string | undefined)?.length ?? 0;
-      const blockW = GRID_W / BLOCK;
-      if (rows.length && width !== blockW && width !== GRID_W)
-        e.push(`prefill.rows width must be ${blockW} (blocks) or ${GRID_W} (grains), got ${width}`);
-      const unitH = width === GRID_W ? 1 : BLOCK;
-      if (rows.length * unitH > GRID_H) e.push('prefill.rows: too many rows');
+      const blockW = DESIGN_W / DESIGN_BLOCK;
+      if (rows.length && width !== blockW && width !== DESIGN_W)
+        e.push(`prefill.rows width must be ${blockW} (blocks) or ${DESIGN_W} (grains), got ${width}`);
+      const unitH = width === DESIGN_W ? 1 : DESIGN_BLOCK;
+      if (rows.length * unitH > DESIGN_H) e.push('prefill.rows: too many rows');
       rows.forEach((r: string, i) => {
         if (r.length !== width) e.push(`prefill.rows[${i}] length ${r.length} != ${width}`);
         for (const ch of r) {
@@ -163,15 +163,15 @@ function validatePrefill(v: unknown, colors: number[], e: string[]): PrefillDef 
   }
 }
 
-/** Default sack size: 2×2 blocks (8×8 grains). */
+/** Default sack size in level units: 2×2 blocks (8×8 design grains). */
 export function obstacleDefaultSize(unit: GeoUnit): number {
-  return unit === 'grain' ? 2 * BLOCK : 2;
+  return unit === 'grain' ? 2 * DESIGN_BLOCK : 2;
 }
 
-/** Obstacle rectangle in grains (applies type defaults). */
+/** Obstacle rectangle in simulation cells (applies type defaults; level data uses design units). */
 export function obstacleRect(o: ObstacleDef): { x: number; y: number; w: number; h: number } {
   const unit = o.unit ?? 'block';
-  const k = unit === 'grain' ? 1 : BLOCK;
+  const k = unit === 'grain' ? SUB : BLOCK;
   const def = o.type === 'sack' ? obstacleDefaultSize(unit) : 1;
   return { x: o.x * k, y: o.y * k, w: (o.w ?? def) * k, h: (o.h ?? def) * k };
 }
@@ -223,13 +223,13 @@ function validateObstacles(v: unknown, e: string[]): ObstacleDef[] {
     if (type !== 'shelf' && type !== 'sack') e.push(`obstacles[${i}].type must be shelf|sack`);
     const unit = o.unit ?? 'block';
     if (unit !== 'block' && unit !== 'grain') e.push(`obstacles[${i}].unit must be block|grain`);
-    const k = unit === 'grain' ? 1 : BLOCK;
+    const k = unit === 'grain' ? 1 : DESIGN_BLOCK; // bounds in design grains
     const defSize = type === 'sack' ? obstacleDefaultSize(unit as GeoUnit) : 1;
     const w = isInt(o.w) ? o.w : defSize;
     const h = isInt(o.h) ? o.h : defSize;
     if (type === 'sack' && o.hp !== undefined && (!isInt(o.hp) || o.hp < 1 || o.hp > 3)) e.push(`obstacles[${i}].hp must be 1..3`);
     if (type !== 'sack' && o.hp !== undefined) e.push(`obstacles[${i}].hp is only valid for sacks`);
-    if (o.x < 0 || o.y < 0 || w < 1 || h < 1 || (o.x + w) * k > GRID_W || (o.y + h) * k > GRID_H)
+    if (o.x < 0 || o.y < 0 || w < 1 || h < 1 || (o.x + w) * k > DESIGN_W || (o.y + h) * k > DESIGN_H)
       e.push(`obstacles[${i}] out of bounds`);
   });
   return v as ObstacleDef[];

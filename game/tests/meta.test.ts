@@ -6,9 +6,9 @@ import { Session, type SessionEvent } from '../src/game/session';
 import { FakeAdProvider } from '../src/platform/ads';
 import { FakeIap } from '../src/platform/iap';
 import { MemoryBackend, SaveStore } from '../src/platform/storage';
-import { makeLevel } from './helpers';
+import { designH, designW, makeLevel, S, setGrain } from './helpers';
 
-const small = { gridW: 16, gridH: 24 };
+const small = { gridW: 16 * S, gridH: 24 * S };
 
 async function makeMeta(opts: { adOk?: boolean; buyOk?: boolean } = {}) {
   const backend = new MemoryBackend();
@@ -49,9 +49,9 @@ describe('Session economy hooks', () => {
     expect(s.continues).toBe(1);
     expect(s.piecesLeft).toBe(before + 5);
     const g = s.grid;
-    expect(s.topSandRow()).toBe(Math.min(g.h, CONTINUE_CLEAR_ROWS));
+    expect(s.topSandRow()).toBe(Math.min(g.h, CONTINUE_CLEAR_ROWS * S));
     expect(ev.map((e) => e.type)).toEqual(['revived', 'piecesAdded']);
-    expect(ev[0]).toMatchObject({ pieces: 5, rows: CONTINUE_CLEAR_ROWS, grains: CONTINUE_CLEAR_ROWS * g.w });
+    expect(ev[0]).toMatchObject({ pieces: 5, rows: CONTINUE_CLEAR_ROWS, grains: CONTINUE_CLEAR_ROWS * designW(g) });
     expect(s.revive(5, 20)).toBe(false); // not lost any more
   });
 
@@ -66,17 +66,18 @@ describe('Session economy hooks', () => {
   it('sieve removes one colour, counts grain goals, 1 point per grain, never jokers', () => {
     const s = new Session(makeLevel({ goals: [{ type: 'clear_color_grains', color: 1, count: 10 }, { type: 'clear_paths', count: 1 }] }), small);
     const g = s.grid;
+    const H = designH(g);
     for (let x = 0; x < 6; x++) {
-      g.set(x, g.h - 1, 1);
-      g.set(x, g.h - 2, 2);
+      setGrain(g, x, H - 1, 1);
+      setGrain(g, x, H - 2, 2);
     }
-    g.set(8, g.h - 1, 15); // joker
+    setGrain(g, 8, H - 1, 15); // joker
     expect(s.sieveColor(15)).toBe(0);
     expect(s.sieveColor(1)).toBe(6);
     expect(s.score).toBe(6);
     expect(s.goals.goals[0].current).toBe(6);
     expect(s.goals.goals[1].current).toBe(0); // not a path
-    expect(g.color[(g.h - 1) * g.w + 8]).toBe(15);
+    expect(g.color[(g.h - 1) * g.w + 8 * S]).toBe(15);
   });
 });
 

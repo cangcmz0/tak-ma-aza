@@ -1,6 +1,7 @@
 // Greedy auto-player for level QA / balancing (not part of the shipped UI).
 // For every candidate drop it simulates the landing on a scratch grid and scores
 // the result by how wide same-colour regions get (wall-to-wall = path).
+import { BLOCK, SUB } from '../config';
 import { Rng } from '../core/rng';
 import { EMPTY, MAX_SAND_COLOR, SandGrid } from '../engine/grid';
 import { canStamp, maxX, ROTATIONS, stamp, type Piece } from '../engine/pieces';
@@ -71,7 +72,7 @@ class Evaluator {
     while (canStamp(s, shape, x, y + 1)) y++;
     stamp(s, p, x, y, this.rng);
     p.rot = r0;
-    settle(s, this.rng, 200);
+    settle(s, this.rng, 200 * SUB);
     return this.score(s);
   }
 }
@@ -79,7 +80,7 @@ class Evaluator {
 const evaluators = new Map<string, Evaluator>();
 
 /** Choose a move for the current session state (null if nothing fits). */
-export function chooseMove(s: Session, xStep = 4): BotMove | null {
+export function chooseMove(s: Session, xStep = BLOCK): BotMove | null {
   const g = s.grid;
   const key = `${g.w}x${g.h}`;
   let ev = evaluators.get(key);

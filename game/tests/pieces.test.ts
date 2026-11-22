@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCK } from '../src/config';
+import { BLOCK, SUB as S } from '../src/config';
 import { Rng } from '../src/core/rng';
 import { SandGrid } from '../src/engine/grid';
 import {
@@ -52,13 +52,13 @@ describe('pieces', () => {
   });
 
   it('stamp writes BLOCK×BLOCK grains per cell', () => {
-    const g = new SandGrid(24, 24);
+    const g = new SandGrid(24 * S, 24 * S);
     expect(stamp(g, piece({ kind: 'O', color: 2 }), 0, 0, new Rng(1))).toBe(true);
     expect(g.countColor(2)).toBe(4 * BLOCK * BLOCK);
   });
 
   it('stamp refuses overlap and writes nothing', () => {
-    const g = new SandGrid(24, 24);
+    const g = new SandGrid(24 * S, 24 * S);
     g.set(1, 1, 3);
     const before = Array.from(g.color);
     expect(stamp(g, piece({ kind: 'O' }), 0, 0, new Rng(1))).toBe(false);
@@ -66,22 +66,22 @@ describe('pieces', () => {
   });
 
   it('canStamp rejects out of bounds', () => {
-    const g = new SandGrid(16, 16);
-    const s = ROTATIONS.I[0]; // 16 grains wide
+    const g = new SandGrid(16 * S, 16 * S);
+    const s = ROTATIONS.I[0]; // 16 design grains wide
     expect(canStamp(g, s, 0, 0)).toBe(true);
     expect(canStamp(g, s, 1, 0)).toBe(false);
     expect(canStamp(g, s, -1, 0)).toBe(false);
   });
 
   it('fitsAnywhere is false when the top rows are blocked', () => {
-    const g = new SandGrid(16, 16);
+    const g = new SandGrid(16 * S, 16 * S);
     expect(fitsAnywhere(g, piece())).toBe(true);
-    for (let x = 0; x < 16; x += 3) g.set(x, 0, 1);
+    for (let x = 0; x < 16 * S; x += 3) g.set(x, 0, 1);
     expect(fitsAnywhere(g, piece())).toBe(false);
   });
 
   it('bomb special flags exactly one block', () => {
-    const g = new SandGrid(24, 24);
+    const g = new SandGrid(24 * S, 24 * S);
     stamp(g, piece({ kind: 'I', special: 'bomb', specialCell: 2 }), 0, 0, new Rng(1));
     let flagged = 0;
     for (let i = 0; i < g.size; i++) if (g.flags[i]) flagged++;

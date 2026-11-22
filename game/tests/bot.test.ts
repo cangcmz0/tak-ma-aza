@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { BLOCK } from '../src/config';
 import { Rng } from '../src/core/rng';
 import { autoplay } from '../src/dev/bot';
 import { canStamp, maxX, ROTATIONS } from '../src/engine/pieces';
@@ -16,9 +17,9 @@ function randomPlay(levelIndex: number, attempt = 0, maxMoves = 200): Session {
   s.runUntilSettled();
   for (let n = 0; n < maxMoves && s.isPlaying; n++) {
     const moves: [number, number, number][] = [];
-    // Block-aligned columns first; fall back to every grain column (steep piles can leave
+    // Block-aligned columns first; fall back to every cell column (steep piles can leave
     // only off-grid gaps, which the session still counts as "fits somewhere").
-    for (const stepX of [4, 1]) {
+    for (const stepX of [BLOCK, 1]) {
       s.tray.forEach((p, slot) => {
         if (!p) return;
         for (let rot = 0; rot < 4; rot++) {

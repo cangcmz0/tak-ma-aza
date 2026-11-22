@@ -120,7 +120,7 @@ const shot = (page, name) => page.screenshot({ path: `${OUT}/wave2b-economy-${na
   await page.click('[data-testid=booster-sieve]');
   await page.waitForSelector('[data-testid=booster-target]');
   const target = await page.evaluate(() => { const g = window.__kum.session.grid; for (let i = g.size - 1; i >= 0; i--) if (g.color[i] > 0 && g.color[i] < 15 && !(g.flags[i] & 1)) return { x: i % g.w, y: Math.floor(i / g.w), c: g.color[i] }; return null; });
-  await page.mouse.click(board.x + ((target.x + 0.5) / 48) * board.width, board.y + ((target.y + 0.5) / 80) * board.height);
+  await page.mouse.click(board.x + ((target.x + 0.5) / (await page.evaluate(() => window.__kum.session.grid.w))) * board.width, board.y + ((target.y + 0.5) / (await page.evaluate(() => window.__kum.session.grid.h))) * board.height);
   await page.waitForTimeout(150);
   const left = await page.evaluate((c) => window.__kum.session.grid.color.filter((v) => v === c).length, target.c);
   check(left === 0 && (await count('sieve')) === 1, `Elek removed every grain of colour ${target.c}`);

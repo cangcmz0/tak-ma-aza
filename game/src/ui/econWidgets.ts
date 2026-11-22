@@ -4,6 +4,7 @@ import { BOOSTER_IDS, type BoosterId, type Reward } from '../game/economy';
 import { fmt, strings } from '../i18n';
 import type { App } from './app';
 import { h } from './dom';
+import { GoldInfoScene } from './goldInfo';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -40,11 +41,11 @@ export function boosterIcon(id: BoosterId): SVGSVGElement {
  * Live gold balance. Follows Economy changes while attached to the document.
  * @param onTap e.g. open the shop (GDD §15: "+" → Mağaza)
  */
-export function goldBadge(app: App, onTap?: () => void): HTMLElement {
+export function goldBadge(app: App, onTap: (() => void) | null = () => openGoldInfo(app)): HTMLElement {
   const s = strings().economy;
   const value = h('b', { class: 'gold-value', 'data-testid': 'gold-value' });
   const el = onTap
-    ? h('button', { class: 'gold-badge', type: 'button', 'data-testid': 'gold-badge', onclick: onTap }, coinIcon(), value, h('span', { class: 'gold-plus', text: '+' }))
+    ? h('button', { class: 'gold-badge', type: 'button', 'data-testid': 'gold-badge', onclick: onTap }, coinIcon(), value, h('span', { class: 'gold-plus', 'aria-hidden': 'true', text: '?' }))
     : h('div', { class: 'gold-badge', 'data-testid': 'gold-badge' }, coinIcon(), value);
   let shown = -1;
   const paint = () => {
@@ -53,7 +54,7 @@ export function goldBadge(app: App, onTap?: () => void): HTMLElement {
     const up = shown >= 0 && g > shown;
     shown = g;
     value.textContent = g.toLocaleString('tr-TR');
-    el.setAttribute('aria-label', fmt(s.goldAria, { n: g }) + (onTap ? ` — ${s.toShop}` : ''));
+    el.setAttribute('aria-label', fmt(s.goldAria, { n: g }) + (onTap ? ` — ${strings().goldInfo.title}` : ''));
     if (up) {
       el.classList.remove('bump');
       void el.offsetWidth;
@@ -87,4 +88,12 @@ export function flash(text: string, ms = 1400): void {
   const el = h('div', { class: 'econ-flash', role: 'status', 'data-testid': 'econ-flash', text });
   document.body.append(el);
   window.setTimeout(() => el.remove(), ms);
+}
+
+/** Gold explainer popup ("Altın ne işe yarar?"); every gold badge opens it on tap. */
+export function openGoldInfo(app: App): void {
+  if (app.scenes.top instanceof GoldInfoScene) return;
+  app.audio.unlock();
+  app.audio.play('ui_tap');
+  app.scenes.push(new GoldInfoScene(app));
 }

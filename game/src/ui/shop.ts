@@ -28,7 +28,7 @@ export class ShopScene implements Scene {
           'header',
           { class: 'shop-head' },
           h('h2', { text: s.shop.title }),
-          goldBadge(app),
+          goldBadge(app, null),
           h('button', { class: 'btn btn-icon btn-ghost', type: 'button', 'aria-label': s.economy.close, 'data-testid': 'shop-close', text: '✕', onclick: () => this.close() }),
         ),
         app.meta.iap.fake ? h('p', { class: 'fake-note', 'data-testid': 'shop-fake-note', text: s.shop.fakeNote }) : null,
