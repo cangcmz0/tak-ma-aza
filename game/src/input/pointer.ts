@@ -22,6 +22,8 @@ export interface PointerTarget {
 }
 
 /** Vertical slack above the board that still counts as "over the board" (CSS px). */
+/** Placement only by drag & drop from the tray. */
+const DRAG_ONLY = true;
 const BOARD_TOP_SLACK = 40;
 /** Movement (CSS px) after which a press is a drag, not a tap. */
 const TAP_SLOP = 10;
@@ -88,6 +90,9 @@ export class PointerInput {
   }
 
   private downBoard(e: PointerEvent): void {
+    // Pieces are placed only by dragging them from the tray (player feedback: tap-to-drop
+    // on the board was confusing). A tap on the board does nothing.
+    if (DRAG_ONLY) return;
     if (this.g || !this.target.enabled()) return;
     const slot = this.target.selected();
     if (slot < 0 || !this.target.hasPiece(slot)) return;

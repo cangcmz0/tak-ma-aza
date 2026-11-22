@@ -402,6 +402,8 @@ sections.gameplay = async (browser) => {
   await page.goto(`${BASE}?debug=1&nodaily&unlockAll`);
   await page.waitForSelector('[data-testid=menu-levels]');
   await H.startLevel(page, 11);
+  // Goals out of reach so the formula checks never end the level.
+  await page.evaluate(() => window.__kum.session.goals.goals.forEach((g) => (g.target = 1e9)));
   // 1) Score formula: one full-width path of a single colour.
   const r1 = await page.evaluate(() => {
     const s = window.__kum.session;
@@ -533,24 +535,23 @@ sections.gameplay = async (browser) => {
   });
   check('Kepçe: 4 tane genişlik × 10 satır = 40 tane (joker dahil), 1 puan/tane', r8.n === 40 && r8.score === 40, r8);
   // 9) Booster limits per level (UI): 3 uses max. Use shuffle via the bar.
-  await page.evaluate(() => window.__app.meta.economy.earn(5000, 'qa'));
+  await page.evaluate(() => {
+    window.__app.meta.economy.earn(5000, 'qa');
+    const b = window.__app.save.economy.boosters;
+    b.shuffle = 10;
+    window.__app.save.commit();
+  });
   await H.startLevel(page, 12);
   const shuffleBtn = page.locator('[data-testid=booster-shuffle]');
   if (await shuffleBtn.count()) {
     const counts = [];
     for (let i = 0; i < 5; i++) {
       const before = await page.evaluate(() => JSON.stringify(window.__kum.session.tray.map((t) => t && t.kind + t.color)));
-      await shuffleBtn.click();
+      await shuffleBtn.click({ timeout: 3000 }).catch(() => {});
       await page.waitForTimeout(250);
       // close a booster offer sheet if one appeared
       const sheet = page.locator('[data-testid=booster-offer]');
-      if (await sheet.count()) {
-        const buy = page.locator('[data-testid=booster-buy]');
-        if (await buy.count()) await buy.click();
-        await page.waitForTimeout(200);
-        await shuffleBtn.click();
-        await page.waitForTimeout(200);
-      }
+      if (await sheet.count()) await page.click('[data-testid=offer-cancel]');
       const after = await page.evaluate(() => JSON.stringify(window.__kum.session.tray.map((t) => t && t.kind + t.color)));
       counts.push(before !== after);
     }
@@ -558,11 +559,13 @@ sections.gameplay = async (browser) => {
     await H.shot(page, 'gameplay-booster-limit');
   } else info('booster-shuffle', 'düğme bulunamadı');
   // 10) Continue rules: level 12 (not free): 1st = ad or 300, 2nd = 600, 3rd none.
+  // "Tezgâh doldu": fill every free cell with sand in 4-wide stripes of two colours (no path).
   const loseNow = () =>
     page.evaluate(() => {
       const s = window.__kum.session;
       const g = s.grid;
-      for (let x = 0; x < g.w; x += 3) g.set(x, 0, 255, 0, 1);
+      const [a, b] = s.level.colors;
+      for (let y = 0; y < g.h; y++) for (let x = 0; x < g.w; x++) if (g.get(x, y) === 0) g.set(x, y, (x >> 2) % 2 ? a : b);
       s.wake();
     });
   await loseNow();
@@ -579,12 +582,6 @@ sections.gameplay = async (browser) => {
   await page.waitForTimeout(600);
   const st2 = await page.evaluate(() => window.__kum.session.state);
   info('devam sonrası hemen tekrar kayıp mı (taşlar statik, temizlenmez)', st2);
-  await page.evaluate(() => {
-    const s = window.__kum.session;
-    const g = s.grid;
-    for (let i = 0; i < g.w * 2; i++) if (g.flags[i] & 1) g.clearCell(i);
-    s.wake();
-  });
   // Out of pieces loss for the 2nd continue.
   await page.evaluate(() => {
     const s = window.__kum.session;
